@@ -1,0 +1,38 @@
+{
+  "state_name": "compcancer_published_state",
+  "execution_shards": [
+    {
+      "config": "configs/paper_frozen/compcancer_9x10.json",
+      "datasets": [
+        "alizadeh-2000-v1",
+        "armstrong-2002-v1",
+        "bittner-2000",
+        "chen-2002",
+        "golub-1999-v1",
+        "gordon-2002",
+        "pomeroy-2002-v1",
+        "shipp-2002-v1",
+        "singh-2002"
+      ],
+      "n_folds": 5,
+      "n_repeats": 10
+    },
+    {
+      "config": "configs/paper_frozen/compcancer_2x2.json",
+      "datasets": [
+        "west-2001",
+        "yeoh-2002-v1"
+      ],
+      "n_folds": 5,
+      "n_repeats": 2
+    }
+  ],
+  "collector_config": "configs/paper_frozen/compcancer_collect.json",
+  "expected_outer_test_folds_per_model": 470,
+  "inferential_unit": "dataset",
+  "notes": [
+    "Dataset-level summaries are computed before cross-dataset inference.",
+    "The two execution shards form one benchmark world.",
+    "Candidate-pool and rank-margin screens are separate exploratory states."
+  ]
+}

@@ -1,0 +1,8 @@
+date=2026-09-10T09:28:36+02:00
+hostname=obliczeniowy
+base=/opt/2026/RLR
+Rscript=/usr/bin/Rscript
+python=/opt/2026/RLR/env/venv/bin/python
+git=/usr/bin/git
+git_head=b3c4d1316b0ab4a5e481dd50e3dd9e0c3a07db07
+git_branch=main

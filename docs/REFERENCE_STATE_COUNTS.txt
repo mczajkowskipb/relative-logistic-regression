@@ -1,0 +1,16 @@
+=== release_reference/compcancer_published_state ===
+files=32000
+metrics_test=4230
+predictions_test=4230
+=== release_reference/ptb_fixed_published_state ===
+files=108
+metrics_test=9
+predictions_test=9
+=== release_reference/ptb_loco_published_state ===
+files=312
+metrics_test=36
+predictions_test=36
+=== release_reference/legacy8_published_state_x8 ===
+files=27235
+metrics_test=3600
+predictions_test=3600

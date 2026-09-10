@@ -1,0 +1,90 @@
+{
+  "out_root": "results/compcancer_published_state",
+  "models": {
+    "seed": 42,
+    "run_baselines": true,
+    "run_rlr": true,
+    "skip_existing": true,
+    "save_all_pairs": false,
+    "top_pool_values": [
+      1000
+    ],
+    "include_pool_equal_K": false,
+    "baselines_k": [
+      1,
+      10,
+      20,
+      50
+    ],
+    "alpha": 0.5,
+    "lambda_choice": "lambda.min",
+    "rlr_grid": {
+      "K": [
+        10,
+        50
+      ],
+      "m": [
+        10
+      ],
+      "d": [
+        2
+      ]
+    },
+    "bridge_grid": [
+      {
+        "K": 10,
+        "m": 10,
+        "d": 1
+      },
+      {
+        "K": 50,
+        "m": 10,
+        "d": 1
+      },
+      {
+        "K": 20,
+        "m": 10,
+        "d": 2
+      }
+    ]
+  },
+  "case_study": {
+    "world_name": "compcancer_cv",
+    "dataset_id": "alizadeh-2000-v1",
+    "split_id": "rep00_fold00",
+    "models": [
+      "kTSP_10",
+      "kTSP_50",
+      "RLR_K10_m10_d2_pool1000",
+      "RLR_K50_m10_d2_pool1000"
+    ],
+    "top_beta_n": 15,
+    "top_hub_n": 10
+  },
+  "size_match_report": {
+    "worlds": [
+      "compcancer_cv"
+    ],
+    "analyses": [
+      {
+        "source_model": "RLR_K10_m10_d2_pool1000",
+        "target_k": 10,
+        "analysis_name": "trim10"
+      },
+      {
+        "source_model": "RLR_K50_m10_d2_pool1000",
+        "target_k": 50,
+        "analysis_name": "trim50"
+      }
+    ]
+  },
+  "worlds": [
+    {
+      "name": "compcancer_cv",
+      "protocol": "compcancer_cv",
+      "comp_dir": "data/CompCancer_truth_9x10",
+      "n_folds": 5,
+      "n_repeats": 10
+    }
+  ]
+}

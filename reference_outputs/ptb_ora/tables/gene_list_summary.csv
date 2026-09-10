@@ -1,0 +1,5 @@
+model,family,n_genes_raw,n_genes_in_universe,source_file
+kTSP_10,kTSP,20,20,release_reference/ptb_fixed_published_state/worlds/ptb_norm_fixed/datasets/ptb_norm/splits/fixed/baselines/kTSP_10/selected_pairs.csv
+kTSP_20,kTSP,40,40,release_reference/ptb_fixed_published_state/worlds/ptb_norm_fixed/datasets/ptb_norm/splits/fixed/baselines/kTSP_20/selected_pairs.csv
+RLR_K10_m10_d2_pool1000,RLR,16,16,release_reference/ptb_fixed_published_state/worlds/ptb_norm_fixed/datasets/ptb_norm/splits/fixed/rlr/RLR_K10_m10_d2_pool1000/active_pairs.csv
+RLR_K20_m10_d2_pool1000,RLR,26,26,release_reference/ptb_fixed_published_state/worlds/ptb_norm_fixed/datasets/ptb_norm/splits/fixed/rlr/RLR_K20_m10_d2_pool1000/active_pairs.csv

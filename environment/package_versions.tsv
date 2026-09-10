@@ -1,0 +1,9 @@
+package	installed	version
+jsonlite	TRUE	2.0.0
+foreign	TRUE	0.8.91
+switchBox	TRUE	1.48.0
+glmnet	TRUE	5.0
+pROC	TRUE	1.19.0.1
+ggplot2	TRUE	4.0.3
+svglite	TRUE	2.2.2
+msigdbr	TRUE	26.1.1

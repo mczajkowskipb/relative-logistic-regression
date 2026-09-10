@@ -1,0 +1,123 @@
+{
+  "out_root": "results/ptb_loco_published_state",
+  "models": {
+    "seed": 42,
+    "run_baselines": true,
+    "run_rlr": true,
+    "skip_existing": false,
+    "save_all_pairs": false,
+    "top_pool_values": [
+      1000
+    ],
+    "include_pool_equal_K": false,
+    "pre_tsp_top_features": 2000,
+    "baselines_k": [
+      1,
+      10,
+      20,
+      50
+    ],
+    "alpha": 0.5,
+    "lambda_choice": "lambda.min",
+    "rlr_grid": {
+      "K": [
+        10,
+        50
+      ],
+      "m": [
+        10
+      ],
+      "d": [
+        2
+      ]
+    },
+    "bridge_grid": [
+      {
+        "K": 10,
+        "m": 10,
+        "d": 1
+      },
+      {
+        "K": 50,
+        "m": 10,
+        "d": 1
+      },
+      {
+        "K": 20,
+        "m": 10,
+        "d": 2
+      }
+    ]
+  },
+  "worlds": [
+    {
+      "name": "ptb_prelim_loco",
+      "protocol": "loco_files",
+      "dataset_id": "ptb_prelim",
+      "cohort_dir": "data/cohort_prelim",
+      "cohort_pattern": "\\.arff$",
+      "class_col": "class"
+    }
+  ],
+  "paper_report": {
+    "main_models": [
+      "TSP_1",
+      "kTSP_10",
+      "kTSP_20",
+      "kTSP_50",
+      "RLR_K10_m10_d2_pool1000",
+      "RLR_K20_m10_d2_pool1000",
+      "RLR_K50_m10_d2_pool1000",
+      "RLR_K50_m10_d1_pool1000"
+    ],
+    "compact_models": [
+      "kTSP_10",
+      "RLR_K10_m10_d2_pool1000"
+    ],
+    "large_models": [
+      "kTSP_50",
+      "RLR_K50_m10_d2_pool1000"
+    ]
+  },
+  "stats_report": {
+    "comparisons": [
+      {
+        "comparison": "RLR10_vs_kTSP10",
+        "model_a": "RLR_K10_m10_d2_pool1000",
+        "model_b": "kTSP_10"
+      },
+      {
+        "comparison": "RLR20_vs_kTSP20",
+        "model_a": "RLR_K20_m10_d2_pool1000",
+        "model_b": "kTSP_20"
+      },
+      {
+        "comparison": "RLR50_vs_kTSP50",
+        "model_a": "RLR_K50_m10_d2_pool1000",
+        "model_b": "kTSP_50"
+      },
+      {
+        "comparison": "RLR50_d2_vs_d1",
+        "model_a": "RLR_K50_m10_d2_pool1000",
+        "model_b": "RLR_K50_m10_d1_pool1000"
+      }
+    ],
+    "paper_focus_comparisons": [
+      {
+        "comparison": "RLR10_vs_kTSP10",
+        "model_a": "RLR_K10_m10_d2_pool1000",
+        "model_b": "kTSP_10"
+      },
+      {
+        "comparison": "RLR20_vs_kTSP20",
+        "model_a": "RLR_K20_m10_d2_pool1000",
+        "model_b": "kTSP_20"
+      },
+      {
+        "comparison": "RLR50_vs_kTSP50",
+        "model_a": "RLR_K50_m10_d2_pool1000",
+        "model_b": "kTSP_50"
+      }
+    ]
+  }
+}

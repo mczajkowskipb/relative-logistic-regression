@@ -13,8 +13,8 @@
 - [x] Final main manuscript and Supplement compiled with complete figure assets.
 - [x] Final PDFs visually inspected.
 - [x] Quick release validation passes.
-- [ ] Create clean public GitHub repository and push this publication release.
-- [ ] Run `bash scripts/smoke_test.sh` from a fresh clone.
+- [x] Clean public GitHub repository created and publication release pushed.
+- [x] Fresh-clone quick verification passed (`python3 scripts/check_release.py --quick`; `scripts/smoke_test.sh` is the equivalent wrapper).
 - [ ] Make `relative-logistic-regression-working` private after the clean public repository is verified.
 
 No further scientific/benchmark computation is part of the release checklist.

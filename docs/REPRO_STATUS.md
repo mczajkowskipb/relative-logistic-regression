@@ -28,4 +28,4 @@ The public repository does not mirror every split-level frozen output. Those fil
 
 ## Final external verification
 
-After the repository is pushed to `https://github.com/mczajkowskipb/relative-logistic-regression`, run one smoke check from a fresh clone. No additional benchmark reruns are required for the numerical lock.
+Fresh-clone quick verification of the public repository passed on 2026-09-10 (`python3 scripts/check_release.py --quick`; `scripts/smoke_test.sh` is the equivalent wrapper). No additional benchmark reruns are required for the numerical lock.

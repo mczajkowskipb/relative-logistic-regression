@@ -78,7 +78,7 @@ for (dataset in datasets) {
         !identical(as.character(look$gene_b), as.character(screen$gene_b))) {
       stop("Candidate accounting / top-B mismatch: ", dataset, "/", split)
     }
-    if (!identical(tree$size, 1L) || isTRUE(tree$accepted_split)) {
+    if (!isTRUE(tree$size == 1L) || isTRUE(tree$accepted_split)) {
       stop("Pilot tree changed or includes an accepted split: ", dataset, "/", split)
     }
 

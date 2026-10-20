@@ -108,7 +108,9 @@ rlmt_fit_leaf <- function(X, y, pool, conf, rerank = TRUE, seed = conf$seed) {
   )
   beta <- as.numeric(coef(fit, s = conf$lambda_choice))[-1]
   names(beta) <- colnames(R)
-  list(fit = fit, pairs = pairs, beta = beta,
+  # Keep the exact fold assignments in our RLMT model wrapper for audit;
+  # cv.glmnet does not retain foldid unless keep=TRUE.
+  list(fit = fit, pairs = pairs, beta = beta, cv_foldid = foldid,
        active = pairs[beta != 0, , drop = FALSE])
 }
 

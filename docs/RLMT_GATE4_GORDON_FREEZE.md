@@ -17,7 +17,7 @@ row duplicates. Among the 6 datasets not used in RLMT development,
 - Gordon-2002: 181 samples, 1626 numeric genes/features.
 - Binary labels: AD (150), MPM (31). Minority class is MPM.
 - Canonical processed ARFF SHA256 (publication manifest):
-  `42bb0900e7c22851244c27243b626514917c0674d1bbc1`.
+  `42bb0900f7a22851244c27243b626514917c0674d1a3c63dbf77bcab43361bab`.
 - Processed ARFF input: `/opt/2026/RLR/data/CompCancer_truth_9x10/gordon-2002.arff`.
 - Patient independence cannot be established from the processed ARFF.
 

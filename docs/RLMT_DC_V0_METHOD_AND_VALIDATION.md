@@ -186,3 +186,21 @@ validation based acceptance are generally novel:
   DOI 10.1073/pnas.1510489113.
   Context for sample splitting; its formal causal-inference
   guarantees **do not transfer** to this logistic tree.
+
+- Landwehr N., Hall M.A., Frank E. (2005). Logistic Model Trees.
+  Machine Learning 59:161–205. DOI 10.1007/s10994-005-0466-3.
+  Prior art for logistic models in decision-tree leaves.
+- Zeileis A., Hothorn T., Hornik K. (2008). Model-Based Recursive
+  Partitioning. JCGS 17(2):492–514.
+  DOI 10.1198/106186008X319331.
+  Prior art for score-/instability-guided model-tree splitting.
+- Schlosser L., Hothorn T., Zeileis A. (2019). The Power of Unbiased
+  Recursive Partitioning: A Unifying View of CTree, MOB, and GUIDE.
+  arXiv:1906.10179. Prior work on the importance of model-score
+  and residual choices for split-variable screening.
+
+A future publication must benchmark against suitable **nonrelational
+logistic model trees/MOB baselines** or explicitly narrow its scientific
+claims to the *relational representation* and small-sample behavior.
+Residual screening and logistic leaves alone are well-established;
+neither is presented here as a novel invention.

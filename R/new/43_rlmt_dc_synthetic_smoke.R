@@ -77,6 +77,27 @@ readp <- function(d) read.csv(file.path(d,"predictions_test.csv"),
                                            y_pred="character"))
 pred <- readp(dc_dir)
 ref <- readp(rlr_dir)
+
+# Hard invariant: max_leaves=1 retains EXACT unchanged published RLR,
+# regardless of whether the new two-leaf method nominates a split.
+l1_dir <- file.path(base,"reference_rlmt_L1")
+rlmt_root_output(Xtr,ytr,Xte,yte,pool,
+                 rlmt_defaults(list()),l1_dir,
+                 "RLMT_K10_m10_d2_pool1000_L1",
+                 list(dataset_id="SYNTHETIC_ONLY"),
+                 "max_leaves=1")
+p_l1 <- readp(l1_dir)
+c_ref <- read.csv(file.path(rlr_dir,"coefficients.csv"),
+                  stringsAsFactors=FALSE)
+c_l1 <- read.csv(file.path(l1_dir,"coefficients.csv"),
+                 stringsAsFactors=FALSE)
+verify(identical(ref$sample_id,p_l1$sample_id) &&
+       identical(ref$y_pred,p_l1$y_pred) &&
+       isTRUE(all.equal(ref$prob,p_l1$prob,tolerance=1e-12)) &&
+       identical(c_ref,c_l1),
+       "frozen RLR / max_leaves=1 parity")
+cat("RLMT_DC_SYNTHETIC_L1_PARITY=PASS\n")
+
 verify(identical(pred$sample_id,rownames(Xte)) &&
        identical(pred$y_true,as.character(yte)) &&
        all(is.finite(pred$prob)) && all(pred$prob>=0 & pred$prob<=1),

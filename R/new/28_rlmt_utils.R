@@ -65,6 +65,33 @@ rerank_pool_in_node <- function(X_node, y_node, global_pool) {
   out[order(-out$abs_score, seq_len(nrow(out))), , drop = FALSE]
 }
 
+# Stratify the leaf-internal glmnet CV: every validation fold retains both
+# classes, and every fit fold has at least two observations of each class.
+# Uses only the training labels of the node being fitted; never outer test.
+rlmt_stratified_foldid <- function(y, nfolds, seed) {
+  if (!is.factor(y) || length(levels(y)) != 2L || anyNA(y) ||
+      length(nfolds) != 1L || !is.finite(nfolds) ||
+      nfolds < 3L || nfolds != as.integer(nfolds) ||
+      any(table(y) < nfolds)) {
+    stop("Insufficient class support for stratified leaf CV")
+  }
+  foldid <- integer(length(y))
+  set.seed(seed)
+  for (cls in levels(y)) {
+    idx <- which(y == cls)
+    idx <- sample(idx, length(idx), replace = FALSE)
+    foldid[idx] <- rep(seq_len(nfolds), length.out = length(idx))
+  }
+  if (any(foldid < 1L | foldid > nfolds) ||
+      any(vapply(seq_len(nfolds), function(k) {
+        any(table(y[foldid == k]) < 1L) ||
+          any(table(y[foldid != k]) < 2L)
+      }, logical(1)))) {
+    stop("Invalid class support in stratified leaf CV foldid")
+  }
+  foldid
+}
+
 rlmt_fit_leaf <- function(X, y, pool, conf, rerank = TRUE, seed = conf$seed) {
   if (length(levels(y)) != 2L || any(table(y) < 3L))
     stop("Insufficient leaf class support for glmnet CV")
@@ -72,10 +99,11 @@ rlmt_fit_leaf <- function(X, y, pool, conf, rerank = TRUE, seed = conf$seed) {
   pairs <- apply_disjointness(pairs, K = conf$K, d = conf$d)
   if (nrow(pairs) == 0L) stop("Empty RLR shortlist in leaf")
   R <- encode_pair_matrix(X, pairs, m = conf$m)
-  set.seed(seed)
+  nfolds <- safe_nfolds(y, 5)
+  foldid <- rlmt_stratified_foldid(y, nfolds = nfolds, seed = seed)
   fit <- glmnet::cv.glmnet(
     x = R, y = rlmt_y01(y), family = "binomial",
-    alpha = conf$alpha, nfolds = safe_nfolds(y, 5),
+    alpha = conf$alpha, nfolds = nfolds, foldid = foldid,
     type.measure = "deviance"
   )
   beta <- as.numeric(coef(fit, s = conf$lambda_choice))[-1]

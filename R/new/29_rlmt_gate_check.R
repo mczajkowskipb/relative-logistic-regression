@@ -95,6 +95,17 @@ if (!identical(rownames(X_test), p$sample_id))
   stop("GATE 2 raw outer-test sample ids do not match")
 
 if (isTRUE(tree$accepted_split)) {
+  for (fn in c("screen_top.csv", "lookahead.csv")) {
+    if (!file.exists(file.path(dirs$l2, fn))) stop("Missing split audit: ", fn)
+  }
+  scr <- read.csv(file.path(dirs$l2, "screen_top.csv"))
+  look <- read.csv(file.path(dirs$l2, "lookahead.csv"))
+  if (nrow(scr) < 1L || nrow(scr) > 20L || nrow(look) != nrow(scr))
+    stop("GATE 2 screening/lookahead candidate accounting mismatch")
+  if (!any(look$gene_a == tree$split$gene_a &
+           look$gene_b == tree$split$gene_b &
+           look$valid & look$lower_gain > 0))
+    stop("GATE 2 chosen split is not an admissible lookahead candidate")
   if (tree$size != 2L || nrow(nodes) != 3L ||
       any(!routes$leaf_id %in% c(2L, 3L)))
     stop("GATE 2 accepted split structure mismatch")

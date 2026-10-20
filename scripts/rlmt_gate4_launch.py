@@ -122,9 +122,10 @@ def run() -> None:
     current_manifest = (ROOT / HASH_MANIFEST).read_text()
     if digest_from_manifest(current_manifest) != expected_digest:
         stop("working checksum manifest differs from publication main")
-    if rows[5]["dataset"] != "gordon-2002":
-        stop("metadata inventory dataset ordering changed")
-    if rows[5]["sha256"].lower() != expected_digest:
+    gordon_rows = [r for r in rows if r["dataset"] == "gordon-2002"]
+    if len(gordon_rows) != 1:
+        stop("metadata inventory must have exactly one Gordon entry")
+    if gordon_rows[0]["sha256"].lower() != expected_digest:
         stop("metadata inventory Gordon digest differs from publication main")
 
     datafile = Path(world[0]["comp_dir"]) / "gordon-2002.arff"

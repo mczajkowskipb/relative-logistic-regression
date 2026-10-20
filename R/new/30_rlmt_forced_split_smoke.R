@@ -7,8 +7,10 @@ source("R/new/07_world_protocol_utils.R")
 source("R/new/28_rlmt_utils.R")
 
 cfg <- jsonlite::read_json(args[1], simplifyVector = TRUE)
-world <- if (is.data.frame(cfg$worlds)) as.list(cfg$worlds[1, ]) else cfg$worlds[[1]]
-if (length(cfg$worlds) != 1L ||
+n_worlds <- if (is.data.frame(cfg$worlds)) nrow(cfg$worlds) else length(cfg$worlds)
+if (n_worlds != 1L) stop("Expected exactly one CompCancer world")
+world <- if (is.data.frame(cfg$worlds)) as.list(cfg$worlds[1, , drop = FALSE]) else cfg$worlds[[1]]
+if (
     !identical(as.character(world$datasets_include[[1]]), "chen-2002") ||
     as.integer(world$n_folds) != 5L ||
     as.integer(world$max_splits_per_dataset) != 1L ||

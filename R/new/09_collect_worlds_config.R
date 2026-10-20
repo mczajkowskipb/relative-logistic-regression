@@ -129,7 +129,7 @@ metrics_df$model <- if ("method" %in% names(metrics_df)) {
 
 path_model <- extract_from_path(
   metrics_df$file,
-  ".*[\\/](TSP_1|kTSP_[0-9]+|(?:RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
+  ".*[\\/](TSP_1|kTSP_[0-9]+|(RLR_K[0-9]+_m[0-9]+_d[0-9]+(_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
   NA_character_
 )
 
@@ -224,7 +224,7 @@ local_df_list <- lapply(local_csv_files, function(f) {
   } else {
     extract_from_path(
       f,
-      ".*[\\/](TSP_1|kTSP_[0-9]+|(?:RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
+      ".*[\\/](TSP_1|kTSP_[0-9]+|(RLR_K[0-9]+_m[0-9]+_d[0-9]+(_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
       NA_character_
     )
   }

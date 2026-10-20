@@ -280,6 +280,11 @@ rlmt_run <- function(X_train, y_train, X_test, y_test,
                                        file.path(out_dir, "lookahead.csv"),
                                        row.names = FALSE)
     decision <- assessed$winner
+    if (nrow(screen) == 0L) {
+      stop_reason <- "no_valid_child_splits"
+    } else if (is.null(decision)) {
+      stop_reason <- "no_positive_1se_gain"
+    }
   } else {
     stop_reason <- "insufficient_root_support"
   }

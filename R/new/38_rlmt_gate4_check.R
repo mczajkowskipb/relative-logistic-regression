@@ -59,13 +59,28 @@ require_true(nrow(xy$X)==181L && ncol(xy$X)==1626L &&
              identical(as.integer(table(xy$y)),c(150L,31L)) &&
              identical(levels(xy$y),c("AD","MPM")),
              "Gordon source schema or class counts changed")
-sha <- tolower(sub("^([[:xdigit:]]{64}).*$","\\1",
-             system2("sha256sum",
+# Derive the expected digest from the publication manifest instead of
+# maintaining a second, error-prone hardcoded copy.
+manifest_lines <- readLines("checksums/DATA_SHA256_EXPECTED.txt", warn=FALSE)
+manifest_matches <- grep(
+  "^[[:xdigit:]]{64}[[:space:]]+data/CompCancer/gordon-2002[.]arff$",
+  trimws(manifest_lines), value=TRUE)
+require_true(length(manifest_matches)==1L,
+             "missing or ambiguous publication Gordon checksum")
+expected_sha <- tolower(sub("^([[:xdigit:]]{64}).*$","\\1",
+                            manifest_matches[[1L]]))
+require_true(identical(expected_sha,"42bb0900f7a22851244c27243b626514917c0674d1a3c63dbf77bcab43361bab"),
+             "publication manifest SHA is not the frozen Gordon input")
+sha_output <- system2("sha256sum",
                      shQuote(file.path(cfg$worlds$comp_dir,
-                                      "gordon-2002.arff")),
-                     stdout=TRUE)[1]))
-require_true(identical(sha,"42bb0900e7c22851244c27243b626514917c0674d1bbc1"),
-             "source SHA mismatch")
+                                       "gordon-2002.arff")),
+                     stdout=TRUE, stderr=TRUE)
+require_true(length(sha_output)==1L &&
+             grepl("^[[:xdigit:]]{64}[[:space:]]+",sha_output[1L]),
+             "sha256sum failed on Gordon input")
+sha <- tolower(sub("^([[:xdigit:]]{64}).*$","\\1",sha_output[[1L]]))
+require_true(identical(sha,expected_sha),
+             "source SHA mismatch against publication manifest")
 
 pdirs <- list(
   rlr=c("rlr","RLR_K10_m10_d2_pool1000"),

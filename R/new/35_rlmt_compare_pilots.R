@@ -66,8 +66,17 @@ isclose <- function(x, y, tol = 1e-12) {
 require_true <- function(x, msg) if (!isTRUE(x)) stop(msg)
 read_metrics <- function(d) jsonlite::read_json(
   file.path(d, "metrics_test.json"), simplifyVector = TRUE)
-read_csv <- function(d, name) read.csv(file.path(d, name),
-                                       stringsAsFactors = FALSE)
+read_csv <- function(d, name) {
+  file <- file.path(d, name)
+  if (identical(name, "predictions_test.csv")) {
+    # read.csv otherwise coerces numeric-looking class labels to numbers.
+    return(read.csv(file, stringsAsFactors = FALSE,
+                    colClasses = c(sample_id = "character",
+                                   y_true = "character",
+                                   y_pred = "character")))
+  }
+  read.csv(file, stringsAsFactors = FALSE)
+}
 close_json <- function(recomputed, stored, name) {
   require_true(length(stored) == 1L && is.finite(stored) &&
                abs(recomputed - stored) <= 5.1e-5,

@@ -1,0 +1,59 @@
+{
+  "out_root": "results/rlmt_gate4_gordon_frozen_5fold",
+  "models": {
+    "seed": 42,
+    "run_baselines": false,
+    "run_rlr": true,
+    "run_rlmt": true,
+    "skip_existing": false,
+    "save_all_pairs": false,
+    "top_pool_values": [
+      1000
+    ],
+    "include_pool_equal_K": false,
+    "alpha": 0.5,
+    "lambda_choice": "lambda.min",
+    "rlr_grid": {
+      "K": [
+        10
+      ],
+      "m": [
+        10
+      ],
+      "d": [
+        2
+      ]
+    },
+    "rlmt": {
+      "K": 10,
+      "m": 10,
+      "d": 2,
+      "pool": 1000,
+      "max_leaves": [
+        1,
+        2
+      ],
+      "max_depth": 2,
+      "screen_top_B": 20,
+      "min_child_n": 16,
+      "min_child_class": 6,
+      "inner_folds": 3,
+      "alpha": 0.5,
+      "lambda_choice": "lambda.min",
+      "seed": 42
+    }
+  },
+  "worlds": [
+    {
+      "name": "compcancer_cv",
+      "protocol": "compcancer_cv",
+      "comp_dir": "/opt/2026/RLR/data/CompCancer_truth_9x10",
+      "datasets_include": [
+        "gordon-2002"
+      ],
+      "n_folds": 5,
+      "n_repeats": 1,
+      "max_splits_per_dataset": 5
+    }
+  ]
+}

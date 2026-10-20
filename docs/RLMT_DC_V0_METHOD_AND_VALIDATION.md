@@ -55,7 +55,7 @@ Given **outer-training** data `T={(x_i,y_i)}`, binary
    These are potential **split features**, not the RLR predictor
    shortlist. Sampling uses only feature names and RNG, **never y or
    outer test**. Do not enumerate or store all p² relations.
-   Orientation is canonical by feature-name order; reversing the
+   Orientation is canonical by feature-column order; reversing the
    orientation merely exchanges child identifiers and does not change
    the two-region partition.
 5. Require every proposed child on D to have

@@ -96,8 +96,7 @@ if (!identical(rownames(X_test), p$sample_id))
 
 if (isTRUE(tree$accepted_split)) {
   if (tree$size != 2L || nrow(nodes) != 3L ||
-      !setequal(routes$leaf_id, c(2L, 3L)) &&
-        any(!routes$leaf_id %in% c(2L, 3L)))
+      any(!routes$leaf_id %in% c(2L, 3L)))
     stop("GATE 2 accepted split structure mismatch")
   a <- tree$split$gene_a; b <- tree$split$gene_b
   actual <- ifelse(X_test[[a]] > X_test[[b]], 2L, 3L)

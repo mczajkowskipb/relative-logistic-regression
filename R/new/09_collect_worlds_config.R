@@ -112,7 +112,7 @@ metrics_df$dataset_id <- if ("dataset_id" %in% names(metrics_df)) {
 metrics_df$split_id <- if ("split_id" %in% names(metrics_df)) {
   as.character(metrics_df$split_id)
 } else {
-  extract_from_path(metrics_df$file, ".*splits[\\\\/](.*?)[\\\\/](baselines|rlr).*", NA_character_)
+  extract_from_path(metrics_df$file, ".*splits[\\\\/](.*?)[\\\\/](baselines|rlr|rlmt).*", NA_character_)
 }
 
 metrics_df$family <- if ("method_family" %in% names(metrics_df)) {
@@ -129,7 +129,7 @@ metrics_df$model <- if ("method" %in% names(metrics_df)) {
 
 path_model <- extract_from_path(
   metrics_df$file,
-  ".*[\\/](TSP_1|kTSP_[0-9]+|RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|ValueLR_MAD1000_EN|value_LR)[\\/].*",
+  ".*[\\/](TSP_1|kTSP_[0-9]+|(?:RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
   NA_character_
 )
 
@@ -218,13 +218,13 @@ local_df_list <- lapply(local_csv_files, function(f) {
   df$file <- f
   df$world_name <- extract_from_path(f, ".*worlds[\\\\/](.*?)[\\\\/]datasets.*", NA_character_)
   df$dataset_id <- extract_from_path(f, ".*datasets[\\\\/](.*?)[\\\\/]splits.*", NA_character_)
-  df$split_id <- extract_from_path(f, ".*splits[\\\\/](.*?)[\\\\/](baselines|rlr).*", NA_character_)
+  df$split_id <- extract_from_path(f, ".*splits[\\\\/](.*?)[\\\\/](baselines|rlr|rlmt).*", NA_character_)
   df$model <- if (grepl("[\\/]value_lr[\\/]", f)) {
     "value_LR"
   } else {
     extract_from_path(
       f,
-      ".*[\\/](TSP_1|kTSP_[0-9]+|RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|ValueLR_MAD1000_EN|value_LR)[\\/].*",
+      ".*[\\/](TSP_1|kTSP_[0-9]+|(?:RLR_K[0-9]+_m[0-9]+_d[0-9]+(?:_pool[0-9]+)?|RLMT_K[0-9]+_m[0-9]+_d[0-9]+_pool[0-9]+_L[0-9]+)|ValueLR_MAD1000_EN|value_LR)[\\/].*",
       NA_character_
     )
   }

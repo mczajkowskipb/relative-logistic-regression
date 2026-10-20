@@ -4,6 +4,7 @@ get_script_dir <- function() {
   getwd()
 }
 source(file.path(get_script_dir(), "07_world_protocol_utils.R"))
+source(file.path(get_script_dir(), "28_rlmt_utils.R"))
 suppressPackageStartupMessages(library(jsonlite))
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -87,6 +88,8 @@ models_cfg <- cfg$models
 
 run_baselines <- isTRUE(models_cfg$run_baselines %||% TRUE)
 run_rlr <- isTRUE(models_cfg$run_rlr %||% TRUE)
+run_rlmt <- isTRUE(models_cfg$run_rlmt %||% FALSE)
+rlmt_cfg <- models_cfg$rlmt %||% list()
 skip_existing <- isTRUE(models_cfg$skip_existing %||% TRUE)
 save_all_pairs <- isTRUE(models_cfg$save_all_pairs %||% FALSE)
 include_pool_equal_K <- isTRUE(models_cfg$include_pool_equal_K %||% FALSE)
@@ -370,6 +373,10 @@ run_one_split <- function(world_name, dataset_id, split_spec, train_test, split_
 
   # ---------- pool cache ----------
   split_pool_values <- top_pool_values
+  if (run_rlmt) {
+    split_pool_values <- sort(unique(c(split_pool_values,
+      as.integer(rlmt_cfg$pool %||% 1000L))))
+  }
   if (include_pool_equal_K && nrow(full_rlr_grid) > 0) {
     split_pool_values <- sort(unique(c(split_pool_values, full_rlr_grid$K)))
   }
@@ -548,6 +555,44 @@ run_one_split <- function(world_name, dataset_id, split_spec, train_test, split_
 
         register_manifest(world_name, dataset_id, split_spec$split_id, "rlr", model_name, model_dir)
       }
+    }
+  }
+
+  # ---------- RLMT (opt-in; publication path unchanged) ----------
+  if (run_rlmt) {
+    c_rlmt <- rlmt_defaults(rlmt_cfg)
+    max_leaf_values <- as.integer(rlmt_cfg$max_leaves %||% c(1L, 2L))
+    pool_rlmt <- pairs_pool_cache[[as.character(c_rlmt$pool)]]
+    if (is.null(pool_rlmt)) stop("Missing cached global pool for RLMT")
+
+    for (max_leaves in max_leaf_values) {
+      model_name <- paste0("RLMT_K", c_rlmt$K, "_m", c_rlmt$m,
+                           "_d", c_rlmt$d, "_pool", c_rlmt$pool,
+                           "_L", max_leaves)
+      model_dir <- file.path(split_dir, "rlmt", model_name)
+      metrics_file <- file.path(model_dir, "metrics_test.json")
+      required_files <- file.path(model_dir, c(
+        "metrics_test.json", "predictions_test.csv",
+        "tree.json", "nodes.csv", "test_routes.csv"))
+      if (skip_existing && all(file.exists(required_files))) {
+        cat("  -> rlmt:", model_name, " (skip-existing)\n")
+      } else {
+        cat("  -> rlmt:", model_name, "\n")
+        ensure_dir(model_dir)
+        tryCatch({
+          rlmt_run(X_train, y_train, X_test, y_test, pool_rlmt,
+                   max_leaves = max_leaves, config = rlmt_cfg,
+                   out_dir = model_dir,
+                   extra_metrics = list(world_name = world_name,
+                                        dataset_id = dataset_id,
+                                        split_id = split_spec$split_id))
+        }, error = function(e) {
+          write_error_json(file.path(model_dir, "error.json"), e)
+          stop("RLMT failed: ", conditionMessage(e))
+        })
+      }
+      register_manifest(world_name, dataset_id, split_spec$split_id,
+                        "RLMT", model_name, model_dir)
     }
   }
 }

@@ -136,6 +136,20 @@ y01 <- as.numeric(p$y_true == levels(xy$y)[2])
 eps <- 1e-15
 pc <- pmin(pmax(p$prob, eps), 1 - eps)
 ll <- -mean(y01 * log(pc) + (1 - y01) * log(1 - pc))
-close_num(ll, met$l2$logloss, "L2 logloss")
-close_num(mean((p$prob - y01)^2), met$l2$brier, "L2 brier")
+# The existing frozen RLR writer uses jsonlite::write_json with
+# its default digits=4. Predictions CSV retains greater precision.
+# Permit only the expected final JSON quantization error here; do not
+# weaken the 1e-12 RLR-vs-L1 parity comparison above.
+close_json_metric <- function(recalculated, recorded, label) {
+  if (length(recalculated) != 1L || length(recorded) != 1L ||
+      !is.finite(recalculated) || !is.finite(recorded)) {
+    stop("Invalid JSON metric: ", label)
+  }
+  gap <- abs(recalculated - recorded)
+  cat(sprintf("METRIC_CHECK %s recomputed=%.12f json=%.12f abs_diff=%.12g\\n",
+              label, recalculated, recorded, gap))
+  if (gap > 5.1e-5) stop("METRIC MISMATCH beyond 4-decimal JSON precision: ", label)
+}
+close_json_metric(ll, met$l2$logloss, "L2 logloss")
+close_json_metric(mean((p$prob - y01)^2), met$l2$brier, "L2 brier")
 cat("GATE_2=PASS (routes, tree, probabilities, untouched outer-test metrics)\n")

@@ -85,8 +85,8 @@ for (i in seq_len(nrow(fail))) {
       invokeRestart("muffleWarning")
     })
   if (!inherits(fit$fit,"cv.glmnet") ||
-      !isTRUE(all.equal(as.integer(fit$fit$foldid),
-                         as.integer(expected_foldid))) ||
+      !identical(as.integer(fit$cv_foldid),
+                 as.integer(expected_foldid)) ||
       nrow(fit$active)>conf$K ||
       length(fit$beta)<1L) {
     stop("cv.glmnet fit/foldid mismatch: ",dataset," / ",split)

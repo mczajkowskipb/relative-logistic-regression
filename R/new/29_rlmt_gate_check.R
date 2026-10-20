@@ -146,7 +146,7 @@ close_json_metric <- function(recalculated, recorded, label) {
     stop("Invalid JSON metric: ", label)
   }
   gap <- abs(recalculated - recorded)
-  cat(sprintf("METRIC_CHECK %s recomputed=%.12f json=%.12f abs_diff=%.12g\\n",
+  cat(sprintf("METRIC_CHECK %s recomputed=%.12f json=%.12f abs_diff=%.12g\n",
               label, recalculated, recorded, gap))
   if (gap > 5.1e-5) stop("METRIC MISMATCH beyond 4-decimal JSON precision: ", label)
 }

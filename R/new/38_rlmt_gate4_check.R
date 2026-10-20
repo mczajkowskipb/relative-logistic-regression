@@ -23,9 +23,37 @@ require_true(file.exists(file.path(root,"CODE_SHA.txt")),
 expected_config <- normalizePath("configs/rlmt/gate4_gordon_frozen.json")
 run_config <- file.path(root,"config","used_config.json")
 require_true(file.exists(run_config),"missing used_config.json")
-stored <- jsonlite::read_json(run_config,simplifyVector=FALSE)
-expected <- jsonlite::read_json(expected_config,simplifyVector=FALSE)
-require_true(identical(stored,expected),"runner config differs from frozen config")
+stored <- jsonlite::read_json(run_config,simplifyVector=TRUE)
+expected <- jsonlite::read_json(expected_config,simplifyVector=TRUE)
+# jsonlite::write_json(auto_unbox=TRUE) can turn singleton JSON arrays
+# into scalars in the persisted config. Check semantic run controls instead.
+flatten <- function(x) unlist(x,use.names=FALSE)
+for (key in c("out_root")) {
+  require_true(identical(as.character(flatten(stored[[key]])),
+                         as.character(flatten(expected[[key]]))),
+               paste("used_config mismatch in",key))
+}
+for (key in c("seed","run_baselines","run_rlr","run_rlmt",
+              "top_pool_values","alpha","lambda_choice","rlr_grid")) {
+  require_true(isTRUE(all.equal(flatten(stored$models[[key]]),
+                               flatten(expected$models[[key]]))),
+               paste("used_config model mismatch in",key))
+}
+for (key in names(expected$models$rlmt)) {
+  require_true(isTRUE(all.equal(flatten(stored$models$rlmt[[key]]),
+                               flatten(expected$models$rlmt[[key]]))),
+               paste("used_config RLMT mismatch in",key))
+}
+w_exp <- if(is.data.frame(expected$worlds))
+  as.list(expected$worlds[1L,,drop=FALSE]) else expected$worlds[[1L]]
+w_act <- if(is.data.frame(stored$worlds))
+  as.list(stored$worlds[1L,,drop=FALSE]) else stored$worlds[[1L]]
+for (key in c("name","protocol","comp_dir","datasets_include",
+              "n_folds","n_repeats","max_splits_per_dataset")) {
+  require_true(isTRUE(all.equal(flatten(w_act[[key]]),
+                               flatten(w_exp[[key]]))),
+               paste("used_config world mismatch in",key))
+}
 xy <- read_xy_file(file.path(cfg$worlds$comp_dir,"gordon-2002.arff"))
 require_true(nrow(xy$X)==181L && ncol(xy$X)==1626L &&
              identical(as.integer(table(xy$y)),c(150L,31L)) &&

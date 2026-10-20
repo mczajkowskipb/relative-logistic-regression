@@ -72,12 +72,13 @@ check(identical(rank1,rank2),
       "validation_label_canary_does_not_change_proposal")
 
 # A deterministic deliberately impossible class-support scenario.
-y_bad <- factor(c(rep("N",160L),rep("PR",20L)),
+y_bad <- factor(c(rep("N",170L),rep("PR",10L)),
                 levels=c("N","PR"))
 pbad <- rep(0.5,n)
 bad <- rlmt_dc_propose(X,y_bad,pbad,pool,conf)
-check(all(!bad$audit$feasible) || bad$feasible_n>=0L,
-      "rare_class_is_handled_without_error")
+check(is.null(bad$candidate) && bad$feasible_n==0L &&
+      all(!bad$audit$feasible),
+      "impossible_rare_class_support_rejected")
 
 # Confirmation accepts *only* a single paired loss gain > 1 standard error.
 yv <- factor(rep(c("N","PR"),each=15L),levels=c("N","PR"))

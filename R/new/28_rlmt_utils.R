@@ -267,25 +267,19 @@ rlmt_run <- function(X_train, y_train, X_test, y_test,
   stop_reason <- "no_admissible_split"
   if (nrow(X_train) >= 2L * conf$min_child_n &&
       all(table(y_train) >= 2L * conf$min_child_class)) {
-    trial <- tryCatch({
-      folds <- make_repeated_stratified_folds(
-        y_train, n_folds = conf$inner_folds, n_repeats = 1L, seed = conf$seed)
-      parent <- rlmt_parent_oof(X_train, y_train, global_pool, conf, folds)
-      screen <- rlmt_screen(X_train, y_train, global_pool,
-                            rlmt_y01(y_train) - parent, conf)
-      if (nrow(screen)) write.csv(screen, file.path(out_dir, "screen_top.csv"),
-                                   row.names = FALSE)
-      assessed <- rlmt_lookahead(X_train, y_train, global_pool,
-                                  parent, folds, screen, conf)
-      if (nrow(assessed$audit)) write.csv(assessed$audit,
-                                         file.path(out_dir, "lookahead.csv"),
-                                         row.names = FALSE)
-      assessed$winner
-    }, error = function(e) {
-      warning("RLMT split search failed: ", conditionMessage(e))
-      NULL
-    })
-    if (!is.null(trial)) decision <- trial
+    folds <- make_repeated_stratified_folds(
+      y_train, n_folds = conf$inner_folds, n_repeats = 1L, seed = conf$seed)
+    parent <- rlmt_parent_oof(X_train, y_train, global_pool, conf, folds)
+    screen <- rlmt_screen(X_train, y_train, global_pool,
+                          rlmt_y01(y_train) - parent, conf)
+    if (nrow(screen)) write.csv(screen, file.path(out_dir, "screen_top.csv"),
+                                 row.names = FALSE)
+    assessed <- rlmt_lookahead(X_train, y_train, global_pool,
+                                parent, folds, screen, conf)
+    if (nrow(assessed$audit)) write.csv(assessed$audit,
+                                       file.path(out_dir, "lookahead.csv"),
+                                       row.names = FALSE)
+    decision <- assessed$winner
   } else {
     stop_reason <- "insufficient_root_support"
   }

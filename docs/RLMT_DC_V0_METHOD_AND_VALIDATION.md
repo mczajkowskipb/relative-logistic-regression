@@ -97,9 +97,13 @@ Given **outer-training** data `T={(x_i,y_i)}`, binary
     `max_leaves=1` must reproduce RLR exactly. If accepted, export
     explicit `tree.json`, leaf artifacts, routes, predictions,
     and metrics with the new method identifier.
-12. `U` must be accessed **only after** discovery, confirmation
-    and final refit are frozen. `U` is *never* used for ranking,
-    support checking, calibration, pruning or fallback.
+12. Technical **schema validation** may check the types and feature
+    names of `U` at input. Its sample-specific feature values and labels
+    must not influence discovery, confirmation, pruning or final fit.
+    Test probabilities, routing, and test losses are computed **only
+    after** the selected split and its final refit are frozen.
+    `U` is *never* used for ranking, support checking, calibration,
+    pruning or fallback.
 
 This procedure is **discovery/confirmation sample-splitting**, not
 the stricter 'honest leaf estimation' of Athey--Imbens, because

@@ -174,3 +174,79 @@ accepted trees, unchanged-root ties and prediction uncertainty
 for rare held-out patients. A separate, source-grounded TSPDT
 v2 method specification can then be developed without claiming
 the flawed v1 to be the original TSPDT algorithm.
+
+
+## RLMT-DC accepted-split outcome decomposition — independently checked (2026-10-21)
+
+Operator ran `scripts/rlmt_dc_5fold_readonly_outcome_diagnostic.py`
+against previously audited 285 RLR/RLMT + 95 TSPDT models.
+It finished `RLMT_DC_READONLY_OUTCOME_DIAG=PASS`. The resulting
+**19-dataset mean** DC-minus-RLR test logloss was **+0.017217934**.
+These are **dataset-level averages over five paired outer folds**:
+
+| Dataset | Mean Δlogloss | Mean Δaccuracy | Accepted DC folds |
+| --- | ---: | ---: | ---: |
+| breast2 | +0.364955 | +0.03750 | 2 |
+| armstrong-2002-v1 | +0.002365 | 0 | 2 |
+| prostate | +0.001826 | 0 | 1 |
+| gordon-2002 | +0.000130 | 0 | 2 |
+| leukemia | -0.042135 | +0.02667 | 2 |
+| other 14 datasets | 0 | 0 | 0 |
+
+Out of 95 outer folds, **exactly 9** accepted two-leaf models:
+five harmed external holdout logloss and four improved it.
+The **only** accepted folds with observed gain in held-out
+accuracy were leukemia folds 00/01 and breast2 fold00;
+breast2 fold01 lost accuracy (−0.06250), but averaged across
+five folds the dataset still showed +0.03750 accuracy.
+
+**Severe failure:** `breast2/rep00_fold01` increased held-out
+logloss **+1.698460** and Brier **+0.173929**, with external
+accuracy **−0.06250**. Some wrongly classified patients received
+probabilities within 0.0003 of 0 or 1. Example individual
+increase of logloss **+6.270339**: true class 1,
+RLR probability 0.162552, DC probability 0.000307.
+These are **observed post-hoc diagnostic probabilities**,
+not inputs to method selection.
+
+The breast2 dataset-wide delta +0.364955, distributed equally
+among the 19 dataset means, dominates the total +0.017218;
+other dataset contributions partly compensate. This disproves
+a hypothesis of uniform loss degradation across cohorts.
+
+### Mechanistic source-code inspection (hypothesis, not yet proven root cause)
+
+DC acceptance is based on an independent confirmation subset
+within each **outer training fold**:
+`rlmt_dc_confirm` in `R/new/40_rlmt_dc_utils.R`
+requires confirmation `mean(parent_loss − child_loss)>0`
+and `gain − SE(gain)>0` on at least 20 observations.
+This is a **one-standard-error threshold**, not a formal
+distribution-free generalization guarantee.
+
+There is an important **procedure difference** between the
+confirmation predictors and final outer-test predictors:
+during confirmation, parent/child leaf models are trained
+on discovery subset `D` with a supervised pair pool
+constructed from `D`, while final accepted leaf models
+are **refitted on full outer-training T** using the common
+outer-training pair pool. Both are training-only and neither
+uses outer-test labels, but this means positive confirmation
+gain is not a direct evaluation of the identical fitted
+final leaf models. High-dimensional small-leaf fitted
+probabilities may become extreme on unseen patients.
+
+This suggests examining the saved `dc/decision.json`
+confirmation gains, standard errors, and training/leaf class
+counts against their subsequent holdout deltas. A NEW,
+**strictly read-only** script was added:
+`scripts/rlmt_dc_5fold_confirmation_vs_holdout_audit.py`.
+It has **not yet been executed** on the server.
+It must not affect any frozen acceptance decision.
+
+**Decision:** Preserve all nine accepted trees and all unfavorable
+results. Do not tune confirmation threshold, prune probabilities,
+alter the validation fold or perform `breast2`-specific adjustments
+after looking at these holdout errors. Future candidate methods
+require a distinct, preregistered V1/V2 specification and new
+external validation before claiming gains.

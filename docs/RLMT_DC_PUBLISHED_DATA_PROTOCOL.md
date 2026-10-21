@@ -137,6 +137,11 @@ or treat it as a validation of tumor-type classification.
   `R/new/44_rlmt_dc_published_pilot.R`.
 - NEW preflight / launcher:
   `scripts/rlmt_dc_published_pilot_launch.py`.
+- NEW **read-only audit**, which rebuilds sample identities, true labels,
+  logloss and Brier from the paper ARFF files and rechecks root parity:
+  `R/new/45_rlmt_dc_published_audit.R`.
+- Both R source files must parse successfully during preflight.
+  The audit is to be executed only after the pilot runner exits.
 - No existing RLR runner or `R/new/28_rlmt_utils.R` source changes.
 - No model selection based on already examined outer-test
   `sample_92` / `sample_80`, Singh, Gordon or GSE72094.

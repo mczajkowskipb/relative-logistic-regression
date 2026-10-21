@@ -103,3 +103,36 @@ a complete all-fold *description*, not new parameter choices.
 
 GSE72094 remains on hold as an untrained source-intake candidate;
 no GEO download or new mutation-target modeling is involved.
+
+
+## Reproducibility enforcement
+
+The complete auditing workflow is
+`scripts/rlmt_dc_published_5fold_audit.sh`:
+
+1. `R/new/48_rlmt_dc_published_5fold_audit.R`: read-only
+   reconstruction of **all 285** paired test predictions/metrics,
+   test sample identities and unsplit RLR exact parity.
+2. `R/new/49_rlmt_dc_published_5fold_replay.R`: replay every
+   actual accepted L2 split, routing, saved `cvfit.rds`
+   and logloss from original ARFF feature matrices.
+3. `scripts/rlmt_dc_published_5fold_pilot_parity.py`:
+   compare **all 57 first-fold model outputs** against the audited
+   prior smoke execution SHA
+   `814fee71fe6306db1e62b2ca47b1038df82d77a8`,
+   requiring matching test IDs, classes, split decisions and
+   probabilities to 1e-12. If this fails, do not interpret scores.
+4. `scripts/rlmt_dc_published_5fold_summary.py`:
+   after all three checks pass, aggregate **paired
+   logloss/Brier differences at dataset level** and report
+   all nineteen groups without inferential p-values.
+
+The orchestrator verifies the full run's code SHA from
+`CODE_SHA.txt` and compares exact model source bytes with the
+executed git commit; no post-run model changes are permitted.
+Output directories are separate and refuse overwriting.
+Each auditor is new and all are subject to live R/Python parse
+verification by the actual Ubuntu server.
+
+**Status at protocol authoring: scripts created, experiment NOT
+yet executed.** No full five-fold performance estimates are claimed.

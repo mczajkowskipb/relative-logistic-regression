@@ -7,7 +7,7 @@ source("R/baselines/tspdt_reconstruction_v1.R")
 
 args <- commandArgs(trailingOnly=TRUE)
 if(length(args)!=2L) stop("Require CONFIG and absolute REFERENCE_REPO")
-cfg <- jsonlite::read_json(args[[1L]],simplifyVector=TRUE)
+cfg <- jsonlite::read_json(args[[1L]],simplifyVector=FALSE)
 reference <- normalizePath(args[[2L]],mustWork=TRUE)
 expect <- function(v,why) if(!isTRUE(v))
   stop("TSPDT_95FOLD_STOP: ",why,call.=FALSE)
@@ -58,7 +58,7 @@ reftab <- read.csv(file.path(refout,"run_manifest.csv"),
 expect(nrow(reftab)==285L && all(reftab$status=="OK"),
        "reference 285-fit model manifest not clean")
 expected_order <- unlist(lapply(cfg$datasets,function(d)
-  paste(d$world,d$names,sep="/")),use.names=FALSE)
+  paste(d$world,unlist(d$names,use.names=FALSE),sep="/")),use.names=FALSE)
 expect(identical(paste(input$world,input$dataset,sep="/"),expected_order),
        "source inventory/order differs from frozen config")
 sha256 <- function(path) {

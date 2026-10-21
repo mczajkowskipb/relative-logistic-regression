@@ -95,3 +95,82 @@ already examined holdout folds. Prepare common read-only reporting
 across four algorithms instead. To revisit an original TSPDT source
 reproduction would require recovering more implementation detail or
 explicitly preregistering another historical reconstruction.
+
+
+## Four-way common-metric audit completed — observed PASS (2026-10-21)
+
+The operator executed the corrected, read-only four-model report in
+the *separate TSPDT worktree*. All 380 model-fold records, 95
+pair-matched folds and 19 dataset-level summaries passed.
+
+```
+FOUR_METHOD_CLASS_ORDER_REGRESSION=PASS
+TSPDT_STRUCTURAL_POSTMORTEM=PASS
+RLR_RLMT_TSPDT_FOUR_METHOD_REPORT=PASS
+COMPARISON_MODELS=380
+COMPARISON_PAIRED_OUTER_FOLDS=95
+COMPARISON_DATASETS=19
+```
+
+### Descriptive dataset-level comparisons to original RLR
+
+W/L/T refers to gains/losses/exact ties among **19 five-fold
+dataset means**. Positive logloss difference means **worse**.
+
+| Method | Accuracy W/L/T | Balanced accuracy W/L/T | Mean delta logloss (method minus RLR) |
+| --- | --- | --- | ---: |
+| RLMT-v1 | 0/3/16 | 1/3/15 | +0.024252 |
+| RLMT-DC-v0 | 2/0/17 | 2/0/17 | +0.017218 |
+| TSPDT-inspired v1 | 1/18/0 | 3/16/0 | +0.038045 |
+
+**Science-critical qualification:** RLMT-DC improves accuracy on
+two datasets without dataset-level accuracy losses, but **mean
+dataset-level logloss is worse**. Classification and probability
+performance point in different directions. The aggregate does not
+identify which datasets/folds or probability tails dominate the
+logloss harm; these must be examined in the read-only
+`matched_19_dataset_means.csv` and `matched_95_folds.csv`.
+Do not call this superiority.
+
+The previous four-way reporter's stop at west-2001 was a **report
+class-order mismatch**, not a change in trained model outputs.
+The regression test passed with original ARFF level order `1,0`.
+The completed report identified one nonlexical level sequence:
+`compcancer_2x2/west-2001: ER -> ER+`.
+No model refits or tolerance relaxations were made.
+
+### All 95 TSPDT-inspired v1 model structures audited
+
+```
+TSPDT_MODELS=95
+ROOT_ONLY_TREES=0
+MEAN_INTERNAL_NODES=2.2947
+MEAN_LEAVES=3.2947
+MAX_OBSERVED_DEPTH=3
+MAX_SELECTED_GENES=100
+TSPDT_STRUCTURAL_POSTMORTEM=PASS
+```
+
+These observations **falsify the simple hypothesis** that
+underperformance stems from Wilson post-pruning almost every
+model to a root-only leaf. They **do not** prove Wilson
+pruning is harmless: trimming higher-order branches and
+changing effective depth are still possible. The strict
+`MAD100` rather than original `ReliefF1000`, extra root
+child-support feasibility requirement and `max_depth=3`
+remain large non-equivalences to TSPDT 2011.
+
+### Freeze decision and next analysis
+
+Preserve original TSPDT-inspired v1 code / all 95 model RDS
+artifacts and the original publication RLR 285-run results.
+Do not retrospectively tune the paper methods using the 95
+already observed holdouts.
+
+The next technical task is a **read-only** decomposition of
+RLMT-DC's positive mean delta logloss into complete per-dataset
+and per-fold contributions, explicitly listing harmful
+accepted trees, unchanged-root ties and prediction uncertainty
+for rare held-out patients. A separate, source-grounded TSPDT
+v2 method specification can then be developed without claiming
+the flawed v1 to be the original TSPDT algorithm.

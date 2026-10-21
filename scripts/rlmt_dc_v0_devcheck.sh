@@ -22,7 +22,7 @@ command -v Rscript >/dev/null || {
   exit 2
 }
 
-out="results/rlmt_dc_v0_devcheck_v2"
+out="results/rlmt_dc_v0_devcheck_v3"
 if [[ -e "$out" ]]; then
   echo "STOP: refusing to overwrite prior DEV check" >&2
   exit 2
@@ -63,6 +63,7 @@ Rscript --vanilla R/new/43_rlmt_dc_synthetic_smoke.R \
 cat "$out/synthetic_pipeline.log"
 grep -qx 'RLMT_DC_SYNTHETIC_PIPELINE=PASS' "$out/synthetic_pipeline.log"
 grep -qx 'RLMT_DC_SYNTHETIC_ACCEPTED_BRANCH=PASS' "$out/synthetic_pipeline.log"
+grep -q '^FORCED_CONFIRMATION_PRECISION ' "$out/synthetic_pipeline.log"
 grep -qx 'RLMT_DC_SYNTHETIC_L1_PARITY=PASS' "$out/synthetic_pipeline.log"
 grep -qx 'ACCEPTED_BRANCH_FIXTURE=FORCED_FUNCTIONAL_NOT_FOR_PAPER' "$out/synthetic_pipeline.log"
 

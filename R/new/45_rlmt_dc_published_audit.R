@@ -9,6 +9,12 @@ cfg <- jsonlite::read_json(
 need <- function(ok,msg) if (!isTRUE(ok))
   stop("PUBLICATION_PILOT_AUDIT_STOP: ",msg,call.=FALSE)
 need(identical(cfg$out_root,root),"unexpected frozen root")
+need(identical(trimws(readLines(file.path(root,"CODE_SHA.txt"))[1L]),
+               "814fee71fe6306db1e62b2ca47b1038df82d77a8"),
+     "experiment code SHA mismatch with frozen 57-fit run")
+need(identical(trimws(readLines(file.path(root,"status.txt"))[1L]),
+               "RUNNER_EXIT=0"),
+     "original 57-fit runner did not finish successfully")
 mfile <- file.path(root,"run_manifest.csv")
 if (!file.exists(mfile)) stop("No completed run manifest yet")
 tab <- read.csv(mfile,stringsAsFactors=FALSE)
@@ -123,8 +129,8 @@ for (key in unique(paste(df$world,df$dataset,sep="/"))) {
   if (length(base)!=1L || !is.finite(base)) next
   df$delta_vs_RLR[ix] <- sub$logloss_recomputed-base
   # Zero-split alternatives MUST exactly reproduce frozen published RLR.
-  iR <- which(tab$world==sub$world[[1L]] &&
-              tab$dataset==sub$dataset[[1L]] &&
+  iR <- which(tab$world==sub$world[[1L]] &
+              tab$dataset==sub$dataset[[1L]] &
               tab$method=="RLR")
   prefr <- file.path(tab$model_dir[[iR]],"predictions_test.csv")
   if (!file.exists(prefr)) next
@@ -133,8 +139,8 @@ for (key in unique(paste(df$world,df$dataset,sep="/"))) {
     j <- ix[which(sub$method==method)]
     if (!length(j) || df$status[[j]]!="OK" ||
         !isTRUE(df$realized_leaves[[j]]==1L)) next
-    ii <- which(tab$world==sub$world[[1L]] &&
-                tab$dataset==sub$dataset[[1L]] &&
+    ii <- which(tab$world==sub$world[[1L]] &
+                tab$dataset==sub$dataset[[1L]] &
                 tab$method==method)
     tpred <- read.csv(file.path(tab$model_dir[[ii]],
                                 "predictions_test.csv"),

@@ -17,9 +17,12 @@ test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)" 
 command -v Rscript >/dev/null || {
  echo "STOP: Rscript is missing" >&2; exit 2;
 }
-OUT="results/rlmt_ca_ps_v1_synthetic_gate"
+# A prior V1 synthetic gate stopped at the mock-harness missing
+# ensure_dir helper. Preserve that failed evidence without overwriting it.
+# V2 is a gate ATTEMPT ID, not a change to the proposed model version.
+OUT="results/rlmt_ca_ps_v1_synthetic_gate_v2"
 test ! -e "$OUT" || {
- echo "STOP: synthetic gate exists; refusing to overwrite" >&2
+ echo "STOP: synthetic gate v2 exists; refusing to overwrite" >&2
  exit 2
 }
 mkdir -p "$OUT"

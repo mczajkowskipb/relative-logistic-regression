@@ -149,6 +149,19 @@ def main() -> None:
     if len(files) != 19:
         abort("not exactly 19 verified publication datasets")
 
+    # Verify the actual R runner/audit parse BEFORE creating or
+    # executing any result directory. The Python script itself can
+    # be checked separately with py_compile.
+    subprocess.run(
+        [
+            "Rscript", "--vanilla", "-e",
+            'parse(file="R/new/44_rlmt_dc_published_pilot.R");'
+            'parse(file="R/new/45_rlmt_dc_published_audit.R")',
+        ],
+        cwd=ROOT, check=True,
+        stdout=subprocess.DEVNULL,
+    )
+    print("PUBLICATION_PILOT_R_PARSE=PASS")
     print("PUBLICATION_PILOT_PREFLIGHT=PASS")
     print("SHARDS=CompCancer:11 legacy8:8")
     print("EXPLORATORY_FIRST_FOLD_PER_DATASET=19")

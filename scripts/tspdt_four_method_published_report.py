@@ -222,16 +222,28 @@ def main() -> None:
                                 asfloat(independent["tspdt_logloss_laplace"],
                                         "audited TSPDT logloss"))<1e-10,
                             "TSPDT audit logloss not reproduced "+str(key))
-                    require(abs(sc["accuracy"] -
-                                asfloat(independent["tspdt_accuracy"],
-                                        "audited TSPDT accuracy"))<1e-10,
-                            "TSPDT audit accuracy mismatch "+str(key))
+                    for metric, col in (
+                        ("accuracy","tspdt_accuracy"),
+                        ("balanced_accuracy","tspdt_balanced_accuracy"),
+                        ("macro_f1","tspdt_macro_f1"),
+                        ("brier","tspdt_brier_laplace"),
+                    ):
+                        require(abs(sc[metric] -
+                                    asfloat(independent[col],
+                                            "audited TSPDT "+col))<1e-10,
+                                "TSPDT audited metric mismatch "+
+                                str((key,metric)))
                 else:
                     independent=independent_ref[(*key,method)]
-                    require(abs(sc["logloss"] -
-                                asfloat(independent["logloss_recomputed"],
-                                        "audited ref logloss"))<1e-10,
-                            "original ref audit logloss mismatch "+str((*key,method)))
+                    for metric, col in (
+                        ("logloss","logloss_recomputed"),
+                        ("brier","brier_recomputed"),
+                    ):
+                        require(abs(sc[metric] -
+                                    asfloat(independent[col],
+                                            "audited ref "+col))<1e-10,
+                                "original ref audited metric mismatch "+
+                                str((*key,method,metric)))
                 all_models.append({
                     "world":world,"dataset":dataset,"split_id":fold,
                     "method":method,"n_test":len(ids),**sc,

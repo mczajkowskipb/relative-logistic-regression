@@ -1,0 +1,57 @@
+{
+  "stage": "TSPDT_2011_INSPIRED_95FOLD_EXPLORATORY_V1",
+  "model": "TSPDT2011_INSPIRED_RECONSTRUCTION_V1",
+  "source_branch": "feature/tspdt-baseline-evidence",
+  "publication_main_sha": "4079a5ac400f1d2cfded523c7000f655470925ce",
+  "reference_result_root": "results/rlmt_dc_published_data_5fold_v1",
+  "output_root": "results/tspdt_recon_19x5_v1",
+  "dataset_count": 19,
+  "outer_folds_per_dataset": 5,
+  "total_fits": 95,
+  "fold_seed": 42,
+  "top_n": 100,
+  "min_leaf": 5,
+  "max_depth": 3,
+  "pruning": "wilson",
+  "confidence": 0.25,
+  "laplace_alpha": 1,
+  "feature_filter": "MAD_unsupervised_outer_train_only",
+  "probability": "train_only_Laplace_not_2011",
+  "scientific_status": "previously_exposed_exploratory_not_prospective_validation",
+  "datasets": [
+    {
+      "world": "compcancer_9x10",
+      "names": [
+        "alizadeh-2000-v1",
+        "armstrong-2002-v1",
+        "bittner-2000",
+        "chen-2002",
+        "golub-1999-v1",
+        "gordon-2002",
+        "pomeroy-2002-v1",
+        "shipp-2002-v1",
+        "singh-2002"
+      ]
+    },
+    {
+      "world": "compcancer_2x2",
+      "names": [
+        "west-2001",
+        "yeoh-2002-v1"
+      ]
+    },
+    {
+      "world": "legacy8",
+      "names": [
+        "adenocarcinoma",
+        "breast2",
+        "cns",
+        "colon",
+        "dlbcl",
+        "leukemia",
+        "ovarian",
+        "prostate"
+      ]
+    }
+  ]
+}

@@ -28,8 +28,13 @@ inputs <- read.csv(file.path(out,"input_manifest.csv"),
                    stringsAsFactors=FALSE)
 reference_models <- read.csv(file.path(base,"run_manifest.csv"),
                              stringsAsFactors=FALSE)
+reference_metrics <- read.csv(
+  file.path(base,"published_5fold_audit_v1",
+            "independent_fold_metrics.csv"),
+  stringsAsFactors=FALSE)
 check(nrow(manifest)==95L && nrow(inputs)==19L &&
       nrow(reference_models)==285L &&
+      nrow(reference_metrics)==285L &&
       all(manifest$status=="OK"),
       "incomplete/failed 95-fit or 285-fit benchmark")
 check(!anyDuplicated(paste(manifest$world,manifest$dataset,
@@ -142,19 +147,50 @@ for(i in seq_len(nrow(inputs))) {
     ref_true <- as.character(ref$y_true)
     ref_pred <- as.character(ref$y_pred)
     ref_accuracy <- mean(ref_true==ref_pred)
-    count <- counter <- counter+1L
+    ref_rec <- vapply(classes,function(cls) {
+      ix <- which(ref_true==cls)
+      if(!length(ix)) return(NA_real_)
+      mean(ref_pred[ix]==cls)
+    },numeric(1))
+    ref_bal <- if(anyNA(ref_rec)) NA_real_ else mean(ref_rec)
+    ref_f1 <- vapply(classes,function(cls) {
+      tp <- sum(ref_pred==cls & ref_true==cls)
+      fp <- sum(ref_pred==cls & ref_true!=cls)
+      fn <- sum(ref_pred!=cls & ref_true==cls)
+      if(2*tp+fp+fn==0L) return(NA_real_)
+      2*tp/(2*tp+fp+fn)
+    },numeric(1))
+    ref_macro_f1 <- if(anyNA(ref_f1)) NA_real_ else mean(ref_f1)
+    ref_metric <- reference_metrics[
+      reference_metrics$world==src$world &
+      reference_metrics$dataset==src$dataset &
+      reference_metrics$split_id==f$split_id &
+      reference_metrics$method=="RLR",,drop=FALSE]
+    check(nrow(ref_metric)==1L &&
+          is.finite(ref_metric$logloss_recomputed) &&
+          is.finite(ref_metric$brier_recomputed),
+          paste("missing independent RLR metric",name,f$split_id))
+    rlr_ll <- as.numeric(ref_metric$logloss_recomputed)
+    rlr_brier <- as.numeric(ref_metric$brier_recomputed)
+    counter <- counter+1L
     records[[counter]] <- data.frame(
       world=src$world,dataset=src$dataset,
       split_id=f$split_id,n_test=length(test),
       rlr_accuracy=ref_accuracy,
       tspdt_accuracy=accuracy,
       delta_accuracy=accuracy-ref_accuracy,
+      rlr_balanced_accuracy=ref_bal,
       tspdt_balanced_accuracy=bal,
+      delta_balanced_accuracy=bal-ref_bal,
+      rlr_macro_f1=ref_macro_f1,
       tspdt_macro_f1=mf1,
+      delta_macro_f1=mf1-ref_macro_f1,
       tspdt_logloss_laplace=ll,
       tspdt_brier_laplace=bs,
-      rlr_logloss=as.numeric(matchref$logloss),
-      difference_tspdt_minus_RLR_logloss=ll-as.numeric(matchref$logloss),
+      rlr_logloss=rlr_ll,
+      rlr_brier=rlr_brier,
+      delta_brier_tspdt_minus_RLR=bs-rlr_brier,
+      difference_tspdt_minus_RLR_logloss=ll-rlr_ll,
       internal_nodes=model$internal_nodes,leaves=model$leaves,
       stringsAsFactors=FALSE)
   }
@@ -169,6 +205,14 @@ dataset <- do.call(rbind,lapply(
       n_folds=5L,mean_accuracy_RLR=mean(d$rlr_accuracy),
       mean_accuracy_TSPDT=mean(d$tspdt_accuracy),
       delta_accuracy_TSPDT_minus_RLR=mean(d$delta_accuracy),
+      mean_balanced_accuracy_RLR=mean(d$rlr_balanced_accuracy,na.rm=TRUE),
+      mean_balanced_accuracy_TSPDT=mean(d$tspdt_balanced_accuracy,na.rm=TRUE),
+      delta_balanced_accuracy_TSPDT_minus_RLR=mean(
+        d$delta_balanced_accuracy,na.rm=TRUE),
+      mean_macro_f1_RLR=mean(d$rlr_macro_f1,na.rm=TRUE),
+      mean_macro_f1_TSPDT=mean(d$tspdt_macro_f1,na.rm=TRUE),
+      delta_macro_f1_TSPDT_minus_RLR=mean(
+        d$delta_macro_f1,na.rm=TRUE),
       mean_logloss_RLR=mean(d$rlr_logloss),
       mean_logloss_TSPDT_Laplace=mean(d$tspdt_logloss_laplace),
       delta_logloss_TSPDT_minus_RLR=mean(
@@ -189,6 +233,8 @@ writeLines(c("TSPDT-inspired reconstruction; original 95 outer folds.",
 print(dataset[,c("dataset","mean_accuracy_RLR",
                  "mean_accuracy_TSPDT",
                  "delta_accuracy_TSPDT_minus_RLR",
+                 "delta_balanced_accuracy_TSPDT_minus_RLR",
+                 "delta_macro_f1_TSPDT_minus_RLR",
                  "mean_logloss_TSPDT_Laplace")],
       row.names=FALSE,digits=6)
 cat("AUDITED_TSPDT_FOLDS=",counter,"\n",sep="")

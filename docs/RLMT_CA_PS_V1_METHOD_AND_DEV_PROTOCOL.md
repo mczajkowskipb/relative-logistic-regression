@@ -157,6 +157,43 @@ the original 285/95 results or experimental branch.
 
 ## 5. Test status and interpretation
 
+### First actual Ubuntu gate: observed FAILURE, mock infrastructure only
+
+The first synthetic gate was executed at
+`cc40166f85b2b6ed534aa1560c3f30d2d8b6439d`.
+It passed `RLMT_CA_PS_R_PARSE=PASS` and **16** primitive
+arithmetic/candidate/confirmation checks, but the mocked
+end-to-end test stopped at:
+
+```
+Error in ensure_dir(out_dir) : could not find function "ensure_dir"
+```
+
+The source under test calls `ensure_dir()` from the original
+`07_world_protocol_utils.R`, while the isolated mock test
+**deliberately does not source** that file to avoid loading
+production packages. Source review also identified that the
+original `rlmt_dc_defaults()` requires its `%||%` operator
+from the same file.
+
+Both **pure helpers have now been explicitly supplied as
+test doubles in the synthetic mock test**. The main
+`R/experimental/rlmt_ca_ps_v1.R` algorithm source was not
+changed by this repair.
+
+The failed result directory
+`results/rlmt_ca_ps_v1_synthetic_gate/` must remain
+untouched. The corrected attempt uses a separate
+`results/rlmt_ca_ps_v1_synthetic_gate_v2/` directory.
+This is **attempt v2** for the same algorithm v1, not an
+algorithm redesign or a change in train/test protocol.
+
+**Status after this patch: the amended R test and real
+SWAP/glmnet smoke have NOT YET been executed on Ubuntu.**
+A commit alone is never proof of passing the development gate.
+
+
+
 At GitHub commit creation:
 
 - **Implemented:** R code, static-bracket structural check,

@@ -148,6 +148,82 @@ if (!result$accepted) {
   }
   cat("RLMT_DC_SYNTHETIC_ACCEPTED_REPLAY=PASS\n")
 }
+# Explicitly exercise the ACCEPTED full-refit/persist route even when a
+# truly nominated synthetic proposal fails confirmation above. This is an
+# intentionally FORCED *functional* fixture, NOT a valid method selection
+# or an empirical performance result.
+conf <- rlmt_defaults(list())
+fixture <- data.frame(
+  gene_a="synthetic_gene_001",gene_b="synthetic_gene_002",
+  feasible=TRUE,residual_screen_score=1,
+  stringsAsFactors=FALSE)
+routed <- Xtr[[fixture$gene_a]] > Xtr[[fixture$gene_b]]
+verify(rlmt_children_ok(routed,ytr,conf),
+       "synthetic forced fixture must meet full class support")
+yc <- factor(rep(c("N","PR"),each=20L),levels=c("N","PR"))
+p_perfect <- ifelse(yc=="PR",0.9,0.1)
+pass <- rlmt_dc_confirm(yc,rep(0.5,length(yc)),p_perfect,20L)
+verify(isTRUE(pass$accepted) && pass$lower_gain>0,
+       "synthetic confirmation fixture expected accept")
+forced_dir <- file.path(base,"forced_accepted_FUNCTIONAL_TEST_ONLY")
+dir.create(forced_dir)
+forced_result <- rlmt_dc_write_two_leaf_result(
+  Xtr,ytr,Xte,yte,pool,conf,forced_dir,fixture,pass,
+  list(dataset_id="SYNTHETIC_FORCED_TEST_ONLY"))
+verify(isTRUE(forced_result$accepted),
+       "forced accepted branch result")
+forced_tree <- jsonlite::read_json(file.path(forced_dir,"tree.json"),
+                                   simplifyVector=TRUE)
+forced_metrics <- jsonlite::read_json(
+  file.path(forced_dir,"metrics_test.json"),simplifyVector=TRUE)
+forced_pred <- readp(forced_dir)
+forced_routes <- read.csv(file.path(forced_dir,"test_routes.csv"),
+                          stringsAsFactors=FALSE,
+                          colClasses=c(sample_id="character"))
+verify(isTRUE(forced_tree$accepted_split) &&
+       forced_tree$size==2L &&
+       forced_metrics$realized_leaves==2L &&
+       identical(forced_metrics$method_family,"RLMT-DC-v0") &&
+       abs(forced_metrics$dc_confirmation_lower_gain -
+           pass$lower_gain)<1e-9 &&
+       identical(forced_pred$sample_id,rownames(Xte)) &&
+       identical(forced_routes$sample_id,rownames(Xte)) &&
+       identical(as.integer(forced_routes$leaf_id),
+                 as.integer(ifelse(
+                   Xte[[fixture$gene_a]]>Xte[[fixture$gene_b]],2L,3L))),
+       "forced split structure/routing/confirmation")
+verify(abs(rlmt_logloss(y01,forced_pred$prob) -
+           forced_metrics$logloss)<5.1e-5,
+       "forced accepted metric reconstruction")
+for (id in c(2L,3L)) {
+  ix <- which(forced_routes$leaf_id==id)
+  leafdir <- file.path(forced_dir,"leaf_models",paste0("node_",id))
+  co <- read.csv(file.path(leafdir,"coefficients.csv"),
+                 stringsAsFactors=FALSE)
+  active <- read.csv(file.path(leafdir,"active_pairs.csv"),
+                     stringsAsFactors=FALSE)
+  verify(file.exists(file.path(leafdir,"cvfit.rds")) &&
+         nrow(active)==sum(co$beta!=0),
+         paste("forced accepted saved leaf",id))
+  if (!length(ix)) next
+  parts <- strsplit(co$ordered_pair," > ",fixed=TRUE)
+  verify(all(lengths(parts)==2L),
+         paste("forced accepted pair schema",id))
+  pairs <- data.frame(
+    gene_left=vapply(parts,function(x)x[1L],character(1)),
+    gene_right=vapply(parts,function(x)x[2L],character(1)),
+    ordered_pair=co$ordered_pair,stringsAsFactors=FALSE)
+  R <- encode_pair_matrix(Xte[ix,,drop=FALSE],pairs,m=10L)
+  fit <- readRDS(file.path(leafdir,"cvfit.rds"))
+  replay <- as.numeric(predict(fit,newx=R,
+                               s="lambda.min",type="response"))
+  verify(isTRUE(all.equal(replay,forced_pred$prob[ix],
+                          tolerance=1e-12)),
+         paste("forced accepted leaf replay",id))
+}
+cat("RLMT_DC_SYNTHETIC_ACCEPTED_BRANCH=PASS\n")
+cat("ACCEPTED_BRANCH_FIXTURE=FORCED_FUNCTIONAL_NOT_FOR_PAPER\n")
+
 cat("RLMT_DC_SYNTHETIC_PIPELINE=PASS\n")
 cat("ACCEPTED_SPLIT=",isTRUE(result$accepted),"\n",sep="")
 cat("SYNTHETIC_WORKDIR=",base,"\n",sep="")

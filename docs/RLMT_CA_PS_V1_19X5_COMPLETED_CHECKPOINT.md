@@ -104,3 +104,57 @@ estimator-aligned and stable probabilistic method
 with a *separate, genuinely unseen cohort* for
 prospective evaluation. Avoid choosing changes
 post-hoc from breast2/leukemia/prostate fold tails.
+
+## Independent posthoc accepted-tree audit — actually completed on Ubuntu
+
+The operator ran the new read-only audit successfully after the full 95-fold run,
+with **`CA_PS_POSTHOC_REPLAY=PASS`**, **13/95 accepted trees** and **26
+fitted leaves**. Validation compared saved per-sample mixed probabilities,
+original RLR parents, old DC results, final leaf support and weights and
+recomputed every accepted fold's paired test loss without refitting.
+
+Observed precise outcomes on the **13 accepted outer test folds**:
+
+- **Benefit/harm/tie by unweighted logloss: 4/9/0.** Thus confirmed
+  inner-train gains do not reliably predict final outer test benefits.
+- **One** CA-PS true-class probability below 0.01 on accepted-test routes;
+  the shrink rule reduces extreme confident errors but does not prevent all.
+- Dataset-equal weighted Δlogloss CA-PS vs RLR: **+0.006177806**;
+  original RLMT-DC-v0: **+0.017217934**. Both are adverse vs RLR.
+- Worst accepted CA-PS vs RLR (test-set mean ΔLL):
+  - breast2 rep00_fold04 **+0.430246**, wrong CA/RLR **7/7**;
+    old DC **+0.000000**;
+  - breast2 rep00_fold01 **+0.157154**, wrong **9/7**;
+    old DC **+1.698460**;
+  - chen-2002 rep00_fold00 **+0.066263**, wrong **3/2**;
+    old DC **+0.000000**;
+  - prostate rep00_fold02 **+0.065793**, wrong **0/0**;
+    old DC **+0.009130**;
+  - chen-2002 rep00_fold04 **+0.060272**, wrong **2/0**;
+    old DC **+0.000000**.
+- Four favorable accepted folds:
+  - leukemia rep00_fold01 **−0.102860**; original DC **−0.150278**;
+  - breast2 rep00_fold00 **−0.076087**; original DC **+0.126315**;
+  - leukemia rep00_fold00 **−0.036364**; original DC **−0.060396**;
+  - gordon-2002 rep00_fold02 **−0.013010**; original DC **+0.000000**.
+
+**Interpretation:** Acc gains and probability quality diverge. The
+breast2 fold04 counterexample worsens logloss substantially despite no
+additional hard-label classification errors. Prostate fold02 worsens
+logloss although both RLR and CA made **zero** classification errors.
+These are descriptive *observations*, not evidence of disease cohort
+shift or an identified causal mechanism for DC/CA instability.
+
+**Freeze/close RLMT-CA-PS-v1:** Do not retroactively change split
+balance factors, shrinkage strength, confirmation cutoff or rerank on
+the exposed fold outcomes. No publication-grade generalization or
+improved probabilistic modeling claim is supported by these data.
+The code can remain as a research ablation with fully recorded 95-fit
+artifacts, 380-model independent comparison and 13-tree posthoc
+reconstruction. The next scientific question must be separately posed
+and tested on new independent cohorts.
+
+The completed posthoc audit is stored only on operator Ubuntu:
+`results/rlmt_ca_ps_v1_retrospective_19x5/accepted_13_posthoc_diagnostic_v1/`.
+This repository documentation transcribes console evidence; it does
+not claim to contain raw, locally stored per-sample records.

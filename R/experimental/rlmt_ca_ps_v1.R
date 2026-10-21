@@ -282,6 +282,12 @@ rlmt_ca_ps_v1_run <- function(X_train,y_train,X_test,y_test,
       any(!is.finite(refpred$prob)))
     stop("RLMT_CA_PS_V1: original RLR reference schema invalid")
   final_p <- as.numeric(refpred$prob)
+  parent_p <- final_p
+  child_p <- parent_p
+  applied_weight <- rep(0,nrow(X_test))
+  saveRDS(apply_disjointness(outer_training_pool,
+                            K=conf$K,d=conf$d),
+          file.path(parent_dir,"selected_pair_shortlist.rds"))
   accepted <- !is.null(confirmed) && isTRUE(confirmed$accepted)
   support <- NULL
   route <- rep(1L,nrow(X_test))
@@ -303,18 +309,32 @@ rlmt_ca_ps_v1_run <- function(X_train,y_train,X_test,y_test,
     leaf_p <- final_p
     for (i in 1:2) {
       test_ix <- which(if (i==1L) z_test else !z_test)
-      rlmt_save_leaf(leaf[[i]],file.path(out_dir,"leaf_models",
-                                      paste0("node_",i+1L)))
+      leaf_dir <- file.path(out_dir,"leaf_models",
+                            paste0("node_",i+1L))
+      rlmt_save_leaf(leaf[[i]],leaf_dir)
+      saveRDS(leaf[[i]],file.path(leaf_dir,"model_complete.rds"))
       if (length(test_ix)) {
         leaf_p[test_ix] <- rlmt_predict_leaf(
           leaf[[i]],X_test[test_ix,,drop=FALSE],conf)$prob
       }
     }
+    child_p <- leaf_p
+    applied_weight <- ifelse(z_test,
+      support$weight_true,support$weight_false)
     final_p <- rlmt_ca_ps_probs(
       final_p,leaf_p,z_test,
       support$weight_true,support$weight_false)
     route <- ifelse(z_test,2L,3L)
   }
+  if (any(abs(final_p-(parent_p+
+              applied_weight*(child_p-parent_p)))>1e-12))
+    stop("RLMT_CA_PS_V1: prediction mixture parity invariant")
+  write.csv(data.frame(
+      sample_id=rownames(X_test),leaf_id=route,
+      parent_prob=parent_p,child_prob=child_p,
+      shrink_weight=applied_weight,mixed_prob=final_p),
+    file.path(out_dir,"prediction_components_test.csv"),
+    row.names=FALSE)
   result <- rlmt_ca_ps_metrics(y_test,final_p)
   write.csv(data.frame(sample_id=rownames(X_test),
                        y_true=as.character(y_test),

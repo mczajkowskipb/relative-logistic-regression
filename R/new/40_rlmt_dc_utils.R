@@ -91,6 +91,52 @@ rlmt_dc_random_pairs <- function(feature_names, n_pairs = 4096L,
              stringsAsFactors=FALSE)
 }
 
+# STRICT discovery OOF: every supervised pair pool is recomputed from that
+# OOF fold's *training subset*. Never reuse a pool ranked on the whole D;
+# that would leak validation labels through supervised feature selection.
+# The completed OOF vector is solely a screening statistic on D.
+rlmt_dc_parent_oof_strict <- function(X,y,conf,folds) {
+  if (!is.data.frame(X) || !is.factor(y) ||
+      length(levels(y)) != 2L || nrow(X) != length(y) ||
+      !length(folds) || anyNA(y)) {
+    stop("Invalid strict discovery OOF inputs")
+  }
+  prob <- rep(NA_real_,nrow(X))
+  counts <- integer(nrow(X))
+  for (j in seq_along(folds)) {
+    f <- folds[[j]]
+    tr <- as.integer(f$train_idx)
+    va <- as.integer(f$test_idx)
+    if (!length(tr) || !length(va) ||
+        length(intersect(tr,va)) ||
+        any(!tr %in% seq_len(nrow(X))) ||
+        any(!va %in% seq_len(nrow(X))) ||
+        any(table(y[tr]) < 3L)) {
+      stop("Invalid discovery OOF train/validation partition")
+    }
+    # Per-inner-fit supervised pair selection depends on y[tr] only.
+    fit_pool <- compute_top_pairs_switchbox(
+      X_train=X[tr,,drop=FALSE],y_train=y[tr],
+      top_n=conf$pool,buffer_mult=5L,
+      out_dir=NULL,save_all=FALSE)
+    fit <- rlmt_fit_leaf(X[tr,,drop=FALSE],y[tr],
+                         fit_pool,conf,rerank=FALSE,
+                         seed=conf$seed+1001L+j)
+    pred <- rlmt_predict_leaf(fit,X[va,,drop=FALSE],conf)$prob
+    if (length(pred)!=length(va) ||
+        anyNA(pred) || any(!is.finite(pred)) ||
+        any(pred<0 | pred>1)) {
+      stop("Strict discovery OOF produced invalid probabilities")
+    }
+    prob[va] <- pred
+    counts[va] <- counts[va]+1L
+  }
+  if (any(counts!=1L) || anyNA(prob)) {
+    stop("Strict discovery OOF must cover every sample exactly once")
+  }
+  prob
+}
+
 # Training-only candidate feasibility and residual-heterogeneity score.
 # Candidate orientations are fixed before observing any validation labels.
 rlmt_dc_propose <- function(X_discovery,y_discovery,prob_oof,

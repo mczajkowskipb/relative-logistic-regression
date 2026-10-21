@@ -250,3 +250,68 @@ alter the validation fold or perform `breast2`-specific adjustments
 after looking at these holdout errors. Future candidate methods
 require a distinct, preregistered V1/V2 specification and new
 external validation before claiming gains.
+
+
+## RLMT-DC: original 1-SE confirmation vs independent outer test — audited PASS (2026-10-21)
+
+Operator executed `scripts/rlmt_dc_5fold_confirmation_vs_holdout_audit.py`
+against the saved nine accepted models and matched four-method
+reference. Verified output:
+
+```
+DC_CONFIRMATION_ACCEPTED=9/95
+DC_ACCEPTED_BUT_HARMFUL_ON_OUTER_TEST=6/9
+DC_ACCEPTED_AND_BENEFICIAL_ON_OUTER_TEST=3/9
+DC_CONFIRMATION_VS_TEST_AUDIT=PASS
+NO_RETRAINING_NO_THRESHOLD_CHANGE=TRUE
+```
+
+All nine confirmation gates originally passed
+`nV>=20, gain>0, gain-SE>0`. The contrast below is the *original
+training-only confirmation gain* (positive is favorable) against
+outer-test **DC-minus-RLR loss** (positive is harmful).
+
+| Dataset / fold | nV | Confirmation gain | 1-SE lower bound | Outer-test Δlogloss |
+| --- | ---: | ---: | ---: | ---: |
+| breast2 / 01 | 21 | +1.604980 | +0.766044 | **+1.698460** |
+| breast2 / 00 | 21 | +0.398981 | +0.035286 | +0.126315 |
+| prostate / 02 | 28 | +0.549441 | +0.283100 | +0.009130 |
+| armstrong / 02 | 20 | +0.063650 | +0.022337 | +0.006691 |
+| armstrong / 04 | 20 | +0.029328 | +0.009111 | +0.005133 |
+| gordon / 04 | 49 | +0.021361 | +0.002446 | +0.001597 |
+| gordon / 00 | 48 | +0.003619 | +0.001262 | -0.000948 |
+| leukemia / 00 | 20 | +0.002497 | +0.000630 | -0.060396 |
+| leukemia / 01 | 20 | +0.032551 | +0.011464 | -0.150278 |
+
+**Interpretation constraint:** The severe breast2 fold01 was
+*not* a marginal `gain-SE≈0` gate acceptance. It had a
+substantial observed confirmation margin **+0.766044** with
+only 21 confirmation observations and a large **SE=0.838936**.
+This is a descriptive training-validation result; one SE is
+neither a 95% confidence interval nor a bound on unseen-test
+generalization. This does **not** by itself isolate whether
+failure was caused by confirmation sample variance, leaf
+model instability, refitting from discovery D to full T, or
+feature-pool changes between confirmation and final fit.
+
+Source review confirms `R/new/42_rlmt_dc_run.R` validates
+models trained only on D and subsequently refits final
+leaf models on all outer training T using T's own shared
+supervised pair pool, with local child reranking. This is
+proper train/test separation, but is **not the identical
+fitted estimator tested during confirmation**.
+
+New follow-on *read-only* file
+`scripts/rlmt_dc_5fold_final_leaf_route_audit.py`
+compares all nine accepted models' final leaf training
+class counts, outer-test route/class distributions,
+active leaf features and leaf-wise per-sample logloss
+contributions. It has **not yet been executed** on Ubuntu.
+No model is refitted and no score-derived threshold is chosen.
+
+**Scientific decision remains unchanged:** keep all original
+artifacts and accepted decisions immutable; do not 'repair'
+breast2 or choose a stronger acceptance criterion based on
+these exposed holdout scores. Before any novel method is
+claimed, preregister a separate V2 and evaluate on never-used
+external datasets.

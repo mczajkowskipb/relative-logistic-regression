@@ -186,6 +186,29 @@ For case/control sampling, report balanced accuracy and
 macro-F1, but do not claim population-risk calibration
 without known sampling-to-population adjustment.
 
+## Existing tooling to reuse, not reinvent
+
+- **Relief-F:** R `CORElearn::attrEval` explicitly supports
+  ReliefF and cost-sensitive ReliefF; investigate the exact
+  10-neighbor estimator configuration, tie and missing-value
+  conventions on synthetic fixtures rather than silently
+  treating it as identical to historical Weka Relief-F:
+  https://search.r-project.org/CRAN/refmans/CORElearn/html/attrEval.html
+- **Penalized logistic offsets:** `glmnet` supports fitting
+  with `offset` and predicting with `newoffset`;
+  this offers a path to a parent-logit offset plus sparse/ridge
+  local correction without inventing a new logistic optimizer.
+  Check `cv.glmnet` fold/offset semantics and train-only
+  selection before implementation:
+  https://github.com/cran/glmnet/blob/master/R/predict.glmnet.R
+- **Class-weighting:** `glmnet` observation weights are
+  available but should be a separately justified experiment,
+  not an automatic remedy for biased sample prevalence.
+- **Tree pruning:** a historical 2011 reproduction should
+  follow the relevant documented C4.5-like method
+  rather than silently substituting contemporary CART
+  cost-complexity pruning or fixed max-depth.
+
 ## 4. Pre-implementation and prospective evaluation gates
 
 1. Write a frozen mathematical contract: objective,

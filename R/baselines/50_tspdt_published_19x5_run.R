@@ -105,7 +105,7 @@ for(i in seq_len(nrow(input))) {
            as.integer(pair_ref$n_train)==length(ixtrain) &&
            as.integer(pair_ref$n_test)==length(ixtest),
            paste("reference outer-fold shape differs",key,fold_id))
-    refbase <- dirname(pair_ref$model_dir)
+    refbase <- file.path(reference,dirname(pair_ref$model_dir[[1L]]))
     train_ids <- read.csv(file.path(refbase,"samples_train.csv"),
                           stringsAsFactors=FALSE,
                           colClasses=c(sample_id="character"))$sample_id

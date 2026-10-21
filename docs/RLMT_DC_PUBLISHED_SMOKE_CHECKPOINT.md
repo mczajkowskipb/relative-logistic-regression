@@ -71,3 +71,41 @@ the confirmation criterion where relevant.
 The original RLR publication branch `main`
 (`4079a5ac400f1d2cfded523c7000f655470925ce`)
 and the frozen RLMT-v1 prototype branch are untouched.
+
+
+## Completed independent audit — observed PASS (2026-10-21)
+
+The operator ran the corrected audit scripts against the **original**
+57-fit artifact tree (execution SHA `814fee71...`). Both completed:
+
+- `PUBLISHED_DATA_AUDIT=PASS`; 57/57 model records, 0 failures.
+- `PUBLISHED_ACCEPTED_REPLAY=PASS`; all 4 actually accepted
+  two-leaf trees were reconstructed from original ARFF feature rows,
+  `test_routes.csv`, saved `cvfit.rds`, and the stored relation
+  coefficients. Replayed logloss matched within the locked tolerance.
+
+Complete first-fold outcome relative to RLR:
+
+| RLMT variant | Wins | Losses | Exact ties | Accepted two-leaf trees |
+| --- | ---: | ---: | ---: | --- |
+| RLMT-v1 | 0 | 1 | 18 | Singh |
+| RLMT-DC-v0 | 2 | 1 | 16 | Gordon, breast2, leukemia |
+
+Only changed RLMT-DC holdout logloss values:
+
+| Dataset | Frozen RLR logloss | RLMT-DC logloss | Paired difference DC-RLR |
+| --- | ---: | ---: | ---: |
+| gordon-2002 | 0.00152436 | 0.00057627 | -0.000948088 |
+| breast2 | 1.01415402 | 1.14046901 | +0.126314990 |
+| leukemia | 0.10618332 | 0.04578766 | -0.060395658 |
+
+RLMT-v1 accepted Singh and was worse: 0.51731647 versus
+RLR 0.29002105 (difference +0.227295421). All remaining
+per-dataset/variant first-fold differences were zero.
+
+**No claim of superiority:** this is one shared first-fold split per
+dataset and all datasets belong to the already exposed publication /
+RLMT development corpus. The result is a descriptive development
+checkpoint, not independent scientific validation. Follow-up work
+must preserve all 19 datasets and both gains and harms without changing
+candidate thresholds based on these holdout results.

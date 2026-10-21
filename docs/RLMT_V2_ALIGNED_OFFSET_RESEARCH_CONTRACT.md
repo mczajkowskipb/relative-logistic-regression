@@ -255,3 +255,73 @@ calibrated probabilities.
 No v2 R implementation, new dataset acquisition,
 actual v2 model fit, external results, or accepted
 scientific hypothesis are claimed by this commit.
+
+
+## 6. Implementation checkpoint — 2026-10-21 (NO R EXECUTION YET)
+
+The v2 contract has progressed from design to concrete **separate
+experimental source**. Both implementations use a new source path:
+\`R/experimental/rlmt_v2_aligned_offset.R\`, not the paper RLR source.
+
+Implemented:
+- \`rlmt_v2_fit_parent(S)\`: supervised switchBox top1000 on S only;
+  K10/m10/d2; glmnet binomial elastic-net alpha 0.5;
+  **explicit stratified 5-fold foldid** (fixed seed42),
+  lambda.min selection, auditable selected pairs, class levels,
+  fold IDs and complete cv.glmnet object;
+- \`rlmt_v2_parent_oof(S)\`: exactly three stratified heldout
+  parent fits covering each sample once, each with entirely
+  internal supervised relation pool and CV; the same helper
+  is used in D and full outer T;
+- H1: candidate selection retains the original DC 4096
+  deterministic-pair residual screen (or all combinations
+  if fewer are possible), and 1SE train-only independent
+  D/V confirmation. Exactly the same parent/leaf S-only
+  learning procedure is used on D and on full outer T;
+- H2: **fixed** ridge \`alpha=0, lambda=1\`, no leaf lambda
+  CV, \`intercept=FALSE\`, \`standardize=FALSE\`, all
+  \`penalty.factor=1\`. OOF parent logits are fitted as
+  glmnet binomial \`offset\`. Prediction uses the complete
+  aligned parent fitted on D/T and \`newoffset\`;
+  no convex probability rescue mixing is included;
+- Distinct model IDs \`RLMT_V2_H1\` and \`RLMT_V2_H2\`, both
+  explicitly naming \`RLR_ALIGNED_V2\` as their parent.
+  **Neither is labeled original published RLR**;
+- Source-level gates: no outer-test outcome enters training,
+  nomination, confirmation or prediction. Original test
+  labels are only used to write the outcome/evaluation files.
+  Every model path is new/non-overwritable and a complete
+  fitted tree (or aligned parent) is saved as RDS.
+
+The associated REAL synthetic-only R regression test covers:
+- aligned parent with explicit CV fold IDs and exact RDS replay;
+- strict independent OOF train/validation partitions;
+- numeric offset link and zero-correction identity;
+- H1/H2 natural, not forced, confirmation path;
+- H1/H2 **real fitted** two-leaf branch with the final gate
+  Boolean deliberately **FORCED TRUE FOR A TEST ONLY**,
+  independently replaying saved RDS probabilities;
+- permutation of **only** synthetic outer-test labels with
+  exact resulting trained predictions and decisions.
+
+One guarded launcher:
+\`scripts/rlmt_v2_h1_h2_synthetic_gate.sh\`.
+A success marker from this launcher has NOT been observed;
+source inspection and balanced bracket checks do not
+substitute for R parsing/runtime testing.
+
+Separately, the source-only GEO clinical cohort audit
+is staged in
+\`scripts/rlmt_v2_gse25066_source_gate.py\`, with the
+study-specific scientific/clinical hold gate recorded
+in \`docs/RLMT_V2_GSE25066_NEW_COHORT_PROVENANCE_GATE.md\`.
+Neither clinical truth nor patient grouping is currently
+validated, and no biomedical v2 fit is authorized.
+
+**Scientific and engineering freeze:** parameters above were
+chosen and registered before viewing any external v2
+cohort outcomes. If synthetic execution exposes a
+coding or reproducibility defect, change code in an
+explicitly tracked commit and rerun a newly named
+test-result root. Do not reinterpret those repairs as
+posthoc evidence that H1 or H2 improves logloss.

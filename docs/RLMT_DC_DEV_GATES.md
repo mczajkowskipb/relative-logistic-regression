@@ -33,7 +33,36 @@ Execution SHA: `e6cd9aed77385f9efd8c9b598cbbdaa304dbfd76`.
   in-memory double with tolerance `1e-9`.
   This hypothesis requires re-execution; it is not an observed cause.
 
-## DEV v3 — pending server execution
+## DEV v3 — observed PASS
+
+**Server result (2026-10-21):** `DEV_CHECK_EXIT=0`,
+`RLMT_DC_PRIMITIVES=PASS`,
+`RLMT_DC_SYNTHETIC_L1_PARITY=PASS`,
+`RLMT_DC_SYNTHETIC_ROOT_PARITY=PASS`,
+`RLMT_DC_SYNTHETIC_ACCEPTED_BRANCH=PASS`,
+`RLMT_DC_SYNTHETIC_PIPELINE=PASS`,
+`RLMT_DC_DEV_GATE=PASS`.
+
+Executed commit:
+`aac76c9aaff132ca11f6ce234666b09161979e31`.
+Recorded local output:
+`results/rlmt_dc_v0_devcheck_v3`.
+
+The forced accepted functional fixture persisted confirmation lower-bound
+gain `0.587786664902`; in-memory original was
+`0.587786664902`; observed absolute discrepancy
+`1.90958360236e-14`. The failure from v2 was consistent with
+JSON numeric precision and is no longer reproduced after switching the
+**new RLMT-DC-only** writer to 12 decimal places. This is direct
+passing evidence for serialization and replay, **not** proof about
+independent classifier performance. Natural data still gave
+`ACCEPTED_SPLIT=FALSE`.
+
+DEV v3 **closes the synthetic implementation gate**. Publication
+RLR `main` and frozen RLMT-v1 branch remain unchanged. No real
+cohort has been benchmarked using RLMT-DC, and no independent validation
+or scientific superiority is established.
+
 
 Changes in `R/new/42_rlmt_dc_run.R` and
 `R/new/43_rlmt_dc_synthetic_smoke.R`:
@@ -51,10 +80,10 @@ Changes in `R/new/42_rlmt_dc_run.R` and
 5. Require full serialized leaf-model prediction replay at
    tolerance `1e-12` as before.
 
-**Passing DEV v3 may be declared only after the server reports**
+**DEV v3 passing evidence included above. The original gate required**
 `RLMT_DC_SYNTHETIC_ACCEPTED_BRANCH=PASS` and
 `RLMT_DC_DEV_GATE=PASS`; a successful parser or primitive test alone
-is insufficient.
+was insufficient.
 
 The forced acceptance fixture is deliberately **not** a model-selection
 or scientific performance result. A later, fully *naturally accepted*

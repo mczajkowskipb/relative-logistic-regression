@@ -216,3 +216,92 @@ with frozen RLR/RLMT-DC baselines. The already
 exposed 19 published ARFFs are only DEVELOPMENT
 data; any retrospective v1 comparison there must
 be labeled explicitly as such.
+
+
+## Verified Ubuntu v2 synthetic gate — passed
+
+Operator provided the actual Ubuntu output at
+`cc40166…` -> `2a1271d0e21377a084fe1056809b2b5beaf76ff9`.
+The corrected v2 gate ran successfully, showing:
+
+`RLMT_CA_PS_R_PARSE=PASS`  
+`RLMT_CA_PS_SYNTHETIC_UNIT_AND_MOCK_INTEGRATION=PASS`  
+`RLMT_CA_PS_REAL_SYNTHETIC=PASS`  
+`RLMT_CA_PS_DEV_GATE=PASS`
+
+The true unmocked SWAP/glmnet run on 42 synthetic features,
+180 training and 64 holdout samples produced
+`ACCEPTED_SPLIT=FALSE`,
+`REALIZED_LEAVES=1`,
+`HELDOUT_SYNTH_LOGLOSS=0.56640815`.
+These outcomes **prove the real no-split pipeline runs**, but
+**not** the real accepted two-leaf route.
+
+## Next LARGE reproducibility gate — sources committed, outcome pending
+
+The fixed v3 development gate now groups *all* of the following:
+
+1. R parse and original synthetic unit/mock tests.
+2. Unmodified real RLR/switchBox/glmnet fallback smoke.
+3. **Actually fitted** 2-child RLR/glmnet, using a
+   **TEST-ONLY forced confirmation Boolean** so the
+   complete accepted branch is deterministically
+   exercised without tuning threshold or cherry-picking
+   a synthetic case. All test-side probabilities are
+   **independently replayed** from saved original RLR
+   parent and both new child model RDS objects.
+   A permutation of *only synthetic test labels* must
+   not affect nomination, confirmation nor predicted
+   probabilities. Forced acceptance is visibly labeled
+   and is **NOT** a true confirmation decision, nor
+   proof of scientific improvement.
+4. Three fixed synthetic data-generating scenarios:
+   `balanced_heterogeneous`,
+   `minority_heterogeneous`,
+   `balanced_null_tree`; two predeclared
+   seeds 1139 and 2267, 240 training and 96
+   independently simulated test samples per case.
+   Each case uses **real, unchanged** RLR source
+   for its parent/comparator, and the NEW CA-PS
+   method for fitted/predicted probabilities.
+   All **six** cases must finish; no adaptive choice of
+   favorable seeds, no performance-dependent early stop.
+5. Independent Python audit of all six saved model
+   prediction pairs: patient/sample identity alignment
+   (synthetic IDs), probability mixing identity,
+   realized split state, exact original-parent parity
+   if no split, raw heldout logloss/Brier/class accuracy/
+   balanced accuracy and scenario aggregate deltas.
+6. New durable result root
+   `results/rlmt_ca_ps_v1_synthetic_gate_v3`,
+   unique per-run code SHA, original paper SHA and
+   fail-closed status marker. V1 failure and V2
+   PASS result roots remain untouched.
+
+**Scientific caveat:** Simulation cannot prove a
+calibrated clinical model. Both the shrinkage weight
+and class-balance screening factors remain ad-hoc
+fixed assumptions introduced after inspecting
+the previously used 19 publication datasets.
+Do not use even a favorable v3 synthetic result as
+independent biomedical generalization evidence.
+
+**Status:** v3 R/simulation tests have **not**
+been executed on the operator's Ubuntu host.
+No original 19 ARFF / clinical patients or
+publication outputs are read by any v3 synthetic test.
+Any unsuccessful gate must be debugged without
+overwriting its source SHA and failure evidence.
+
+## Benchmark next stage — only after v3 PASS
+
+After v3 succeeds, develop **one complete experimental
+runner** that matches all 95 original frozen outer
+splits and read-only RLR/RLMT baseline predictions.
+For source-matched prior cohorts this is still
+EXPLORATORY, not new validation; no choice of
+weights or thresholds based on breast2 outcomes.
+For independent scientific evaluation, additionally
+register new biologically defensible cohorts and
+patient-grouped train/test splits **before** looking
+at model outcomes.

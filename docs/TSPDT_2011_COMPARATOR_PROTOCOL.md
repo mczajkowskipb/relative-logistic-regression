@@ -1,7 +1,16 @@
 # TSPDT: historical baseline for the RLR / RLMT / RLMT-DC program
 
-**Status: research comparator registered, implementation identity NOT yet
-verified. No runs authorized on biomedical datasets.**
+**Status: original TSPDT comparator registered; BigTSP 1.0 source identity
+resolved as NON-EQUIVALENT. No new 19-dataset runs authorized.**
+
+See [BigTSP source audit](BIGTSP_1_0_SOURCE_AUDIT.md), based on
+`cran/BigTSP` R source `R/LDCA.R` at frozen GitHub mirror
+commit `af8320b2788076657556728b25c53ed04681c7d5`.
+BigTSP globally encodes all `p(p-1)/2` comparisons and applies
+`tree::tree` with Gini/deviance, whereas the paper's TSPDT
+reselects the best TSP rule *within each tree node* and uses
+different pruning. BigTSP must be labeled `BigTSP_pair_Cart`,
+not `TSPDT2011_REPRODUCED`.
 
 **Isolation:** this document is deliberately committed to
 `feature/tspdt-baseline-evidence`, not the branch executing the

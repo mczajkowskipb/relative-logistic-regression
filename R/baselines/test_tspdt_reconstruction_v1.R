@@ -69,9 +69,13 @@ unlink(tmp)
 # Tie convention: strict <, so equality routes right.
 Xtie <- X[1:12,,drop=FALSE]
 Xtie[,c("a","b")] <- 1
+Xforced_right <- Xtie
+Xforced_right[,"a"] <- 2
+Xforced_right[,"b"] <- 1
 test_prediction <- tspdt_recon_predict(fit,Xtie)
-assert(all(test_prediction$leaf_id!=fit$tree$left$id),
-       "ties_do_not_route_true_at_root")
+right_prediction <- tspdt_recon_predict(fit,Xforced_right)
+assert(identical(test_prediction$leaf_id,right_prediction$leaf_id),
+       "ties_route_false_right_at_root")
 
 # Same training, modified test-only X must never refit the model.
 set.seed(814L)

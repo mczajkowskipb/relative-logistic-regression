@@ -315,3 +315,100 @@ breast2 or choose a stronger acceptance criterion based on
 these exposed holdout scores. Before any novel method is
 claimed, preregister a separate V2 and evaluate on never-used
 external datasets.
+
+
+## Final nine-tree / 18-leaf routed prediction audit — observed PASS (2026-10-21)
+
+The operator ran `scripts/rlmt_dc_5fold_final_leaf_route_audit.py` against
+all nine accepted RLMT-DC-v0 trees and the saved paired RLR holdout
+predictions. The actual console result was:
+
+```
+DC_ACCEPTED_LEAVES=18
+DC_ACCEPTED_TREES=9
+DC_LEAF_ROUTE_OUTCOME_AUDIT=PASS
+INFERENCE=POSTHOC_DESCRIPTIVE_ONLY
+```
+
+This read-only check ties the **complete outer-test fold logloss delta**
+back to per-sample, per-leaf predictions and uses no new fitting,
+candidate search, thresholds or model selection.
+
+### Catastrophic breast2 fold01: BOTH leaves are harmful
+
+| Terminal leaf | Final train n / class1 | Held-out n / class1 | Wrong DC/RLR | True-class probability <0.01 | Active relations | Sum(DC−RLR) test logloss |
+| --- | --- | --- | --- | ---: | ---: | ---: |
+| 2 | 35 / 23 | 6 / 2 | 4 / 2 | 1 | 10 | +11.9320 |
+| 3 | 26 / 12 | 10 / 7 | 4 / 5 | 3 | 10 | +15.2434 |
+| **Together** | 61 / 35 | 16 / 9 | 8 / 7 | 4 | — | **+27.1754** |
+
+The displayed sums round to the independently established
+`(11.9320+15.2434)/16 ≈ +1.69846` mean outer-test
+logloss difference. The held-out accuracy loss is **one**
+additional misclassified patient among 16 (**−0.0625**).
+
+The train/test class1 fractions by leaf are:
+leaf2 **23/35 ≈ 65.7%** in training versus **2/6 ≈ 33.3%**
+in heldout; leaf3 **12/26 ≈ 46.2%** versus
+**7/10 = 70%**. This is evidence of *different observed
+class mixtures* among very small routed test subsets, **not**
+proof of population distribution shift or a biological
+subgroup effect. The discrepancy is present in both leaves
+and both leaf models each have ten active relations.
+Four test patients have modeled probability of the **true
+class <0.01**; the headline failure is not merely
+one misclassified patient but severely overconfident
+wrong-class probabilities.
+
+A complementary example is `breast2/rep00_fold00`:
+leaf2 has 30/19 train class1 and 6/2 test class1,
+leaf3 has 31/16 train class1 and 10/7 test class1.
+Its hard-class accuracy improved by **+0.25**
+(DC 5 mistakes vs RLR 9), but its fold logloss
+**still worsened by +0.126315**.
+Accuracy gain is therefore not evidence of
+probabilistic calibration gain.
+
+### Beneficial leukemia outcomes — both routed leaves checked
+
+- `leukemia/fold00` leaf2 error counts **DC 0 / RLR 1**,
+  leaf-wise excess logloss **−0.9495** (sum, favorable);
+  leaf3 error counts **0/0**, sum +0.0435.
+  Combined fold mean **−0.060396**.
+- `leukemia/fold01` leaf2 **0/0**, sum −0.3329;
+  leaf3 **DC 0 / RLR 1**, sum −1.9213.
+  Combined fold mean **−0.150278**.
+
+No other accepted fold corrected any additional baseline
+classification error in this audit. All 18 accepted leaves
+were included, not just favorable or harmful examples.
+
+### What these audits do and do not establish
+
+- The saved RLMT-DC model outputs, leaf routes, test
+  predictions and 1-SE acceptance decisions are consistent.
+  The reported **9/95 accepted folds** contain **six**
+  external-test logloss losses and **three** gains.
+- The high-dimensional local leaf fit can output extreme
+  holdout probabilities; two small-ish leaves (26 and 35
+  training observations) contributed to the worst failure.
+- **Not causally isolated:** the possible effects of
+  confirmation size, D-to-T refitting, changed pair pool,
+  local regularization, intrinsic heterogeneity, and chance
+  variation. The existing data cannot distinguish these
+  without a separately designed stability study.
+- The present `gain−1SE>0` acceptance criterion validated
+  a different fitted estimator (discovery D) from the final
+  refitted leaves (outer training T). This is a clear
+  procedural difference, **not a confirmed coding bug**.
+- It is inappropriate to use observed `breast2` outer
+  outcomes to tune shrinkage, probability clipping,
+  min leaf size, k, screening, confidence thresholds or
+  acceptance conditions in the already frozen v0 run.
+
+**Research milestone:** RLMT-DC-v0 diagnosis is complete for
+the available 95-fold publication-data run. Freeze it as a
+negative/mixed exploratory result. Next work should focus on
+a *new, separately specified* stabilization methodology and
+genuinely external datasets, not additional ad-hoc tuning
+of the original 19 cohorts.

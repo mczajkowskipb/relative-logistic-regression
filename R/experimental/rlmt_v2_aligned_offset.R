@@ -48,7 +48,7 @@ rlmt_v2_fit_parent <- function(X,y,conf=rlmt_v2_conf()$leaf) {
     x=encoded,y=rlmt_y01(y),family="binomial",
     alpha=conf$alpha,nfolds=5L,foldid=foldid,
     type.measure="deviance")
-  list(identity="RLR_ALIGNED_V2",fit=fit,pairs=pairs,
+  list(identity="RLR_ALIGNED_V2",fit=fit,pairs=pairs,pool=pool,
        foldid=foldid,lambda=conf$lambda_choice,
        gene_names=names(X),class_levels=levels(y),
        fitting_procedure="rlmt_v2_fit_parent",
@@ -154,23 +154,15 @@ rlmt_v2_fit_tree <- function(X,y,candidate,mode,conf) {
   parent <- rlmt_v2_fit_parent(X,y,conf)
   ids <- list(which(z),which(!z))
   parent_oof <- if(mode=="H2") rlmt_v2_parent_oof(X,y,conf) else NULL
+  # Reuse the SAME full S-only pool that fitted the aligned root.
+  # Keep this pool in the parent artifact so D/T procedure can be audited.
+  fullpool <- parent$pool
   leaves <- lapply(ids,function(ix) {
     if(mode=="H1") {
-      rlmt_v2_fit_h1_leaf(X[ix,,drop=FALSE],y[ix], 
-                           # Full S-only supervised pool (not another
-                           # D/T-specific API; S is the function input).
-                           compute_top_pairs_switchbox(
-                             X,y,top_n=conf$pool,
-                             buffer_mult=5L,out_dir=NULL,save_all=FALSE),
-                           conf)
+      rlmt_v2_fit_h1_leaf(X[ix,,drop=FALSE],y[ix],fullpool,conf)
     } else {
-      # Reuse exactly S-only parent's supervised relation set? H2 requires
-      # local ranking on an S-only pool, consistent with candidate training.
-      fullpool <- compute_top_pairs_switchbox(
-        X,y,top_n=conf$pool,buffer_mult=5L,
-        out_dir=NULL,save_all=FALSE)
       rlmt_v2_fit_h2_leaf(X[ix,,drop=FALSE],y[ix],fullpool,
-                           parent_oof$prob[ix],conf)
+                          parent_oof$prob[ix],conf)
     }
   })
   list(parent=parent,leaves=leaves,mode=mode,

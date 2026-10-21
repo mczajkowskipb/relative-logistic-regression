@@ -71,6 +71,27 @@ rank2 <- rlmt_dc_propose(X[D,,drop=FALSE],y_changed[D],
 check(identical(rank1,rank2),
       "validation_label_canary_does_not_change_proposal")
 
+# Strict inner OOF canary: changing labels of a *validation* fold
+# must not alter its predictions, including supervised pair ranking.
+# The entire supervised predictor pool is rebuilt on the inner train.
+inner <- make_repeated_stratified_folds(
+  y[D],n_folds=3L,n_repeats=1L,seed=143L)
+p_strict <- rlmt_dc_parent_oof_strict(
+  X[D,,drop=FALSE],y[D],conf,inner)
+check(length(p_strict)==length(D) && all(is.finite(p_strict)) &&
+      all(p_strict>=0 & p_strict<=1),
+      "strict_training_only_oof_probabilities")
+yv_changed <- y[D]
+canary_validation <- inner[[1L]]$test_idx
+yv_changed[canary_validation] <- factor(
+  ifelse(yv_changed[canary_validation]=="PR","N","PR"),
+  levels=levels(y))
+p_changed <- rlmt_dc_parent_oof_strict(
+  X[D,,drop=FALSE],yv_changed,conf,inner)
+check(identical(p_strict[canary_validation],
+                p_changed[canary_validation]),
+      "strict_oof_validation_label_canary")
+
 # A deterministic deliberately impossible class-support scenario.
 y_bad <- factor(c(rep("N",170L),rep("PR",10L)),
                 levels=c("N","PR"))

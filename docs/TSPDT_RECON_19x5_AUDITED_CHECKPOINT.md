@@ -194,7 +194,7 @@ These are **dataset-level averages over five paired outer folds**:
 | other 14 datasets | 0 | 0 | 0 |
 
 Out of 95 outer folds, **exactly 9** accepted two-leaf models:
-five harmed external holdout logloss and four improved it.
+six harmed external holdout logloss and three improved it.
 The **only** accepted folds with observed gain in held-out
 accuracy were leukemia folds 00/01 and breast2 fold00;
 breast2 fold01 lost accuracy (−0.06250), but averaged across

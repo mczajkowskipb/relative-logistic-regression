@@ -206,7 +206,11 @@ rlmt_dc_run <- function(X_train,y_train,X_test,y_test,
     stop("Training-only discovery RLR pool was unexpectedly too small")
   discovery_inner <- make_repeated_stratified_folds(
     yD,dc$discovery_oof_folds,1L,seed=conf$seed+101L)
-  parent_oof <- rlmt_parent_oof(X_D,yD,disc_pool,conf,discovery_inner)
+  # Refit supervised top1000 representation inside EACH discovery OOF
+  # training fold. The D-wide pool is reserved for single-candidate
+  # confirmation fits, which train on D and predict on disjoint V.
+  parent_oof <- rlmt_dc_parent_oof_strict(
+    X_D,yD,conf,discovery_inner)
   proposals <- rlmt_dc_random_pairs(
     names(X_D),n_pairs=dc$proposal_n,seed=conf$seed+201L)
   choice <- rlmt_dc_propose(

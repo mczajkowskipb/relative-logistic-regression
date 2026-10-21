@@ -209,6 +209,7 @@ def main() -> None:
     all_models = []
     fold_comparisons = []
     dataset_comparisons = []
+    class_order_by_dataset = {}
     for inputrow in refinputs:
         world=inputrow["world"]
         dataset=inputrow["dataset"]
@@ -235,6 +236,10 @@ def main() -> None:
             require(len(ids)==int(modelmap["RLR"][0]["n_test"]),
                     "wrong reference heldout size "+str(key))
             levels=infer_reference_class_order(reference,truths,key)
+            previous = class_order_by_dataset.setdefault((world,dataset),levels)
+            require(previous == levels,
+                    "original ARFF class order differs across the five folds "+
+                    str(key))
 
             foldresult={"world":world,"dataset":dataset,
                         "split_id":fold,"n_test":len(ids),
@@ -337,6 +342,12 @@ def main() -> None:
             "n_datasets":19,"n_folds":95,"n_models":380,
             "classes_from":"saved original RLR heldout truth",
             "positive_class_recovered_from":"audited RLR p>=0.5 and saved y_pred; never alphabetically sorted",
+            "nonlexical_original_ARFF_class_orders": [
+                {"world":w,"dataset":ds,
+                 "class0":levels[0],"class1":levels[1]}
+                for (w,ds),levels in sorted(class_order_by_dataset.items())
+                if levels != tuple(sorted(levels))
+            ],
             "probability_definition_TSPDT":"training leaf Laplace alpha=1",
             "comparators":rankings
         },indent=2)+"\n",encoding="utf-8")
@@ -365,6 +376,13 @@ def main() -> None:
               f"{a['balanced_accuracy']['dataset_losses']}/"
               f"{a['balanced_accuracy']['dataset_ties']}; "
               f"mean Δlogloss={a['logloss']['mean_delta']:+.6f}")
+    anomalous=[
+        f"{w}/{ds}:{levels[0]}>{levels[1]}"
+        for (w,ds),levels in sorted(class_order_by_dataset.items())
+        if levels != tuple(sorted(levels))
+    ]
+    print("NONLEXICAL_ARFF_CLASS_LEVELS="+
+          (";".join(anomalous) if anomalous else "NONE"))
     print("COMPARISON_MODELS=380")
     print("COMPARISON_PAIRED_OUTER_FOLDS=95")
     print("COMPARISON_DATASETS=19")

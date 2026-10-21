@@ -91,6 +91,36 @@ def score(predictions: list[dict[str, str]],
     }
 
 
+
+def infer_reference_class_order(reference: list[dict[str, str]],
+                                observed_labels: list[str],
+                                key: tuple[str, str, str]) -> tuple[str, str]:
+    """Recover R's ARFF factor order from the audited RLR >=.5 rule.
+
+    Sorting class labels alphabetically is WRONG: foreign::read.arff()
+    retains the nominal ARFF level order. The independently audited
+    original RLR branch uses class1 iff p >= .5; exactly one binary
+    orientation must reproduce every reference hard-class prediction.
+    """
+    labels = set(observed_labels)
+    require(len(labels) == 2, "not a binary test fold " + str(key))
+    orders = []
+    for pos in labels:
+        neg = next(k for k in labels if k != pos)
+        valid = all(
+            row["y_pred"] == (
+                pos if asfloat(row["prob"], "RLR probability "+str(key)) >= 0.5
+                else neg
+            )
+            for row in reference
+        )
+        if valid:
+            orders.append((neg, pos))
+    require(len(orders) == 1,
+            "cannot uniquely recover original R factor class order "
+            "from independently audited RLR predictions "+str(key))
+    return orders[0]
+
 def ordered_map(rows: list[dict[str,str]],
                 model_field: str) -> dict[tuple[str,str,str,str],dict[str,str]]:
     result = {}
@@ -204,11 +234,12 @@ def main() -> None:
                     "test ID duplication or dimension mismatch "+str(key))
             require(len(ids)==int(modelmap["RLR"][0]["n_test"]),
                     "wrong reference heldout size "+str(key))
-            levels=tuple(sorted(set(truths)))
-            require(len(levels)==2,"expected two test classes "+str(key))
+            levels=infer_reference_class_order(reference,truths,key)
 
             foldresult={"world":world,"dataset":dataset,
-                        "split_id":fold,"n_test":len(ids)}
+                        "split_id":fold,"n_test":len(ids),
+                        "class0_reference_ARFF_order":levels[0],
+                        "class1_reference_ARFF_order":levels[1]}
             scores={}
             for method in METHODS:
                 entry,pred=modelmap[method]
@@ -243,10 +274,17 @@ def main() -> None:
                                     asfloat(independent[col],
                                             "audited ref "+col))<1e-10,
                                 "original ref audited metric mismatch "+
-                                str((*key,method,metric)))
+                                str((*key,method,metric))+
+                                " ref_ARFF_class_order="+str(levels)+
+                                " calculated="+format(sc[metric],".15g")+
+                                " audited="+format(
+                                    asfloat(independent[col],col),".15g"))
                 all_models.append({
                     "world":world,"dataset":dataset,"split_id":fold,
-                    "method":method,"n_test":len(ids),**sc,
+                    "method":method,"n_test":len(ids),
+                    "class0_reference_ARFF_order":levels[0],
+                    "class1_reference_ARFF_order":levels[1],
+                    **sc,
                     "leaf_count":entry.get("leaves","") if method==METHODS[-1]
                         else entry.get("realized_leaves",""),
                 })
@@ -298,6 +336,7 @@ def main() -> None:
             "unit_of_summary":"dataset average over 5 correlated outer folds",
             "n_datasets":19,"n_folds":95,"n_models":380,
             "classes_from":"saved original RLR heldout truth",
+            "positive_class_recovered_from":"audited RLR p>=0.5 and saved y_pred; never alphabetically sorted",
             "probability_definition_TSPDT":"training leaf Laplace alpha=1",
             "comparators":rankings
         },indent=2)+"\n",encoding="utf-8")
@@ -306,6 +345,9 @@ def main() -> None:
         "fits and 95 independently replayed TSPDT-inspired fits.\n"
         "All metrics recomputed from prediction CSVs on exactly matched "
         "outer test IDs and true labels; no model fitting performed.\n"
+        "R's original ARFF nominal factor order recovered from audited "
+        "RLR predictions using the p>=0.5 hard-class rule; sorted "
+        "string labels are never assumed to be the class order.\n"
         "TSPDT is reconstruction with train-only MAD f100, depth3, "
         "Wilson pruning, Laplace leaf scores, not original 2011 TSPDT.\n"
         "All 19 sets were already used in method development. "

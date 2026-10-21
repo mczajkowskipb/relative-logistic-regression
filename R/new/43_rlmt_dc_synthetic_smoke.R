@@ -180,18 +180,32 @@ forced_pred <- readp(forced_dir)
 forced_routes <- read.csv(file.path(forced_dir,"test_routes.csv"),
                           stringsAsFactors=FALSE,
                           colClasses=c(sample_id="character"))
-verify(isTRUE(forced_tree$accepted_split) &&
-       forced_tree$size==2L &&
-       forced_metrics$realized_leaves==2L &&
-       identical(forced_metrics$method_family,"RLMT-DC-v0") &&
-       abs(forced_metrics$dc_confirmation_lower_gain -
-           pass$lower_gain)<1e-9 &&
-       identical(forced_pred$sample_id,rownames(Xte)) &&
-       identical(forced_routes$sample_id,rownames(Xte)) &&
-       identical(as.integer(forced_routes$leaf_id),
+# Keep each acceptance-route condition separate: a single combined
+# assertion previously hid the cause of the v2 failure.
+verify(isTRUE(forced_tree$accepted_split),
+       "forced_tree_accepted_flag")
+verify(isTRUE(forced_tree$size==2L),
+       "forced_tree_two_leaves")
+verify(isTRUE(forced_metrics$realized_leaves==2L),
+       "forced_metrics_two_leaves")
+verify(identical(forced_metrics$method_family,"RLMT-DC-v0"),
+       "forced_model_family")
+stored_gain <- as.numeric(forced_metrics$dc_confirmation_lower_gain)
+original_gain <- as.numeric(pass$lower_gain)
+gain_delta <- abs(stored_gain-original_gain)
+cat(sprintf("FORCED_CONFIRMATION_PRECISION stored=%.12f original=%.12f delta=%.12g\n",
+            stored_gain,original_gain,gain_delta))
+verify(length(stored_gain)==1L && is.finite(stored_gain) &&
+       gain_delta<1e-9,
+       "forced_confirmation_gain_persistence_1e-9")
+verify(identical(forced_pred$sample_id,rownames(Xte)),
+       "forced_test_prediction_ids")
+verify(identical(forced_routes$sample_id,rownames(Xte)),
+       "forced_test_route_ids")
+verify(identical(as.integer(forced_routes$leaf_id),
                  as.integer(ifelse(
                    Xte[[fixture$gene_a]]>Xte[[fixture$gene_b]],2L,3L))),
-       "forced split structure/routing/confirmation")
+       "forced_leaf_routing")
 verify(abs(rlmt_logloss(y01,forced_pred$prob) -
            forced_metrics$logloss)<5.1e-5,
        "forced accepted metric reconstruction")

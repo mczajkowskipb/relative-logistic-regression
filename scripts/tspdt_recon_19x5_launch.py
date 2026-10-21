@@ -157,13 +157,6 @@ def main() -> None:
     if (not (gate/"status.txt").is_file() or
         (gate/"status.txt").read_text().strip()!="TSPDT_DEV_EXIT=0" or
         not (gate/"test.log").is_file() or
-        "TSPDT_RECON_DEV_GATE=PASS" in (gate/"test.log").read_text()):
-        # The shell writes the final gate PASS to stdout; test.log
-        # contains TSPDT_RECON_SYNTHETIC=PASS, not DEV_GATE.
-        pass
-    if (not (gate/"status.txt").is_file() or
-        (gate/"status.txt").read_text().strip()!="TSPDT_DEV_EXIT=0" or
-        not (gate/"test.log").is_file() or
         "TSPDT_RECON_SYNTHETIC=PASS" not in
         (gate/"test.log").read_text()):
         stop("independent synthetic TSPDT DEV gate has not passed")

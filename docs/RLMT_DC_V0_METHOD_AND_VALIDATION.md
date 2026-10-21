@@ -64,7 +64,10 @@ Given **outer-training** data `T={(x_i,y_i)}`, binary
 6. If no feasible proposal exists, use exact frozen RLR trained on T,
    without examining V labels.
 7. On D, compute 3-fold out-of-fold parent RLR probabilities
-   `p_i^{(-k)}` (D-only supervised predictor pool) and residuals
+   `p_i^{(-k)}`. **Inside each OOF fold, recompute the supervised
+   top-1000 predictor pool using only that fold's training partition**;
+   never reuse the D-wide pool, as doing so exposes validation labels
+   to feature selection. Derive residuals
    `r_i=y_i-p_i^{(-k)}`. Nominate **one** feasible pair `s*`
    maximizing
    `S(s)=sqrt(n_left*n_right/n_D) * |mean_D(r|s=1)-mean_D(r|s=0)|`.
@@ -122,6 +125,11 @@ the learning sample.
   are used only for validation predictions, not proposal creation.
 - `P_pred(D)` is recomputed **inside D**; using `P_pred(T)` to
   fit discovery or confirmation models is forbidden.
+- Parent discovery OOF predictions use separate supervised pair pools
+  `P_pred(D\\fold_k)` from each OOF training subset; assigning the
+  D-wide supervised pool to these fits is **forbidden**. A synthetic
+  canary changes validation-only labels and verifies invariant OOF
+  predictions for that held-out fold.
 - Proposal feature generator is independent of the labels.
 - `V` selects no hyperparameters, candidate pool sizes or second
   candidate after rejection. Confirmation is a fixed 1-SE heuristic;

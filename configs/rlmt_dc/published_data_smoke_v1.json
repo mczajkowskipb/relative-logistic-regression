@@ -1,0 +1,56 @@
+{
+  "stage": "PUBLICATION_DATA_EXPLORATORY_SMOKE_V1",
+  "protocol": "same_published_stratified_folds_first_fold_only",
+  "out_root": "results/rlmt_dc_published_data_smoke_v1",
+  "model_seed": 42,
+  "n_folds": 5,
+  "n_repeats": 1,
+  "max_splits_per_dataset": 1,
+  "models": {
+    "RLR": "K10_m10_d2_pool1000_alpha0.5_lambda.min",
+    "RLMT_v1": "unchanged_L2",
+    "RLMT_DC_v0": "discovery_confirmation_4096"
+  },
+  "cohorts": [
+    {
+      "world": "compcancer_9x10",
+      "data_subdir": "CompCancer_truth_9x10",
+      "manifest_subdir": "CompCancer",
+      "datasets": [
+        "alizadeh-2000-v1",
+        "armstrong-2002-v1",
+        "bittner-2000",
+        "chen-2002",
+        "golub-1999-v1",
+        "gordon-2002",
+        "pomeroy-2002-v1",
+        "shipp-2002-v1",
+        "singh-2002"
+      ]
+    },
+    {
+      "world": "compcancer_2x2",
+      "data_subdir": "CompCancer_truth_2x2",
+      "manifest_subdir": "CompCancer",
+      "datasets": [
+        "west-2001",
+        "yeoh-2002-v1"
+      ]
+    },
+    {
+      "world": "legacy8",
+      "data_subdir": "comparison",
+      "manifest_subdir": "comparison",
+      "datasets": [
+        "adenocarcinoma",
+        "breast2",
+        "cns",
+        "colon",
+        "dlbcl",
+        "leukemia",
+        "ovarian",
+        "prostate"
+      ]
+    }
+  ]
+}

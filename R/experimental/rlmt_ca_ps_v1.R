@@ -34,9 +34,10 @@ rlmt_ca_ps_config <- function(config=list()) {
 rlmt_ca_ps_node_balance <- function(n0,n1) {
   if (length(n0)!=1L || length(n1)!=1L ||
       !is.finite(n0) || !is.finite(n1) ||
-      n0<0 || n1<0 || n0+n1<1 ||
+      n0<0 || n1<0 ||
       n0!=as.integer(n0) || n1!=as.integer(n1))
     stop("RLMT_CA_PS_V1: invalid nonnegative class counts")
+  if (n0+n1==0) return(0)
   as.numeric(4*n0*n1/(n0+n1)^2)
 }
 

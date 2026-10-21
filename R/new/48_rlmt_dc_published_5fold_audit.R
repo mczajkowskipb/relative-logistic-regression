@@ -17,7 +17,7 @@ need(identical(trimws(readLines(file.path(root,"PUBLICATION_MAIN_SHA.txt"))[1L])
      "original publication main SHA mismatch")
 need(identical(trimws(readLines(file.path(root,"status.txt"))[1L]),
                "RUNNER_EXIT=0"),
-     "original 57-fit runner did not finish successfully")
+     "original 285-fit runner did not finish successfully")
 mfile <- file.path(root,"run_manifest.csv")
 if (!file.exists(mfile)) stop("No completed run manifest yet")
 tab <- read.csv(mfile,stringsAsFactors=FALSE)
@@ -30,7 +30,7 @@ need(all(required %in% names(tab)),"run manifest schema mismatch")
 need(nrow(inputs)==19L &&
      nrow(tab)==285L &&
      all(tab$status %in% c("OK","ERROR")),
-     "Expected 19 datasets and 57 model records (including errors)")
+     "Expected 19 datasets, 5 folds and 285 model records (including errors)")
 need(!anyDuplicated(paste(tab$world,tab$dataset,tab$split_id,
                           tab$method,sep="|")),
      "duplicate model records")

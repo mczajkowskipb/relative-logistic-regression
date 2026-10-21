@@ -3,7 +3,12 @@
 # and 40_rlmt_dc_utils.R. No changes to published RLR / RLMT v1.
 
 rlmt_dc_write_json <- function(value, path) {
-  jsonlite::write_json(value, path, auto_unbox=TRUE, pretty=TRUE)
+  # jsonlite::write_json defaults to four decimal places. DC confirmation
+  # quantities may be near the zero/1-SE boundary; persist at least
+  # twelve decimal places rather than silently rounding away evidence.
+  # This affects only NEW RLMT-DC output files, never published RLR.
+  jsonlite::write_json(value, path, auto_unbox=TRUE, pretty=TRUE,
+                       digits=12)
 }
 
 rlmt_dc_record <- function(path, state) {

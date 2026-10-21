@@ -94,6 +94,14 @@ assert(!isTRUE(failed$accepted),
 # End-to-end workflow tests use explicit synthetic training callbacks.
 # These doubles forbid any inference from biological datasets and exercise
 # exactly the file/status/fallback interface of a real experiment.
+# 07_world_protocol_utils.R is intentionally NOT sourced here because it
+# loads real dependencies. Stub its pure filesystem helper and null coalescer,
+# both of which are required by the authentic DC defaults/run functions.
+`%||%` <- function(a,b) if (is.null(a)) b else a
+ensure_dir <- function(path)
+  dir.create(path,recursive=TRUE,showWarnings=FALSE)
+assert(is.function(ensure_dir) && is.function(`%||%`),
+       "synthetic_07_helpers_explicitly_mocked")
 rlmt_defaults <- function(config=list()) list(
   K=10L,m=10L,d=2L,pool=1000L,alpha=.5,lambda_choice="lambda.min",
   min_child_n=16L,min_child_class=6L,inner_folds=3L,seed=42L)

@@ -5,14 +5,14 @@
 # discovery SWAP feature selection, glmnet leaf CV and actual confirmation.
 #
 # Does not use real omics/ARFF datasets or inspect any prior held-out results.
-for (pkg in c("glmnet","pROC","jsonlite","SWAP")) {
+for (pkg in c("glmnet","pROC","jsonlite","switchBox")) {
   if (!requireNamespace(pkg,quietly=TRUE))
     stop("RLMT_CA_PS_REAL_SMOKE_STOP: missing existing dependency ",pkg)
 }
 suppressPackageStartupMessages({
   library(glmnet)
   library(pROC)
-  library(SWAP)
+  library(switchBox)
 })
 source("R/new/07_world_protocol_utils.R")
 source("R/new/28_rlmt_utils.R")

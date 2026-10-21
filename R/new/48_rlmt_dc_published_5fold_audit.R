@@ -9,9 +9,12 @@ cfg <- jsonlite::read_json(
 need <- function(ok,msg) if (!isTRUE(ok))
   stop("PUBLICATION_PILOT_AUDIT_STOP: ",msg,call.=FALSE)
 need(identical(cfg$out_root,root),"unexpected frozen root")
-need(identical(trimws(readLines(file.path(root,"CODE_SHA.txt"))[1L]),
-               "EXPECTED_FIVEFOLD_RUN_SHA_PLACEHOLDER"),
-     "five-fold experiment code SHA mismatch")
+execution_sha <- trimws(readLines(file.path(root,"CODE_SHA.txt"))[1L])
+need(grepl("^[a-f0-9]{40}$",execution_sha),
+     "five-fold executed code SHA malformed")
+need(identical(trimws(readLines(file.path(root,"PUBLICATION_MAIN_SHA.txt"))[1L]),
+               "4079a5ac400f1d2cfded523c7000f655470925ce"),
+     "original publication main SHA mismatch")
 need(identical(trimws(readLines(file.path(root,"status.txt"))[1L]),
                "RUNNER_EXIT=0"),
      "original 57-fit runner did not finish successfully")

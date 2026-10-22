@@ -429,3 +429,10 @@ benchmark. Do not call aligned root the original RLR.
 
 **NO REWRITE of original paper, no altering archived
 results, no algorithm changes, no rerunning 380 fits.**
+
+
+## SCIENCE CHECKPOINT 2026-10-22: v3B negative, v4 research fork
+
+v3B completed 95 original outer folds, 380 method-fold outputs, independent patient-level audit PASS. Equal-dataset mean delta held-out logloss versus ORIGINAL archived RLR: GLOBAL_RIDGE_CAL +0.000606427; STUMP_TSP_RIDGE +0.000963708 (90 split folds/95), STUMP_GINI_RIDGE +0.001073118 (90/95), STUMP_RESID_RIDGE +0.001535369 (90/95). Compared with GLOBAL_RIDGE_CAL, all three stumps were worse on mean logloss (+0.000357282, +0.000466691, +0.000928942); v3B does not support superiority. The v3 small-pilot improvement did not replicate in broad exposed development data. Original paper remains unchanged and submission-ready.
+
+NEW exploratory branch `feature/rlmt-v4-rank-repair` is PREPARED (not executed on Ubuntu): a frozen-original-RLR-anchored classifier with GLOBAL_CAL control and three one-rule interpretable reliability-weighted corrections (CONF_ROUTE, ACTIVITY_ROUTE, SOFT_GAP_ROUTE). First gate requires exact same saved ORIGINAL RLR patient-level probabilities as archived paper results and independent audit; original baseline reused read-only. v4 holds the central scientific hypothesis: original-RLR residual rescue may work on patients with low confidence, few active encoded pairs or near gene-rank boundaries. It may FAIL; no accuracy advantage exists yet. Do not tune to exposed outer fold labels or call the 2x3 pilot independent validation. Repo protocol: `docs/RLMT_V4_RANK_REPAIR_PROTOCOL.md`.

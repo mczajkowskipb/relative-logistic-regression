@@ -15,6 +15,27 @@ MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
 test "$(git rev-parse origin/main)" = "$MAIN"
 test "$(git rev-parse origin/feature/rlmt-v6-19x5-frozen)" = "$HEAD"
 test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
+# Explicit scientific freeze: the *algorithm* (and original parent
+# dependencies) must exactly match the already-tested v6 pilot commit,
+# not only appear unchanged relative to this NEW benchmark worktree.
+PILOT_SHA="a57c86efbff99fc8dbf8025b6db1e9f4fc6aa510"
+for algorithm_file in \
+  R/experimental/rlmt_v6_original_rank_margin.R \
+  R/experimental/rlmt_v4_rank_repair.R \
+  R/experimental/test_rlmt_v6_original_rank_margin_synthetic.R \
+  R/new/07_world_protocol_utils.R \
+  R/new/28_rlmt_utils.R \
+  R/new/40_rlmt_dc_utils.R \
+  R/new/42_rlmt_dc_run.R
+do
+  expected="$(git rev-parse "$PILOT_SHA:$algorithm_file")"
+  actual="$(git hash-object "$algorithm_file")"
+  test "$actual" = "$expected" || {
+    echo "RLMT6_19X5_STOP: frozen pilot algorithm altered: $algorithm_file" >&2
+    exit 2
+  }
+done
+echo "RLMT6_ALGORITHM_IDENTICAL_TO_PILOT=PASS"
 test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)"
 test -z "$(git -C "$REF" -c core.filemode=false status --porcelain --untracked-files=no)"
 grep -qx "RUNNER_EXIT=0" \

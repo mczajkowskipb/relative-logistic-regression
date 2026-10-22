@@ -349,3 +349,83 @@ full-fold model evaluations with measured warning
 counts and no output rewriting. Keep clean original
 RLR manuscript as an immediate fallback route to
 submission rather than adding weak RLMT claims.
+
+
+## GO / NO-GO after full 19×5 retrospective experiment — 2026-10-22
+
+**FINAL ACTUAL OPERATOR-SUPPLIED RESULTS, NOT SPECULATION:**
+Experiment \`feature/rlmt-v2-19x5-all-methods\` completed all
+380/380 actual fits. Shell status:
+\`RLMT_V2_19X5_BATCH_EXIT=0\`;
+\`RLMT_V2_19X5_PATIENT_LEVEL_PREDICTION_AUDIT=PASS\`;
+\`RLMT_V2_19X5_ALL_380_NEW_MODELS_AUDITED=PASS\`.
+
+19 formerly examined biomedical datasets; each 5 original
+stratified outer folds, total 95 paired outer fold positions per
+model. All means are **equal-dataset means** of held-out
+logloss, never pooled-as-independent fold statistics:
+
+| Model | Accepted/95 | Dataset W/L/T vs RLR_ALIGNED | mean ΔLL vs RLR_ALIGNED | mean ΔLL vs ORIGINAL archived RLR | glmnet <8-class warnings |
+|---|---:|---:|---:|---:|---:|
+| H1 RLR-leaf | 9 | 1 / 5 / 13 | +0.013088521 | +0.014324918 | 618 |
+| H2 fixed-ridge offset | 25 | 5 / 3 / 11 | −0.000244199 | +0.000992198 | 496 |
+| TSPDT_GINI with RLR leaves | 7 | 3 / 1 / 15 | −0.002324349 | −0.001087952 | 562 |
+| RLMT_LA lookahead RLR leaves | **0** | 0 / 0 / 19 | +0.000000000 | +0.001236397 | 2533 |
+
+Total captured small-class warnings: **4209**, messages, not
+distinct failure counts. All fits have status OK, but warning
+volume remains scientific concern. Test examples include
+\`prostate rep00_fold02\`: H1 accepted but worsened heldout
+LL +0.0113941 relative to aligned parent; Gini accepted and
+improved LL −0.0050370. Holdout outcomes were not permitted
+to influence inner selection.
+
+**Important baseline accounting:** \`RLR_ALIGNED\` averages
++0.001236397 LL relative to archived ORIGINAL RLR.
+Thus a method that is tied with the aligned root is
+slightly worse than published RLR in this retrospective
+benchmark. Do not call aligned root the original RLR.
+
+**Scientific interpretation and stop/go:**
+- RLMT_LA is *not* an empirically supported improvement:
+  natural splitting 0/95. Stop optimizing it on exposed
+  retrospective fold outcomes and do not conduct a 470-fold
+  main-paper experiment merely to chase a favorable result.
+- H1 is distinctly detrimental (+0.0143 ΔLL vs original).
+  Do not integrate into a superiority claim.
+- H2 is a small offset ablation, not an RLR-leaf model tree,
+  and is worse than the original RLR (+0.00099).
+- TSPDT_GINI is the only experimental method with average
+  directionally positive LL vs original RLR (−0.00109),
+  but with 7/95 accepted folds and 3/1/15 dataset
+  W/L/T relative to aligned parent; its improvement could
+  be dominated by a dataset or a few route decisions.
+  Its stability, outlier contribution, clinical utility and
+  replication have NOT been independently established.
+  No statistical-significance, publication-quality
+  superiority or novel RLMT-LA evidence follows.
+
+**NEXT FIXED ACTION:**
+1. Read \`independent_19x5_audit/method_19_dataset_means.csv\`
+   and \`independent_19x5_audit/four_method_summary.csv\`
+   with an **independent read-only** dataset-contribution
+   diagnostic. Show positive/negative contribution and
+   leave-one-dataset-out robustness for Gini, compare
+   both baseline definitions. Preserve all adverse folds,
+   no parameter tuning.
+2. Prioritize completing **original RLR manuscript**,
+   reproducing original core tables and supplementary
+   results, checking venue format and statistics, and
+   preparing truthful submission. Keep RLMT separate
+   until new independently frozen cohort or methodological
+   evidence justifies its own article.
+3. If publication authors require 470-fold evaluation
+   of a fixed Gini tree model despite weak exploratory
+   evidence, use a prospectively frozen protocol,
+   budget estimates and no posthoc screening; clearly
+   label reused CompCancer datasets as exposed, not
+   external validation. A new independent
+   cohort/locked validation design is preferable.
+
+**NO REWRITE of original paper, no altering archived
+results, no algorithm changes, no rerunning 380 fits.**

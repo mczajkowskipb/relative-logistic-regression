@@ -57,9 +57,17 @@ grep -qx "RLMT_V2_H1_H2_SYNTHETIC_GATE=PASS" \
 echo "=== B. CLINICAL DISCOVERY-ONLY FIELD SCHEMA + ID AUDIT ==="
 python3 -m py_compile \
  scripts/rlmt_v2_gse25066_clinical_metadata_audit.py \
+ scripts/test_rlmt_v2_gse25066_metadata_header.py \
  > "$OUT/python_parse.log" 2>&1 || {
  cat "$OUT/python_parse.log"; exit 1;
 }
+python3 scripts/test_rlmt_v2_gse25066_metadata_header.py \
+ > "$OUT/clinical_synthetic_unit.log" 2>&1 || {
+ cat "$OUT/clinical_synthetic_unit.log"; exit 1;
+}
+cat "$OUT/clinical_synthetic_unit.log"
+grep -qx "RLMT_V2_GEO_SYNTHETIC_HEADER_UNIT=PASS" \
+ "$OUT/clinical_synthetic_unit.log"
 python3 scripts/rlmt_v2_gse25066_clinical_metadata_audit.py \
  --source-dir "$ROOT/$SOURCE" \
  --output-dir "$ROOT/$AUDIT" \

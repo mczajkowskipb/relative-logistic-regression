@@ -185,8 +185,8 @@ for(i in seq_len(nrow(inputs))) {
           delta_vs_parent=scored-aligned_loss,
           delta_vs_original=scored-orig_loss,
           brier=mean((pr-y01)^2),
-          shared_parent_warnings=length(warn),
-          shared_parent_low_class_warnings=
+          shared_bundle_warnings=length(warn),
+          shared_bundle_low_class_warnings=
                sum(grepl("fewer than 8",warn)),
           model_dir=dest,
           original_model_dir=baseline$model_dir[[1L]],

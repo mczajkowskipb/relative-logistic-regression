@@ -249,3 +249,48 @@ The full 470-fold article primary design remains
 The earlier 19 datasets × 5-fold retrospective
 development screen is NOT interchangeable with
 the publication's 470-fold benchmark.
+
+
+## Four-method matched real biomedical pilot — operator status (2026-10-22)
+
+The new two-dataset, three-original-fold paired experiment
+completed successfully on Ubuntu. User-supplied console
+evidence:
+
+\`\`\`
+RLMT_V2_FOURWAY_PILOT_EXIT=0
+RLMT_V2_FOURWAY_PAPER_PILOT_COMPLETE=PASS
+SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEVELOPMENT_ONLY
+\`\`\`
+
+All 12 additional TSPDT_GINI and RLMT_LA model-fitting
+records were produced and the runner's independent audit
+was executed before return code 0. Prior H1/H2 results were
+reused, not trained again.
+
+The observed last **five** fit records were no-split RLR_ALIGNED
+fallbacks (delta logloss vs aligned parent exactly zero).
+This subset alone does **not** establish the acceptance total
+for either new method across all six splits. The independent
+fourway summary log at
+\`results/rlmt_v2_fourway_pilot_2x3_v1/independent_audit.log\`
+contains the definitive per-method totals but those numbers
+were NOT included in the operator's pasted excerpt.
+Do not invent them in the paper.
+
+Multiple \`glmnet::lognet\` warning headers occurred.
+The snapshot from \`fourway_background.log\` only shows the
+header: the full, actual warning **message bodies** reside in
+\`results/rlmt_v2_fourway_pilot_2x3_v1/real_biomedical.log\`.
+Warning category, frequency and implications for deviance
+and probability convergence must be evaluated before
+expanding to full publication folds.
+
+**Next research decision** is contingent on reading the
+already-computed four-method audit in full and the first
+12 complete warning messages. If LA/Gini have few/no
+accepted splits and H2 is only a minor proper-score
+improvement, do not represent this as a superior
+relational decision tree. Preserve negative controls and
+prioritize credible journal claims and the existing
+strong RLR-only fallback.

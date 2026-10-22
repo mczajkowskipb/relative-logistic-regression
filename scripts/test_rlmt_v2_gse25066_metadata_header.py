@@ -14,7 +14,8 @@ mod=importlib.util.module_from_spec(spec)
 spec.loader.exec_module(mod)
 
 def make_head(where,gse,n,one_id=None,missing_clinical=False):
-    samples=[f"GSM{700000+i}" for i in range(n)]
+    base=700000 if gse=="GSE25055" else 800000
+    samples=[f"GSM{base+i}" for i in range(n)]
     ids=[f"{gse}_P{i}" for i in range(n)]
     if one_id is not None:
         ids[-1]=one_id
@@ -44,7 +45,7 @@ with tempfile.TemporaryDirectory(prefix="v2_fake_geo_test_") as p:
     assert meta_a["response_value_counts_discovery_only"]["NA"]>0
     assert meta_b["response_value_counts_discovery_only"] is None
     assert meta_b["heldout_response_values_not_evaluated"] is True
-    assert keys_a.isdisjoint(keys_b) and gsms_a==gsms_b.__class__(gsms_a)
+    assert keys_a.isdisjoint(keys_b) and gsms_a.isdisjoint(gsms_b)
     assert len(gsms_a)==310 and len(gsms_b)==198
     # Check no validation label values can appear in returned metadata.
     assert all(str(x) not in json.dumps(meta_b)

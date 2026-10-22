@@ -183,3 +183,69 @@ then placeholders for new figures/tables and
 preserve a clear \`PENDING RESULTS\` boundary. Do NOT
 alter numbers/tables for CompCancer, PTB or legacy8
 without a regenerated source-verified analysis.
+
+
+## Executed Stage 2 + pilot checkpoint — verified Ubuntu outputs (2026-10-22)
+
+User provided actual full terminal logs after executing both isolated
+background tasks on the Ubuntu system (no long-running processes remain).
+
+**First real-paper exploratory 2×3 matched fold pilot (12 fits)**
+- \`RLMT_V2_PILOT_EXIT=0\`, \`RLMT_V2_PILOT_COMPLETE=PASS\`,
+  \`RLMT_V2_PILOT_INDEPENDENT_AUDIT=PASS\`.
+- H1 residual-screen RLR-leaf: 1/6 accepted, 1/0/5
+  better/worse/tie vs **RLR_ALIGNED** on heldout logloss;
+  unweighted mean fold ΔLL = **−0.0001580**.
+- H2 fixed-ridge logit-offset ablation: 6/6 accepted,
+  5/1/0 better/worse/tie vs **RLR_ALIGNED**; mean fold
+  ΔLL **−0.0016300**. These two numbers are small and
+  observed on only TWO exposed cohorts, three outer
+  folds each. NO significance or generalization claim.
+- **Different control identity:** the original published
+  \`RLR\` and experimental \`RLR_ALIGNED_V2\` cannot be
+  treated as mathematically the same fitted model;
+  comparisons must show both.
+
+**New tree-selector synthetic model fits:**
+- \`RLMT_LA_SYNTHETIC_GATE_EXIT=0\`,
+  \`RLMT_V2_GINI_LA_SYNTHETIC_REAL_GATE=PASS\`,
+  \`RLMT_LA_SYNTHETIC_BATCH=PASS\`.
+- Both TSPDT_GINI and RLMT_LA completed real R/glmnet
+  two-leaf RDS replay and separate outer-label
+  prediction insensitivity.
+- Both NATURAL synthetic tests fell back to 1 leaf:
+  two-leaf verification was intentionally FORCED
+  in a synthetic TEST harness. Do not call this a
+  naturally accepted scientific split.
+- The actual R runtime emitted >=50 warnings in the
+  H1/H2 biological pilot and 15 warnings in parts of
+  LA synthetic fitting. Their **types are not yet
+  independently triaged**; successful exit does not
+  imply warning-free fits.
+
+**Next fixed experiment**, under independent branch
+\`feature/rlmt-paper-fourway-pilot\`:
+- Preserve the completed 12 H1/H2 models, train ONLY 12
+  Gini/LA models on same 2 exposed CompCancer cohorts ×
+  same 3 original folds; then independently recompute
+  24 fold-method metrics with exactly matched original
+  RLR and common aligned parent.
+- No ability to retrospectively change the already
+  viewed splits or design settings. If this pilot fails
+  or remains close to 1-leaf, report it and do not
+  silently add favorable cohorts.
+
+**Manuscript boundary:** The derived
+\`manuscript_extension/RLMT_journal_draft.tex\`
+is a writing draft with frozen old RLR figures/tables
+and an imported proposed RLMT Methods section.
+No v2 results tables or conclusion sentences are
+ready until all four methods and the original RLR
+are actually compared.
+
+The full 470-fold article primary design remains
+9 datasets × 10 repetitions × 5 folds +
+2 datasets × 2 repetitions × 5 folds.
+The earlier 19 datasets × 5-fold retrospective
+development screen is NOT interchangeable with
+the publication's 470-fold benchmark.

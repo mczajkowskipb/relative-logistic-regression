@@ -4,7 +4,7 @@
 NO model fitting. Reads the original GEO gzip series-matrix HEADER ONLY, not
 gene expression values. On DISCOVERY GSE25055, inspects observed pCR/RD
 labels and reports only AGGREGATED COUNTS. On GSE25065 VALIDATION,
-does NOT read/print/count response label VALUES -- only checks field PRESENCE.
+does NOT interpret/print/count/export response label VALUES -- only checks field PRESENCE.
 Checks GSM uniqueness and submitting site's sample-id uniqueness across the
 two subseries, but cannot prove clinical SUBJECT identity from GEO alone.
 Writes only summary JSON, NO sample-level labels or patient IDs are exported.
@@ -77,7 +77,7 @@ def parse_discovery_and_id_fields(gse,path):
                              "duplicate observed pCR/RD field")
                         clinical[gse][i]=val
                     else:
-                        clinical[gse][i]="PRESENT_UNREAD"
+                        clinical[gse][i]="PRESENT_NOT_EVALUATED"
         else:
             need(False,f"no matrix begin delimiter {gse}")
         # Deliberately DO NOT read the expression matrix.
@@ -111,7 +111,7 @@ def parse_discovery_and_id_fields(gse,path):
         "characteristic_rows":len(headers.get("!Sample_characteristics_ch1",[])),
         "observed_endpoint_field_count":len(clinical[gse]),
         "response_value_counts_discovery_only":dict(counts) if counts is not None else None,
-        "heldout_response_values_unread":gse=="GSE25065",
+        "heldout_response_values_not_evaluated":gse=="GSE25065",
     },set(ids),set(gsm)
 
 def main():
@@ -146,14 +146,14 @@ def main():
         "not_acceptable_truth":["dlda30_prediction","rcb_0_i_prediction",
                                 "chemosensitivity_prediction"],
         "no_model_fit":True,
-        "validation_response_values_not_accessed":True,
+        "validation_response_values_not_evaluated_or_exported":True,
         "clinical_subject_independence_not_proven":True,
         "within_series_GSM_overlaps":gsm_overlap,
         "between_submitter_sample_id_overlap":between,
         "discovery":manifests["GSE25055"],
         "validation":manifests["GSE25065"],
         "final_clinical_group_gate":"BLOCKED_PENDING_SOURCE_VERIFICATION",
-        "validation_labels_locked":True,
+        "validation_label_values_not_reported_or_used":True,
     }
     dest.mkdir()
     (dest/"CLINICAL_SCHEMA_DISCOVERY_ONLY.json").write_text(
@@ -164,7 +164,7 @@ def main():
           json.dumps(manifests["GSE25055"]["response_value_counts_discovery_only"],
                      sort_keys=True))
     print(f"GSE25066_SUBMITTER_SAMPLE_ID_OVERLAP={between}")
-    print("GSE25066_VALIDATION_RESPONSE_VALUES_UNREAD=TRUE")
+    print("GSE25066_VALIDATION_RESPONSE_VALUES_NOT_EVALUATED=TRUE")
     print("GSE25066_CLINICAL_SCHEMA_AUDIT=PASS")
     print("GSE25066_SUBJECT_INDEPENDENCE=NOT_PROVEN")
     print("GSE25066_CLINICAL_MODEL_FITS=0")

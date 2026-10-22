@@ -134,6 +134,14 @@ rlmt_v3b_fit_bundle <- function(X,y,params=rlmt_v3_config()) {
   # Reuse *exact* v3 STUMP_RIDGE_OFFSET method where available,
   # rather than silently replace the initially promising algorithm.
   base <- rlmt_v3_fit(X,y,"STUMP_RIDGE_OFFSET",params)
+  # On rare datasets no route meets min_leaf_n. The original v3
+  # stump then correctly falls back to its aligned parent without
+  # computing OOF. Still fit the calibration control fairly.
+  if(is.null(base$training_parent_oof)) {
+    rlmt_v3_check(is.null(base$chosen) && is.null(base$fit),
+                  "missing OOF despite a fitted route")
+    base$training_parent_oof <- rlmt_v2_parent_oof(X,y)$prob
+  }
   rlmt_v3_check(!is.null(base$parent) &&
                  length(base$training_parent_oof)==nrow(X),
                  "v3 TSP stump/parent-OOF prerequisite")

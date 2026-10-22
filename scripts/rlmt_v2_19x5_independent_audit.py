@@ -76,6 +76,17 @@ def main():
     input_manifest=records(old/"input_manifest.csv")
     need(len(original)==285 and len(new)==380 and len(input_manifest)==19,
          "archived/incoming number of fit rows differs")
+    warning_path=current/"warning_inventory.csv"
+    warnings=records(warning_path) if warning_path.exists() else []
+    warning_count=defaultdict(int)
+    class_warning_count=defaultdict(int)
+    for r in warnings:
+        key=r["world"],r["dataset"],r["split_id"],r["method"]
+        n=int(r["frequency"])
+        need(n>=1,"invalid warnings inventory frequency")
+        warning_count[key]+=n
+        if "fewer than 8" in r["message"]:
+            class_warning_count[key]+=n
     need(all(r["status"]=="OK" for r in new),
          "at least one model failed; cannot claim 380 complete fits")
     legacy={(r["world"],r["dataset"],r["split_id"],r["method"]):r
@@ -131,6 +142,15 @@ def main():
                 need(row["accepted"].lower() in ("true","false"),
                      "invalid accepted status")
                 accepted=row["accepted"].lower()=="true"
+                decision=json.loads((path/"decision.json").read_text())
+                claimed=(decision["accepted"] if m in ("H1","H2")
+                         else decision["status"]=="ACCEPTED")
+                need(isinstance(claimed,bool) and accepted==claimed,
+                     "decision JSON disagrees with model manifest")
+                this=(world,dataset,sid,m)
+                need(int(row["warning_total"])==warning_count[this] and
+                     int(row["warning_low_class"])==class_warning_count[this],
+                     "recorded glmnet warning inventory mismatch")
                 if not accepted:
                     need(p==pp,"rejected model not exact aligned parent")
                 fresh=metrics(y,p,positive)

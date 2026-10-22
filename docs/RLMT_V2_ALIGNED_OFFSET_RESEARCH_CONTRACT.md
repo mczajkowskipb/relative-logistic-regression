@@ -325,3 +325,58 @@ coding or reproducibility defect, change code in an
 explicitly tracked commit and rerun a newly named
 test-result root. Do not reinterpret those repairs as
 posthoc evidence that H1 or H2 improves logloss.
+
+## 7. Actual Ubuntu Stage 1 complete and Stage 2 prepared
+
+The operator supplied the genuine Ubuntu Stage 1 log:
+
+- `RLMT_V2_REAL_SYNTHETIC_H1_H2_GATE=PASS`;
+- `H1_FIT_PROCEDURE_ALIGNED=TRUE`;
+- `H2_FIXED_LAMBDA_OFFSET_OOF=TRUE`;
+- `TEST_ONLY_FORCED_CONFIRMATION_DISCLOSED=TRUE`;
+- `GEO_NEW_COHORT_METADATA_GATE=PASS`;
+- `RLMT_V2_STAGE1_H1_H2_SYNTHETIC_AND_SOURCE_METADATA=PASS`;
+- `RLMT_V2_STAGE1_EXIT=0`;
+- GSE25055 310 GSM, source SHA256
+  `9f8a94a9226f38d16380d776ab007c0453c3d31c9915d69562d5854baf3d6777`;
+- GSE25065 198 GSM, source SHA256
+  `adac6710a8452be19e0f73070668b186a282ebeb34f9aaec09c884906034f6e9`.
+
+The deprecation warning `Passing 'thresh' to glmnet() is deprecated`
+was observed in the real synthetic log. Updated H2 source invokes
+`glmnet(..., control=list(thresh=1e-8))` with an unchanged target
+threshold. The new `scripts/rlmt_v2_h1_h2_synthetic_gate_v2.sh`
+reruns the real synthetic gate under a NEW result directory and fails
+if this deprecation warning recurs. This repair has **not yet been
+executed on Ubuntu**.
+
+The new `scripts/rlmt_v2_gse25066_clinical_metadata_audit.py`
+uses the exact source SHA256 and original GEO submitter metadata:
+`sample id` as a **proxy** for subject identity and
+`pathologic_response_pcr_rd` as observed clinical pCR/RD candidate
+truth on **discovery GSE25055 only**. It does not evaluate or export
+heldout GSE25065 response **values**, only response-field availability,
+GSM IDs and submitter sample-ID overlaps. Even unique submitter IDs
+are insufficient evidence of distinct physical patients.
+
+An official GEO sample record, e.g.
+https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM615322,
+shows directly observed `pathologic_response_pcr_rd: RD` and separate
+`dlda30_prediction: pCR`; the latter is NOT clinical truth.
+The primary analysis candidate is **binary observed pCR vs RD**, with
+missing labels excluded by a PREDECLARED convention; no RCB-prediction
+substitution. A complete final endpoint definition and exclusion count
+are still pending audit. Published secondary analyses sometimes use
+306 discovery/182 validation complete cases instead of 310/198 arrays;
+those numbers must never be assumed to match this archived source
+without a complete traceable record.
+
+One command `scripts/rlmt_v2_stage2_large_batch.sh` performs the
+new R gate then this discovery-only clinical-source audit. It
+**will not run a model on a biomedical cohort or examine heldout
+validation outcomes**. The Stage2 actual logs are still pending.
+
+**Research stop before clinical results:** The original paper's GEO
+validation subset is from the same SuperSeries and not automatically
+independent patients/sites. Manual subject-ID verification, legal
+rights and preprocessing-identity checks remain a prerequisite.

@@ -167,9 +167,9 @@ def main():
                      "non-route produced multiple leaves")
             need(int(m["n_test"])==len(pred),
                  "test count inconsistent")
-            need(int(m["shared_parent_warnings"])==
+            need(int(m["shared_bundle_warnings"])==
                  counts[(world,dataset,fold)] and
-                 int(m["shared_parent_low_class_warnings"])==
+                 int(m["shared_bundle_low_class_warnings"])==
                  low[(world,dataset,fold)],
                  "shared parent warning count inconsistent")
             results[method]=(ll,brier)

@@ -131,6 +131,21 @@ rlmt_v3b_two_offset_predict <- function(mod,X,parent) {
 
 rlmt_v3b_fit_bundle <- function(X,y,params=rlmt_v3_config()) {
   rlmt_v2_check_xy(X,y)
+  # Strict RLR parent OOF requires >=9 per class. In extremely small
+  # cohorts the only defensible PREDECLARED outcome is the exact
+  # one-leaf parent for ALL four methods, never a leaked/pseudo OOF
+  # vector and never dropping the dataset from the independent audit.
+  if(any(table(y)<9L)) {
+    parent <- rlmt_v2_fit_parent(X,y)
+    return(list(parent=parent,training_parent_oof=NULL,
+      proposals=list(best=list(TSP=NULL,GINI=NULL,RESID=NULL),
+        feasible_pairs=0L,scanned_pairs=0L),
+      calibrator=list(
+        model_identity="NO_CALIBRATION_LOW_CLASS_SUPPORT",
+        offset_intercept=0,lambda=params$logistic_ridge),
+      TSP=NULL,GINI=NULL,RESID=NULL,params=params,
+      fallback_reason="MIN_CLASS_LT_9_STRICT_OOF_NOT_FEASIBLE"))
+  }
   # Reuse *exact* v3 STUMP_RIDGE_OFFSET method where available,
   # rather than silently replace the initially promising algorithm.
   base <- rlmt_v3_fit(X,y,"STUMP_RIDGE_OFFSET",params)

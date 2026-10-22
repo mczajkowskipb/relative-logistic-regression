@@ -1,0 +1,196 @@
+% DRAFT METHODS ADDENDUM for the journal RLMT paper.
+% This is not a standalone TeX document. Include only after the existing
+% paper's RLR definitions are imported, and after method implementation
+% and scientific review. NO UNOBSERVED RESULTS ARE ASSERTED HERE.
+%
+% Naming convention for current algorithms:
+% RLR = frozen baseline; RLR-ALIGNED = new CV protocol (not presumed
+% bit-identical); RLMT-R/H1 = aligned residual-screen tree;
+% RLMT-LA = PROPOSED bounded child-model look-ahead (NOT implemented);
+% RLMT-H2 = fixed ridge-offset ablation (not independent RLR leaves).
+%
+% TODO BEFORE SUBMISSION: journal-compliant bibliographic citations
+% to original TSPDT, 2008 Weight-kTSP, newer weighted pair methods,
+% RLR primary model, and biomedical proper-score evaluation.
+
+\subsection{Relational logistic model tree formulation}
+\label{sec:rlmt_method}
+
+We extend the globally fitted relative logistic regression (RLR)
+classifier with conditional partitions defined by within-sample
+relational tests.  An internal node uses an ordered gene-pair
+predicate
+\begin{equation}
+  z_{ab}(x)=\mathbb{I}\{x_a>x_b\},
+  \qquad a\neq b ,
+  \label{eq:rlmt_route}
+\end{equation}
+where $x$ denotes the expression vector of one sample. Unlike
+a numerical threshold on an individual gene, the routing decision
+depends only on the ordering of the two measured genes.  In the
+present binary-only implementation the tree is deliberately
+restricted to one root split and at most two terminal leaves.
+Consequently, all predictions can be traced to at most one
+routing relation followed by a small fitted relational model.
+
+Each leaf $\ell\in\{L,R\}$ has its own shortlist
+$\mathcal P_{\ell}$ of gene-pair relations and a penalized
+logistic predictor
+\begin{equation}
+  p_\ell(x)=\sigma\left(
+    \beta_{0,\ell}+
+    \sum_{(i,j)\in\mathcal P_\ell}
+      \beta_{ij,\ell}r_{ij}(x)\right),
+  \label{eq:rlmt_leaf}
+\end{equation}
+where $r_{ij}(x)\in\{-1,0,+1\}$ retains the original RLR
+margin-aware rank encoding.  The tree probability with a
+validated split $z_{ab}$ is
+\begin{equation}
+  p_{\rm RLMT}(x)=
+  z_{ab}(x)\,p_L(x)
+  +\{1-z_{ab}(x)\}\,p_R(x).
+  \label{eq:rlmt_predict}
+\end{equation}
+The degenerate no-split model uses one global parent predictor
+$p_0(x)$. The tree formulation therefore generalizes the
+single-model representation structurally, but numerical identity
+with the frozen original RLR baseline requires an identical
+training algorithm and validation protocol.
+
+\subsection{Training-only split discovery and confirmation}
+\label{sec:rlmt_discovery}
+
+To prevent candidate selection from exploiting the outer test
+samples, all supervised operations are nested inside the
+corresponding outer training set $T$.  We partition
+$T=D\cup V$ into a discovery subset $D$ and disjoint
+confirmation subset $V$. A common, deterministic candidate
+set $\mathcal C_D$ of relational predicates is generated from
+$D$ only, subject to both minimum child size and minimum
+class-specific child support. Class balance is evaluated from
+labels in $D$ only. For a candidate $c\in\mathcal C_D$,
+let $\widehat{p}_{D,c}(x)$ denote the two-leaf predictor fitted
+on the discovery data and $\widehat{p}_{D,0}(x)$ the parent
+model fitted by the same training procedure.
+
+We distinguish three candidate-scoring strategies for a
+controlled methodological comparison:
+\begin{enumerate}
+  \item \textit{TSPDT-style baseline}: select an admissible
+  relational predicate by a conventional impurity reduction
+  evaluated in $D$, then fit the same local RLR learner.
+  \item \textit{Residual-guided RLMT-R}: identify a
+  promising routing relation using the association between
+  class labels, routed groups, and parent out-of-fold
+  residuals computed exclusively within $D$.
+  \item \textit{Look-ahead RLMT-LA}: use a bounded shortlist
+  of candidates scored in $D$ by the predicted gain in
+  probabilistic loss after actually fitting the prospective
+  RLR leaf models, rather than optimizing impurity alone.
+  The exact shortlist budget must be prespecified on
+  synthetic-only tests before biomedical outcomes are
+  examined. \textbf{Implementation pending.}
+\end{enumerate}
+
+A single nominated candidate is evaluated on $V$. With the
+binary logloss
+\begin{equation}
+  \mathcal L(y,p)=-y\log p-(1-y)\log(1-p)
+  \label{eq:rlmt_logloss}
+\end{equation}
+and paired per-sample confirmation improvement
+\begin{equation}
+  \Delta_i=
+  \mathcal L(y_i,\widehat p_{D,0}(x_i))
+  -
+  \mathcal L(y_i,\widehat p_{D,c}(x_i)),
+  \quad i\in V ,
+  \label{eq:rlmt_paired_delta}
+\end{equation}
+the split is accepted only when the prespecified conservative
+confirmation lower bound exceeds zero and adequate validation
+support is available.  Candidate search is not repeated after
+inspecting $V$, and there is no outer-test-based pruning.
+If confirmation rejects the split, the final predictor is the
+one-leaf parent fitted on the full outer training set $T$.
+
+\subsection{Consistent discovery and final estimators}
+\label{sec:rlmt_alignment}
+
+An essential implementation requirement is that each learning
+stage fit exactly the same model \emph{procedure} when applied
+to a different training subset. In particular, define the
+parent-fitting operator
+\begin{equation}
+ A(S): S\mapsto\{
+   \mathcal P_S,\widehat\beta_S,
+   \widehat\lambda_S,\widehat p_S\},
+ \label{eq:rlmt_fit_operator}
+\end{equation}
+which performs supervised pair ranking, gene-disjoint shortlist
+construction, rank-margin encoding, and elastic-net
+regularization. The same operator and deterministic inner-CV
+rule are applied to $S=D$ for confirmation and to $S=T$ for
+final training, with all supervised pair-selection steps
+recomputed using the supplied subset $S$ only.
+Thus, the \emph{fitting procedure} is invariant, although
+the fitted relations and coefficients can of course differ
+between discovery and full outer training sets.
+
+The experimental aligned parent, denoted
+\textsc{RLR-Aligned}, uses explicit stratified inner
+five-fold CV and is kept separate from the exact,
+archived RLR comparator until prediction-level parity
+has been demonstrated. Reported comparisons must include
+both controls to prevent inadvertently crediting changes
+in the root fitting procedure to tree structure.
+
+\subsection{Offset-corrected leaf ablation}
+\label{sec:rlmt_offset}
+
+As a separate ablation we evaluate conservative
+leaf-specific corrections to the aligned global model.
+For leaf $\ell$, an offset model estimates
+\begin{equation}
+  p^{\rm off}_{\ell}(x)=
+  \sigma\left[
+    \operatorname{logit}\{\widehat p_0(x)\}
+    +\delta_{\ell}(x)
+  \right],
+  \label{eq:rlmt_offset}
+\end{equation}
+where $\delta_{\ell}(x)$ is a fixed-penalty ridge regression
+on selected relational features, with no freely estimated
+unpenalized intercept. Training offsets use \emph{honest
+out-of-fold parent probabilities} within the leaf-training
+data; they must not use the parent's in-sample fitted scores
+as if those were independently predicted outcomes. The
+current predeclared research configuration uses
+$\alpha=0$, $\lambda=1$, and no within-leaf lambda
+cross-validation; this is a fixed design parameter rather
+than a selection made from old held-out biomedical losses.
+
+This approach constitutes a \emph{different model class}
+from independent RLR leaf models in
+Eq.~\eqref{eq:rlmt_leaf}. It must therefore appear as
+an explicitly named offset ablation, not as a replacement
+for the primary relational model-tree contribution.
+
+\subsection{Reproducibility and evidence boundaries}
+\label{sec:rlmt_evidence}
+
+For every outer split we preserve the fitted parent
+and, when accepted, both complete leaf models; the selected
+routing relation and confirmation decision; all class
+support counts; the training-only inner fold identities;
+and sample-aligned predicted probabilities. The archived
+original RLR results remain unchanged. We distinguish
+retrospective development analyses on previously exposed
+microarray cohorts from later independently selected
+clinical-cohort evaluation. The primary proper scoring
+rule is unweighted outer-test logloss, complemented by
+Brier score, class-conditional errors, AUC, and
+thresholded classification measures. No claim of superior
+predictive performance is made unless supported by the
+completed paired evaluations.

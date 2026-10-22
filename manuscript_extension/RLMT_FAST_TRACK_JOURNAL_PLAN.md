@@ -294,3 +294,58 @@ improvement, do not represent this as a superior
 relational decision tree. Preserve negative controls and
 prioritize credible journal claims and the existing
 strong RLR-only fallback.
+
+
+## VERIFIED four-method paper-fold pilot results — 2026-10-22
+
+User supplied the complete independent audit and every new Gini/LA
+per-fold result (6 exact paired original CompCancer folds:
+\`chen-2002\` and \`gordon-2002\`, folds 00–02).
+The independent metrics audit passed: **24/24 method-fold** records;
+run exit **0**.
+
+All Δlogloss values below are versus a separately fit
+\`RLR_ALIGNED\`, **NOT** the frozen original RLR.
+
+| Method | Accepted / 6 | Fold LL win/loss/tie | Mean per-fold Δlogloss |
+|---|---:|---:|---:|
+| H1 residual RLR leaves | 1 | 1/0/5 | −0.000158015 |
+| H2 fixed ridge log-odds offset | 6 | 5/1/0 | −0.001629974 |
+| TSPDT_GINI / RLR leaves | 1 | 1/0/5 | −0.000158015 |
+| RLMT_LA / RLR look-ahead leaves | 0 | 0/0/6 | +0.000000000 |
+
+For Gini, the *only* accepted fold was
+\`gordon-2002/rep00_fold00\`, Δlogloss −0.0009481;
+all other Gini and all six LA folds fell back exactly
+to the aligned global parent. The numerical equality
+of H1 and Gini means does NOT demonstrate identical
+models unless accepted fold identities/probabilities
+are compared.
+
+**Warning root identified:** genuine \`glmnet::lognet\`
+messages repeatedly state \`one multinomial or binomial
+class has fewer than 8 observations; dangerous ground\`.
+These appear during nested, small, imbalanced node CV
+fits. Successful program termination and RDS replay do
+not establish stable leaf coefficient estimates or
+reliable probabilities. Report class-support diagnostics
+and method-specific warning counts. Do not merely
+suppress this warning or retrospectively relax the
+independent confirmation gate to force split acceptance.
+
+**Publication impact:** H2 showed a tiny positive
+proper-score signal in only two EXPOSED development
+cohorts and is an offset model, NOT a conventional
+two-leaf RLR tree. The proposed central RLMT_LA
+algorithm has currently **zero natural accepted splits**.
+The expanded RLMT-centered paper is therefore
+**NOT ready for submission** on this evidence.
+Do not present these numbers as generalization,
+statistical significance, or better than original RLR.
+
+Next: independently report delta vs ORIGINAL archived
+RLR from the same pilot CSV; implement all-19 matched
+full-fold model evaluations with measured warning
+counts and no output rewriting. Keep clean original
+RLR manuscript as an immediate fallback route to
+submission rather than adding weak RLMT claims.

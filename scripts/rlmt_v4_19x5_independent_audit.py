@@ -273,7 +273,7 @@ def main():
           f"mean_dLL_vs_ORIGINAL={r['mean_deltaLL_vs_original']:+.9f} "
           f"mean_dLL_vs_GLOBAL={r['mean_deltaLL_vs_global']:+.9f}")
     print("RLMT4_19X5_ORIGINAL_RLR_PATIENT_PARITY_AUDIT=PASS")
-    print("RLMT4_19X5_475_NEW_PREDICTION_VECTORS_AUDITED=PASS")
+    print("RLMT4_19X5_475_METHOD_FOLD_PREDICTION_VECTORS_AUDITED=PASS")
     print("SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEV_ONLY")
     print("REPORT="+str(audit))
 if __name__=="__main__":

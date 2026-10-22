@@ -136,7 +136,7 @@ for(ds_i in seq_len(nrow(inputs))) {
         " delta_original=",sprintf("%+.9f",metric-ref_ll),
         " original_pair_count=",correction_count)
     }
-    message("RLMT6_PILOT_ROOT_PARITY=PASS ",
+    message("RLMT6_19X5_ROOT_PARITY=PASS ",
          dataset,":",f$split_id," max_abs=",maxerr,
          " warnings=",length(warn))
   }

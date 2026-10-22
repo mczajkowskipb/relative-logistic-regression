@@ -85,7 +85,7 @@ python3 scripts/rlmt_v4_19x5_independent_audit.py \
 cat "$OUT/independent_audit.log"
 grep -qx "RLMT4_19X5_ORIGINAL_RLR_PATIENT_PARITY_AUDIT=PASS" \
  "$OUT/independent_audit.log"
-grep -qx "RLMT4_19X5_475_NEW_PREDICTION_VECTORS_AUDITED=PASS" \
+grep -qx "RLMT4_19X5_475_METHOD_FOLD_PREDICTION_VECTORS_AUDITED=PASS" \
  "$OUT/independent_audit.log"
 echo "RLMT4_19X5_FULL_AUDIT=PASS"
 echo "SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEV_ONLY"

@@ -51,6 +51,21 @@ def proper(y,prob,positive):
     brier=sum((t-p)**2 for t,p in zip(binary,prob))/len(y)
     return ll,brier
 
+def classification(y,prob,positive):
+    """Binary balanced accuracy and macro-F1 at fixed 0.5 threshold."""
+    t=[int(z==positive) for z in y]
+    h=[int(p>=0.5) for p in prob]
+    recalls=[]
+    f1=[]
+    for label in (0,1):
+        tp=sum(x==label and z==label for x,z in zip(h,t))
+        fp=sum(x==label and z!=label for x,z in zip(h,t))
+        fn=sum(x!=label and z==label for x,z in zip(h,t))
+        require(tp+fn>0,"missing class at fixed threshold evaluation")
+        recalls.append(tp/(tp+fn))
+        f1.append(2*tp/(2*tp+fp+fn) if (2*tp+fp+fn)>0 else 0)
+    return stats.mean(recalls),stats.mean(f1)
+
 def create_csv(path,rows):
     require(len(rows)>0,"cannot save empty audit")
     with path.open("x",newline="",encoding="utf-8") as f:
@@ -108,6 +123,7 @@ def main():
             y=[r["y_true"] for r in frozenp]
             pold=[number(r["prob"]) for r in frozenp]
             original_ll,original_brier=proper(y,pold,positive)
+            original_ba,original_f1=classification(y,pold,positive)
             probs={}
             rowfolds=[]
             for method in METHODS:
@@ -131,6 +147,7 @@ def main():
                     require(max(abs(a-b) for a,b in zip(p,pold))<1e-9,
                             "ORIGINAL_RLR v4 differs from archived paper")
                 ll,brier=proper(y,p,positive)
+                ba,f1=classification(y,p,positive)
                 for name,val in [
                     ("logloss",ll),
                     ("original_logloss",original_ll),
@@ -154,8 +171,13 @@ def main():
                     world=world,dataset=dataset,split_id=fold,
                     method=method,n_test=len(p),
                     route_n=split,logloss=ll,brier=brier,
+                    balanced_accuracy=ba,macro_f1=f1,
                     original_logloss=original_ll,
                     original_brier=original_brier,
+                    original_balanced_accuracy=original_ba,
+                    original_macro_f1=original_f1,
+                    delta_balanced_accuracy_vs_original=ba-original_ba,
+                    delta_macro_f1_vs_original=f1-original_f1,
                     delta_ll_vs_original=ll-original_ll,
                     delta_ll_vs_global=0.0,
                     delta_brier_vs_original=brier-original_brier,
@@ -185,6 +207,10 @@ def main():
                     r["delta_brier_vs_original"] for r in z),
                 mean_delta_brier_vs_global=stats.mean(
                     r["delta_brier_vs_global"] for r in z),
+                mean_delta_ba_vs_original=stats.mean(
+                    r["delta_balanced_accuracy_vs_original"] for r in z),
+                mean_delta_macro_f1_vs_original=stats.mean(
+                    r["delta_macro_f1_vs_original"] for r in z),
                 mean_abs_gamma=stats.mean(abs(r["gamma"]) for r in z),
                 shared_fold_warnings=sum(r["warning_count"] for r in z)))
     require(audited==475 and len(fold_audit)==475 and
@@ -217,7 +243,11 @@ def main():
             mean_deltaBrier_vs_original=stats.mean(
                 r["mean_delta_brier_vs_original"] for r in z),
             mean_deltaBrier_vs_global=stats.mean(
-                r["mean_delta_brier_vs_global"] for r in z)))
+                r["mean_delta_brier_vs_global"] for r in z),
+            mean_deltaBA_vs_original=stats.mean(
+                r["mean_delta_ba_vs_original"] for r in z),
+            mean_deltaMacroF1_vs_original=stats.mean(
+                r["mean_delta_macro_f1_vs_original"] for r in z)))
         for i,r in enumerate(z):
             loo.append(dict(method=method,omitted_dataset=r["dataset"],
                 mean_deltaLL_vs_original_excluded=

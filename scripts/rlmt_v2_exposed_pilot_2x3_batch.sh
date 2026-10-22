@@ -29,10 +29,15 @@ test "$(git -C "$REF" rev-parse HEAD)" = "$OLD" || {
 test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)" || {
  echo "V2_PILOT_STOP: local tracked changes" >&2; exit 2;
 }
-STAGE2_STATUS="$STAGE2/results/rlmt_v2_stage2_metadata_v1/status.txt"
-test -f "$STAGE2_STATUS" && \
- grep -qx "RLMT_V2_STAGE2_EXIT=0" "$STAGE2_STATUS" || {
- echo "V2_PILOT_STOP: v2 stage2 has not passed" >&2; exit 2;
+# Biomedical GEO metadata acquisition is not a prerequisite to run
+# EXPOSED paper-fold algorithm checks. Only the repaired real H1/H2
+# synthetic gate must pass; this avoids unnecessarily blocking work
+# on a separate clinical-source audit.
+SYNTH_STATUS="$STAGE2/results/rlmt_v2_aligned_offset_synthetic_gate_v2/status.txt"
+test -f "$SYNTH_STATUS" && \
+ grep -qx "RLMT_V2_SYNTH_GATE_EXIT=0" "$SYNTH_STATUS" || {
+ echo "V2_PILOT_STOP: H1/H2 post-fix synthetic gate v2 has not passed" >&2
+ exit 2
 }
 test -f "$REF/results/rlmt_dc_published_data_5fold_v1/status.txt" && \
  grep -qx "RUNNER_EXIT=0" \

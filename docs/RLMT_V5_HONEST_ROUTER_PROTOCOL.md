@@ -108,3 +108,48 @@ for some cohorts. This router can still overfit meta-selection
 to small inner folds. Do NOT claim reliable improvement until
 new, independently acquired patient/lab-batch/cohort validation
 with the algorithm locked before any outcomes is completed.
+
+
+## FINAL EXPOSED 2×3 pilot checkpoint (2026-10-23)
+
+The user executed the pinned v5 branch on Ubuntu and provided:
+\`RLMT5_PILOT_BATCH_EXIT=0\`,
+\`RLMT5_SYNTH_REAL_GUARDED_CV=PASS\`,
+\`RLMT5_PILOT_ALL_TRAINING=PASS\`,
+\`RLMT5_PILOT_INDEPENDENT_PATIENT_AUDIT=PASS\`,
+\`RLMT5_PILOT_ORIGINAL_RLR_PARENT_PARITY=PASS\`.
+All SIX outer fold decisions were EXACT \`ORIGINAL_RLR\` with
+router weight zero: chen-2002 folds 00/01/02; gordon-2002
+folds 00/01/02. Mean ΔLL vs original RLR = **0.000000000**;
+accepted inner-validated corrections **0/6**. Maximum reported
+original-root patient probability discrepancy 4.44e−16.
+
+Interpretation: technically valid identity/fallback behavior,
+**NO SCIENTIFIC EVIDENCE of added predictive benefit**.
+Do NOT launch the same unmodified 19×5 study solely to obtain
+more zero-weight models and do not weaken the predeclared router
+threshold to chase already-observed outer test labels.
+
+**Next zero-retraining diagnostic, before new algorithm design:**
+Read \`results/rlmt_v5_honest_router_2x3_v1/models/<dataset>/<fold>/inner_validation_evidence.csv\`
+in all six cases. Each file has 12 real evaluated inner
+routes/weights and columns
+\`method\`, \`weight\`, \`mean_gain\`, \`gain_se\`,
+\`conservative_gain\`, \`inner_fold_gains\`.
+Distinguish cases where (a) ALL mean gains were <=0 from
+(b) gains were positive but the uncertainty/selection-cost
+threshold rejected them. The exact acceptance condition
+is \`mean_gain - 0.5*gain_se - 0.00025 > 0.00025\`.
+This diagnosis is a read-only retrospective analysis and
+MUST NOT motivate changing this version's thresholds.
+
+A more distinct future hypothesis (NOT IMPLEMENTED and
+not yet demonstrated) is an **original-RLR-pair restricted
+margin residual layer**, using only the original parent-selected
+<=10 gene pairs, with normalized rank distances and strictly
+nested training-only shrinkage. This removes the unvalidated
+4096 random candidate screening that destabilized some v4
+corrections, preserves one-rule interpretability and makes
+novel use of information discarded by ternary rank coding.
+Any future validation on these already inspected 19 cohorts
+remains EXPOSED.

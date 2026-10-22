@@ -1,0 +1,116 @@
+#!/usr/bin/env python3
+"""RLMT-v6 read-only heldout patient-level independent pilot audit."""
+import argparse
+import csv
+import math
+from pathlib import Path
+from statistics import mean
+
+ROOT=Path(__file__).resolve().parent.parent
+OUT=ROOT/"results/rlmt_v6_original_rank_margin_2x3_v1"
+OLD="results/rlmt_dc_published_data_5fold_v1"
+DS=("chen-2002","gordon-2002")
+FOLDS=("rep00_fold00","rep00_fold01","rep00_fold02")
+METHODS=("ORIGINAL_RLR","GLOBAL_CAL",
+         "ONEPAIR_MARGIN","CONSENSUS_MARGIN","ALLPAIR_MARGIN")
+def need(ok,msg):
+    if not ok:raise SystemExit("RLMT6_AUDIT_STOP: "+msg)
+def csvrows(p):
+    need(p.is_file(),"missing "+str(p))
+    with p.open(newline="",encoding="utf-8") as f:
+        rows=list(csv.DictReader(f))
+    need(rows,"empty "+str(p))
+    return rows
+def num(s):
+    try:v=float(s)
+    except (TypeError,ValueError) as e:
+        raise SystemExit("RLMT6_AUDIT_STOP: nonnumeric") from e
+    need(math.isfinite(v),"nonfinite")
+    return v
+def ll(y,p,pos):
+    need(len(y)==len(p)>0 and all(0<=z<=1 for z in p),
+         "invalid probability")
+    yy=[int(t==pos) for t in y]
+    need(set(yy)=={0,1},"both classes required for test")
+    z=[max(1e-15,min(1-1e-15,a)) for a in p]
+    return (-sum(t*math.log(q)+(1-t)*math.log1p(-q)
+             for t,q in zip(yy,z))/len(y),
+            sum((t-q)**2 for t,q in zip(yy,p))/len(y))
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument("--original-ref",required=True)
+    args=ap.parse_args()
+    ref=Path(args.original_ref).resolve(strict=True)
+    old=(ref/OLD).resolve(strict=True)
+    need(Path.cwd().resolve()==ROOT,"run inside v6 worktree")
+    need((old/"status.txt").read_text().strip()=="RUNNER_EXIT=0",
+         "old original 285 records incomplete")
+    m=csvrows(OUT/"run_manifest.csv")
+    prior=csvrows(old/"run_manifest.csv")
+    need(len(m)==30 and len(prior)==285,
+         "incorrect pilot and original model inventory")
+    k={(r["dataset"],r["split_id"],r["method"]):r for r in m}
+    o={(r["dataset"],r["split_id"],r["method"]):r for r in prior}
+    need(len(k)==30,"duplicate method-fold keys")
+    need(set(k)=={(d,s,method) for d in DS for s in FOLDS
+                  for method in METHODS},
+         "not exact 2x3x5 frozen design")
+    scores={method:[] for method in METHODS}
+    for ds in DS:
+      for sid in FOLDS:
+        baseline=o[(ds,sid,"RLR")]
+        olddir=(ref/baseline["model_dir"]).resolve(strict=True)
+        need(olddir.is_relative_to(old),
+             "original frozen prediction path escapes archive")
+        original=csvrows(olddir/"predictions_test.csv")
+        classes=csvrows(olddir.parent/"class_support.csv")
+        need(len(classes)==2,"positive label reference unavailable")
+        positive=classes[1]["class"]
+        ids=[(r["sample_id"],r["y_true"]) for r in original]
+        need(len(ids)==len(set(ids)),"duplicate original patient ids")
+        y=[r["y_true"] for r in original]
+        origprob=[num(r["prob"]) for r in original]
+        origll,_=ll(y,origprob,positive)
+        for method in METHODS:
+          row=k[(ds,sid,method)]
+          need(row["status"]=="OK" and
+               row["scientific_stage"]=="EXPOSED_RETROSPECTIVE_DEV_ONLY",
+               "model status or honesty marker invalid")
+          p=(ROOT/row["model_dir"]).resolve(strict=True)
+          need(p.is_relative_to(OUT.resolve(strict=True)),
+               "new model escaped output root")
+          saved=csvrows(p/"predictions_test.csv")
+          need([(r["sample_id"],r["y_true"]) for r in saved]==ids,
+               "patient/sample label alignment mismatch")
+          probs=[num(r["prob"]) for r in saved]
+          root=[num(r["original_RLR_prob"]) for r in saved]
+          need(max(abs(x-z) for x,z in zip(root,origprob))<1e-9,
+               "v6 ORIGINAL_RLR parent not original paper")
+          v,b=ll(y,probs,positive)
+          need(abs(v-num(row["logloss"]))<1e-9 and
+               abs(b-num(row["brier"]))<1e-9 and
+               abs(origll-num(row["original_logloss"]))<1e-9 and
+               abs((v-origll)-num(row["delta_vs_original"]))<1e-9,
+               "saved metrics disagree with patient predictions")
+          need(int(row["n_test"])==len(saved),
+               "unexpected test sample count")
+          n=int(row["extra_pair_n"])
+          need(0<=n<=10,"rank-margin model exceeds original 10 pairs")
+          if method in ("ORIGINAL_RLR","GLOBAL_CAL"):
+              need(n==0,"control incorrectly records extra pair")
+          elif method=="ONEPAIR_MARGIN":
+              need(n<=1,"one-pair model uses multiple pairs")
+          scores[method].append((ds,sid,v-origll,n))
+    need(all(len(v)==6 for v in scores.values()),
+         "all fold-method predictions must be checked")
+    for method in METHODS:
+        rows=scores[method]
+        wins=sum(z[2]<-1e-10 for z in rows)
+        losses=sum(z[2]>1e-10 for z in rows)
+        print(f"{method}: used_orig_pair_count={sum(x[3] for x in rows)}/6 "
+              f"foldW/L/T_vs_original={wins}/{losses}/{6-wins-losses} "
+              f"mean_deltaLL_original={mean(x[2] for x in rows):+.9f}")
+    print("RLMT6_ORIGINAL_RLR_PATIENT_PARITY_AUDIT=PASS")
+    print("RLMT6_30_METHOD_FOLD_PREDICTION_VECTORS_AUDITED=PASS")
+    print("SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEV_ONLY")
+if __name__=="__main__":main()

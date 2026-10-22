@@ -128,7 +128,7 @@ rlmt_v2_fit_h2_leaf <- function(X,y,pool,parent_oof_prob,conf) {
   fit <- glmnet::glmnet(
     x=R,y=rlmt_y01(y),family="binomial",offset=offset,
     alpha=0,lambda=1,intercept=FALSE,standardize=FALSE,
-    penalty.factor=rep(1,ncol(R)),thresh=1e-8)
+    penalty.factor=rep(1,ncol(R)),control=list(thresh=1e-8))
   list(identity="H2_FIXED_RIDGE_OFFSET_V2",fit=fit,pairs=pairs,
        lambda=1,alpha=0,intercept=FALSE,standardize=FALSE,
        penalty_factor=rep(1,ncol(R)),parent_oof=parent_oof_prob,

@@ -104,3 +104,78 @@ results remain EXPOSED RETROSPECTIVE DEVELOPMENT.
 A genuinely new external cohort with prospectively
 frozen variants is necessary for a trustworthy
 out-of-development assessment.
+
+
+## FINAL RLMT-v3B 19×5 retrospective control result (2026-10-22)
+
+**Real operator-provided final logs, independently audited:**
+\`RLMT_V3B_19X5_BATCH_EXIT=0\`;
+\`RLMT_V3B_19X5_REAL_TRAINING_BUNDLES=95\`;
+\`RLMT_V3B_19X5_METHOD_FOLD_RESULTS=380\`;
+\`RLMT_V3B_19X5_INDEPENDENT_PATIENT_AUDIT=PASS\`;
+\`RLMT_V3B_19X5_AUDITED_FOLD_METHODS=380\`;
+\`SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEV_ONLY\`.
+
+**Equal-dataset mean paired held-out logloss delta, 19 datasets:**
+
+| Method | Real split folds / 95 | Dataset W/L/T vs GLOBAL_RIDGE_CAL | ΔLL vs archived ORIGINAL RLR | ΔLL vs GLOBAL_RIDGE_CAL |
+|---|---:|---:|---:|---:|
+| GLOBAL_RIDGE_CAL | 0 | 0/0/19 | +0.000606427 | +0.000000000 |
+| STUMP_TSP_RIDGE | 90 | 11/7/1 | +0.000963708 | +0.000357282 |
+| STUMP_GINI_RIDGE | 90 | 9/9/1 | +0.001073118 | +0.000466691 |
+| STUMP_RESID_RIDGE | 90 | 10/8/1 | +0.001535369 | +0.000928942 |
+
+Negative delta would be better. All four models are **worse on
+overall dataset-equal mean logloss than ORIGINAL RLR**. All three
+relational stumps are **worse on mean logloss than the no-tree
+GLOBAL_RIDGE_CAL control**. Route creation frequency 90/95
+does not establish predictive merit. TSP 11/7/1 dataset W/L/T
+relative to calibration does not overcome a positive average delta.
+
+Previous v3 2×3 EXPOSED pilot looked promising for TSP ridge:
+mean ΔLL vs original −0.00247027, but the broader full
+19×5 audit contradicted the favorable small-sample conclusion.
+The plain Beta-frequency stumps and depth2-pruned Beta
+trees were worse than original by ~+0.218 and ~+0.204
+in that earlier 6-fold pilot and should not be promoted.
+
+### SCIENTIFIC NO-GO AND NEXT APPROPRIATE RESEARCH QUESTION
+
+**No-go** for superiority claims about v3B TSP/Gini/residual
+stumps. Do NOT edit original paper to include a claimed DT
+improvement or launch the 470-position CompCancer experiment
+to mine a favorable result. No retroactive selection of 11
+winning datasets or adjustment of λ/split score based on these
+95 exposed outer fold outcomes.
+
+**Identified comparability caveat to analyze, not conceal:**
+The calibrated no-split model penalizes ONE global offset
+coefficient by ridge λ=1; the two-branch stump penalizes
+TWO separate route coefficients with the same λ. A common
+offset duplicated on both branches incurs a different
+penalty than a single global intercept. Consequently the
+current comparison evaluates two entire procedures but
+does not cleanly isolate the incremental conditional effect
+of the relational route while keeping calibration fixed.
+
+**Potential NEW predeclared study (not yet implemented):**
+a hierarchical conditional calibration model
+\`logit(p(x)) = logit(p_RLR(x)) + b_global + γ(z(x)-π)\`,
+where \`z(x) = 1{x_i>x_j}\`, \`π\` is the TRAIN-only route
+frequency, \`b_global\` is the SAME global calibration
+coefficient in control/tree, and \`γ\` alone receives
+ridge shrinkage toward zero. γ=0 is an EXACT nested
+global-calibrated model. The pair selection and γ penalty
+must be determined wholly within training using honest
+cross-fitted predictions with per-fold supervised pair
+re-selection. Evaluate also training-only soft-pruning
+(shrink γ toward zero), Brier/calibration and no-split
+rate. If no meaningful incremental value, stop; do not
+force nonzero trees just to have DT in a paper.
+
+For a publishable **new DT method**, use a genuinely new
+independent validation source/holdout frozen BEFORE reviewing
+new outcomes, along with reproduced historical TSPDT.
+The original RLR manuscript is already complete and
+should stay unchanged. This plan is hypothesis generation,
+not evidence of new superiority.

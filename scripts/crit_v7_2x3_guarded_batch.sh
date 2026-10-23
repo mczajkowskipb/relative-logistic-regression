@@ -63,7 +63,7 @@ Rscript --vanilla \
  tail -n 120 "$OUT/synthetic.log"; exit 1;
 }
 tail -n 35 "$OUT/synthetic.log"
-grep -qx "CRIT7_ORIGINAL_RLR_REAL_SYNTHETIC_PARITY=PASS" \
+grep -qx "CRIT7_REAL_SYNTHETIC_ORIGINAL_ROOT_AND_TREE=PASS" \
  "$OUT/synthetic.log"
 
 echo "=== 3. Original matched 2 datasets x 3 folds x 4 models ==="

@@ -2,6 +2,9 @@
 # Safe CRIT-v7 true conditional gene-order tree plus global interaction 2x3 exposed pilot.
 # Refuses existing result directory and any change to frozen original.
 set -Eeuo pipefail
+# Report ANY early assertion failure, even before the results root exists.
+trap 'rc=$?; echo "CRIT7_PREFLIGHT_ERROR rc=$rc line=$LINENO command=$BASH_COMMAND" >&2' ERR
+echo "CRIT7_PREFLIGHT_BEGIN=TRUE"
 test "$#" -eq 1 || {
   echo "CRIT7_STOP: provide immutable ORIGINAL RLR checkout" >&2
   exit 2
@@ -13,7 +16,8 @@ HEAD="$(git rev-parse HEAD)"
 REF_SHA="4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
 test "$(git rev-parse origin/main)" = "$MAIN"
-test "$(git rev-parse origin/feature/crit-v7-regime-switch-probe)" = "$HEAD"
+# EXACT branch of THIS pinned repair, not the previous frozen v7 HEAD.
+test "$(git rev-parse origin/feature/crit-v7-preflight-repair-02)" = "$HEAD"
 test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
 # The biomedical CRIT-v7 algorithm and its original RLR
 # dependencies must remain byte-identical to the initial prepared
@@ -44,6 +48,13 @@ grep -qx "RUNNER_EXIT=0" \
 for bin in Rscript python3 sha256sum; do
  command -v "$bin" >/dev/null
 done
+echo "CRIT7_GIT_ORIGINAL_DEPENDENCIES_PREFLIGHT=PASS"
+# Called synchronously by the launcher BEFORE a log/PID is allocated.
+# Never create/overwrite any results in this mode.
+if [ "${CRIT7_PREFLIGHT_ONLY:-0}" = "1" ]; then
+  echo "CRIT7_PREFLIGHT_ONLY=PASS"
+  exit 0
+fi
 
 OUT="results/crit_v7_original_rlr_2x3_v1"
 test ! -e "$OUT" || {

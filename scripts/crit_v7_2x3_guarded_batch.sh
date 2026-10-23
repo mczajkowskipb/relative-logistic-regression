@@ -12,9 +12,20 @@ cd "$ROOT"
 HEAD="$(git rev-parse HEAD)"
 REF_SHA="4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
-test "$(git rev-parse origin/main)" = "$MAIN"
-test "$(git rev-parse origin/feature/crit-v7-regime-switch-probe)" = "$HEAD"
-test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
+echo "=== CRIT7 PREFLIGHT: source identity and frozen originals ==="
+echo "CRIT7_RUNNING_HEAD=$HEAD"
+test "$(git rev-parse origin/main)" = "$MAIN" || {
+  echo "CRIT7_STOP: original main SHA is not the expected frozen ref" >&2
+  exit 2
+}
+test "$(git rev-parse origin/feature/crit-v7-preflight-fix-02)" = "$HEAD" || {
+  echo "CRIT7_STOP: runner HEAD != pinned fix-02 remote branch" >&2
+  exit 2
+}
+test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA" || {
+  echo "CRIT7_STOP: immutable published original RLR HEAD changed" >&2
+  exit 2
+}
 # The biomedical CRIT-v7 algorithm and its original RLR
 # dependencies must remain byte-identical to the initial prepared
 # pilot; this attempt repairs ONLY the previously-invalid synthetic
@@ -37,8 +48,14 @@ do
   }
 done
 echo "CRIT7_BIOMEDICAL_ALGORITHM_UNCHANGED=PASS"
-test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)"
-test -z "$(git -C "$REF" -c core.filemode=false status --porcelain --untracked-files=no)"
+test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)" || {
+  echo "CRIT7_STOP: tracked changes in CRIT-v7 worktree" >&2
+  exit 2
+}
+test -z "$(git -C "$REF" -c core.filemode=false status --porcelain --untracked-files=no)" || {
+  echo "CRIT7_STOP: tracked modifications in original RLR reference" >&2
+  exit 2
+}
 grep -qx "RUNNER_EXIT=0" \
  "$REF/results/rlmt_dc_published_data_5fold_v1/status.txt"
 for bin in Rscript python3 sha256sum; do

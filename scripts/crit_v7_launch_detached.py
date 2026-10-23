@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BRANCH = "feature/crit-v7-m10-synthetic-repair-01"
+BRANCH = "feature/crit-v7-preflight-fix-02"
 REF_SHA = "4873878f57f806bf5b52144756f8087b17fa540c"
 REL_RESULTS = "results/crit_v7_original_rlr_2x3_v1"
 RUNNER = "scripts/crit_v7_2x3_guarded_batch.sh"

@@ -96,6 +96,22 @@ replay<-crit7_predict(readRDS(archive_model),test$X)
 unlink(archive_model)
 chk(identical(pred,replay),"bit-exact RDS replay")
 
+# Positive mechanism test: on a NEW planted XOR interaction,
+# a prior constant-probability model is unable to express the signal.
+# D and V are disjoint; the actual tree must be accepted on V.
+xorD<-make_xy(320L,33015L,"xor_d_","interaction")
+xorV<-make_xy(180L,33016L,"xor_v_","interaction")
+strong<-crit7_select(xorD$X,xorD$y,rep(.5,nrow(xorD$X)),
+        xorV$X,xorV$y,rep(.5,nrow(xorV$X)),
+        fit$original,crit7_cfg())
+chk(isTRUE(strong$accepted) &&
+      !is.null(strong$selected) &&
+      strong$best_confirmed_lower>crit7_cfg()$confirmation_min_gain,
+    "planted disjoint-gene XOR gives a confirmed REAL rank split")
+chk(strong$selected$rel_false != strong$selected$gate &&
+      strong$selected$rel_true != strong$selected$gate,
+    "two separately chosen leaf predictors not equal to gate")
+
 # Zero corrected-residual evidence must not force a model tree.
 # Fit on artificial perfect parent OOF scores and perfect V scores;
 # zero of the D residual scores then no positive heldout benefit.

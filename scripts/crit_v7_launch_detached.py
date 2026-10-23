@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BRANCH = "feature/crit-v7-m10-synthetic-repair-01"
+BRANCH = "feature/crit-v7-m10-startup-fix-02"
 REF_SHA = "4873878f57f806bf5b52144756f8087b17fa540c"
 REL_RESULTS = "results/crit_v7_original_rlr_2x3_v1"
 RUNNER = "scripts/crit_v7_2x3_guarded_batch.sh"
@@ -47,16 +47,16 @@ def main() -> int:
         return 2
     for path in [
         REPO / REL_RESULTS,
-        REPO / "crit_v7_background.log",
-        REPO / "pilot.pid",
+        REPO / "crit_v7_attempt02_background.log",
+        REPO / "pilot_attempt02.pid",
     ]:
         if path.exists() or path.is_symlink():
             print(f"STOP: existing state detected, refusing overwrite: {path}",
                   file=sys.stderr)
             return 2
 
-    log_path = REPO / "crit_v7_background.log"
-    pid_path = REPO / "pilot.pid"
+    log_path = REPO / "crit_v7_attempt02_background.log"
+    pid_path = REPO / "pilot_attempt02.pid"
     with log_path.open("xb") as logfile:
         child = subprocess.Popen(
             ["nice", "-n", "10", "bash", RUNNER, str(reference)],

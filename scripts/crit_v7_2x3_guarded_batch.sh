@@ -2,6 +2,7 @@
 # Safe CRIT-v7 true conditional gene-order tree plus global interaction 2x3 exposed pilot.
 # Refuses existing result directory and any change to frozen original.
 set -Eeuo pipefail
+trap 'rc=$?; echo "CRIT7_RUNNER_FAILURE_EXIT=$rc AT_LINE=$LINENO" >&2' ERR
 test "$#" -eq 1 || {
   echo "CRIT7_STOP: provide immutable ORIGINAL RLR checkout" >&2
   exit 2
@@ -13,7 +14,11 @@ HEAD="$(git rev-parse HEAD)"
 REF_SHA="4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
 test "$(git rev-parse origin/main)" = "$MAIN"
-test "$(git rev-parse origin/feature/crit-v7-regime-switch-probe)" = "$HEAD"
+test "$(git rev-parse origin/feature/crit-v7-preflight-and-systemd-fix2)" = "$HEAD" || {
+ echo "CRIT7_STOP: this runner requires its own pinned fix2 branch HEAD" >&2
+ exit 2
+}
+echo "CRIT7_SOURCE_REF=PASS $HEAD"
 test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
 # The biomedical CRIT-v7 algorithm and its original RLR
 # dependencies must remain byte-identical to the initial prepared

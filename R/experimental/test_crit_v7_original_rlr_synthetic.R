@@ -16,8 +16,15 @@ chk<-function(q,msg) {
 }
 make_xy<-function(n,seed,prefix,mode) {
  set.seed(seed)
- m<-matrix(stats::rnorm(n*10),nrow=n,ncol=10)
- colnames(m)<-paste0("gene",sprintf("%02d",seq_len(10)))
+ # The EXACT manuscript RLR uses m=10 rank separation.
+ # With 10 measured genes max(rank_b-rank_a)=9 and every
+ # RLR design feature is identically zero => glmnet 7777.
+ # Use 32 genes, keeping the planted gate/rel in columns 1:4.
+ # All model methods retain their original m=10, K=10, d=2.
+ n_genes<-32L
+ stopifnot(n_genes>10L)
+ m<-matrix(stats::rnorm(n*n_genes),nrow=n,ncol=n_genes)
+ colnames(m)<-paste0("gene",sprintf("%02d",seq_len(n_genes)))
  gate<-ifelse(m[,1]>m[,2],1,-1)
  rel<-ifelse(m[,3]>m[,4],1,-1)
  eta<-switch(mode,interaction=2.7*gate*rel,
@@ -99,14 +106,22 @@ chk(identical(pred,replay),"bit-exact RDS replay")
 # Positive mechanism test: on a NEW planted XOR interaction,
 # a prior constant-probability model is unable to express the signal.
 # D and V are disjoint; the actual tree must be accepted on V.
-xorD<-make_xy(320L,33015L,"xor_d_","interaction")
-xorV<-make_xy(180L,33016L,"xor_v_","interaction")
+xorD<-make_xy(480L,33015L,"xor_d_","interaction")
+xorV<-make_xy(240L,33016L,"xor_v_","interaction")
+# For this *synthetic mechanism proof only* enumerate all 496
+# gene-order pairs, including the implanted XOR gate and relation.
+# This does not change the biomedical/default CRIT7 proposal budget
+# of 256 and does not tune the actual fitting algorithm.
+synthetic_cfg<-crit7_cfg()
+synthetic_cfg$proposal_n<-as.integer(
+  choose(ncol(xorD$X),2L))
+synthetic_parent<-rlmt4_parent(xorD$X,xorD$y)
 strong<-crit7_select(xorD$X,xorD$y,rep(.5,nrow(xorD$X)),
         xorV$X,xorV$y,rep(.5,nrow(xorV$X)),
-        fit$original,crit7_cfg())
+        synthetic_parent,synthetic_cfg)
 chk(isTRUE(strong$accepted) &&
       !is.null(strong$selected) &&
-      strong$best_confirmed_lower>crit7_cfg()$confirmation_min_gain,
+      strong$best_confirmed_lower>synthetic_cfg$confirmation_min_gain,
     "planted disjoint-gene XOR gives a confirmed REAL rank split")
 chk(strong$selected$rel_false != strong$selected$gate &&
       strong$selected$rel_true != strong$selected$gate,

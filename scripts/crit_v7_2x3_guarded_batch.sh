@@ -15,6 +15,28 @@ MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
 test "$(git rev-parse origin/main)" = "$MAIN"
 test "$(git rev-parse origin/feature/crit-v7-regime-switch-probe)" = "$HEAD"
 test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
+# The biomedical CRIT-v7 algorithm and its original RLR
+# dependencies must remain byte-identical to the initial prepared
+# pilot; this attempt repairs ONLY the previously-invalid synthetic
+# data generator (n_genes=10 vs RLR m=10).
+ORIGINAL_CRIT_SHA="6989cf2f2a1f4af75018c74fba5f901304115839"
+for unmodified in \
+  R/experimental/crit_v7_original_rlr_two_leaf.R \
+  R/experimental/rlmt_v4_rank_repair.R \
+  R/experimental/crit_v7_original_rlr_2x3_pilot.R \
+  scripts/crit_v7_2x3_independent_audit.py \
+  R/new/07_world_protocol_utils.R \
+  R/new/28_rlmt_utils.R \
+  R/new/40_rlmt_dc_utils.R \
+  R/new/42_rlmt_dc_run.R
+do
+  test "$(git hash-object "$unmodified")" = \
+       "$(git rev-parse "$ORIGINAL_CRIT_SHA:$unmodified")" || {
+    echo "CRIT7_STOP: unrelated frozen algorithm changed: $unmodified" >&2
+    exit 2
+  }
+done
+echo "CRIT7_BIOMEDICAL_ALGORITHM_UNCHANGED=PASS"
 test -z "$(git -c core.filemode=false status --porcelain --untracked-files=no)"
 test -z "$(git -C "$REF" -c core.filemode=false status --porcelain --untracked-files=no)"
 grep -qx "RUNNER_EXIT=0" \

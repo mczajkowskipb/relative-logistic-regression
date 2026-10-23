@@ -2,6 +2,9 @@
 # Safe CRIT-v7 true conditional gene-order tree plus global interaction 2x3 exposed pilot.
 # Refuses existing result directory and any change to frozen original.
 set -Eeuo pipefail
+# Never silently die before the guarded results directory exists.
+trap 'rc=$?; printf "CRIT7_PREFLIGHT_OR_BATCH_FAILED exit=%s line=%s cmd=%s\\n" "$rc" "$LINENO" "$BASH_COMMAND" >&2' ERR
+echo "CRIT7_BATCH_PROCESS_ENTERED=PASS"
 test "$#" -eq 1 || {
   echo "CRIT7_STOP: provide immutable ORIGINAL RLR checkout" >&2
   exit 2
@@ -12,9 +15,18 @@ cd "$ROOT"
 HEAD="$(git rev-parse HEAD)"
 REF_SHA="4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
-test "$(git rev-parse origin/main)" = "$MAIN"
-test "$(git rev-parse origin/feature/crit-v7-regime-switch-probe)" = "$HEAD"
-test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA"
+test "$(git rev-parse origin/main)" = "$MAIN" || {
+ echo "CRIT7_STOP: frozen original main ref changed" >&2
+ exit 2
+}
+test "$(git rev-parse origin/feature/crit-v7-m10-startup-fix-02)" = "$HEAD" || {
+ echo "CRIT7_STOP: pinned startup-fix-02 branch SHA differs from checkout" >&2
+ exit 2
+}
+test "$(git -C "$REF" rev-parse HEAD)" = "$REF_SHA" || {
+ echo "CRIT7_STOP: frozen original RLR commit mismatch" >&2
+ exit 2
+}
 # The biomedical CRIT-v7 algorithm and its original RLR
 # dependencies must remain byte-identical to the initial prepared
 # pilot; this attempt repairs ONLY the previously-invalid synthetic

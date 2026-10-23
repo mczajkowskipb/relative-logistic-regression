@@ -77,7 +77,7 @@ for(dataset in c("chen-2002","gordon-2002")) {
        "patient sample IDs/labels/split mismatch")
     dest <- file.path(OUT,"models",dataset,f$split_id)
     need(!dir.exists(dest),"would overwrite existing results")
-    message("RLMT6_REAL_FIT=",dataset,":",f$split_id)
+    message("CRIT7_REAL_FIT=",dataset,":",f$split_id)
     warn <- character()
     model <- withCallingHandlers(crit7_fit(Xt,Yt),
       warning=function(w){

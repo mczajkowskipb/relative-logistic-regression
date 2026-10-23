@@ -131,6 +131,6 @@ def main():
               f"foldW/L/T_vs_original={wins}/{losses}/{6-wins-losses} "
               f"mean_deltaLL_original={mean(x[2] for x in rows):+.9f}")
     print("CRIT7_ORIGINAL_RLR_PATIENT_PARITY_AUDIT=PASS")
-    print("CRIT7_30_METHOD_FOLD_PREDICTION_VECTORS_AUDITED=PASS")
+    print("CRIT7_24_METHOD_FOLD_PREDICTION_VECTORS_AUDITED=PASS")
     print("SCIENTIFIC_STAGE=EXPOSED_RETROSPECTIVE_DEV_ONLY")
 if __name__=="__main__":main()

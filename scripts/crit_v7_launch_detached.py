@@ -18,7 +18,7 @@ import time
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
-BRANCH = "feature/crit-v7-m10-synthetic-repair-01"
+BRANCH = "feature/crit-v7-preflight-repair-02"
 REF_SHA = "4873878f57f806bf5b52144756f8087b17fa540c"
 REL_RESULTS = "results/crit_v7_original_rlr_2x3_v1"
 RUNNER = "scripts/crit_v7_2x3_guarded_batch.sh"
@@ -54,6 +54,27 @@ def main() -> int:
             print(f"STOP: existing state detected, refusing overwrite: {path}",
                   file=sys.stderr)
             return 2
+
+    # Fail BEFORE allocating an empty log/PID file. The previous
+    # version silently terminated at a stale hardcoded Git branch
+    # comparison and left only misleading empty artifacts.
+    env = os.environ.copy()
+    env["CRIT7_PREFLIGHT_ONLY"] = "1"
+    preflight = subprocess.run(
+        ["bash", RUNNER, str(reference)], cwd=REPO, env=env,
+        stdin=subprocess.DEVNULL, text=True,
+        stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        check=False,
+    )
+    print(preflight.stdout, end="", flush=True)
+    if preflight.returncode != 0 or (
+        "CRIT7_PREFLIGHT_ONLY=PASS" not in preflight.stdout
+    ):
+        print("CRIT7_LAUNCH_PREFLIGHT=FAILED rc=" +
+              str(preflight.returncode), file=sys.stderr)
+        print("No log, PID, or results root created.", file=sys.stderr)
+        return 2
+    print("CRIT7_LAUNCH_PREFLIGHT=PASS", flush=True)
 
     log_path = REPO / "crit_v7_background.log"
     pid_path = REPO / "pilot.pid"

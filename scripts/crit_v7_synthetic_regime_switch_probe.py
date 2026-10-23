@@ -33,7 +33,7 @@ N_TEST = 1400
 BASELINE_L2_C = 0.23
 LEAF_RIDGE_PENALTY = 0.08
 CANDIDATES_TO_CONFIRM = 8
-VALIDATION_FRACTION = 0.32
+DISCOVERY_FRACTION = 0.68
 CONFIRMATION_SE_MULTIPLIER = 1.50
 CONFIRMATION_GAIN_PENALTY = 0.015
 FIRST_HOLDOUT_SEED = 8100
@@ -130,7 +130,7 @@ def select_tree_on_outer_train(
                  np.ndarray | None], float, tuple[int, int]]:
     # Completely separate discovery D and confirmation V.
     order = np.random.default_rng(seed).permutation(len(y))
-    n_d = int((1 - VALIDATION_FRACTION) * len(y))
+    n_d = int(DISCOVERY_FRACTION * len(y))
     d, v = order[:n_d], order[n_d:]
 
     root_d = fit_additive_baseline(x[d], y[d])

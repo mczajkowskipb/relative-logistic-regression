@@ -97,7 +97,7 @@ cat "$OUT/null_simulation.log"
 grep -qx "STAGED_NULL_30000_PAIRED_SIMULATION_DRAWS=PASS" "$OUT/null_simulation.log"
 
 echo "=== 3. INDEPENDENT ARCHIVED AND SIMULATION AUDIT ==="
-python3 scripts/crit_v8_stageD_independent_audit.py "$V7" \
+python3 scripts/crit_v8_stageD_independent_audit.py "$V7" "$REF" \
  > "$OUT/independent_audit.log" 2>&1 || {
  tail -n 100 "$OUT/independent_audit.log" >&2; exit 1;
 }

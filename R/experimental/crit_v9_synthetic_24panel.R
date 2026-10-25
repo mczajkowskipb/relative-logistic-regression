@@ -33,7 +33,9 @@ seed_data<-function(n,seed,prefix,scenario) {
  list(X=X,y=y)
 }
 rows<-list()
+patients<-list()
 j<-0L
+h<-0L
 for(s in seq_along(scenarios)){
  scenario<-scenarios[[s]]
  for(rep in seq_len(6L)){
@@ -64,6 +66,16 @@ for(s in seq_along(scenarios)){
        need(max(abs(p-pred$probs$ORIGINAL_RLR))<1e-12,
             "synthetic rejected correction must match original")
      j<-j+1L
+     h<-h+1L
+     patients[[h]]<-data.frame(
+       scenario=scenario,replicate=rep,method=method,
+       sample_id=rownames(test$X),
+       y_true=as.character(test$y),
+       y_positive=y,
+       prob=as.numeric(p),
+       original_prob=as.numeric(pred$probs$ORIGINAL_RLR),
+       accepted=as.integer(accepted),
+       stringsAsFactors=FALSE)
      rows[[j]]<-data.frame(
        scenario=scenario,replicate=rep,
        seed=seed,n_train=nrow(train$X),n_test=nrow(test$X),
@@ -91,5 +103,9 @@ for(s in seq_along(scenarios)){
 all<-do.call(rbind,rows)
 need(nrow(all)==4L*6L*length(crit9_modes),"panel 24x6 incomplete")
 write.csv(all,file.path(OUT,"synthetic_panel.csv"),row.names=FALSE)
+all_patients<-do.call(rbind,patients)
+need(nrow(all_patients)==24L*length(crit9_modes)*120L,
+     "synthetic patient prediction inventory incomplete")
+write.csv(all_patients,file.path(OUT,"synthetic_panel_patients.csv"),row.names=FALSE)
 message("CRIT9_24_FRESH_SYNTHETIC_DATASETS_SIX_ARMS=PASS")
 message("CRIT9_SYNTHETIC_PANEL_DEVELOPMENT_ONLY")

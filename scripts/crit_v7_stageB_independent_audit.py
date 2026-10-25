@@ -86,6 +86,9 @@ def main() -> None:
             check(olddir.is_relative_to(archived.resolve(strict=True)),
                   "original archived model_dir escaped")
             original_preds = rows(olddir / "predictions_test.csv")
+            class_support = rows(olddir.parent / "class_support.csv")
+            check(len(class_support) == 2, "original class factor levels missing")
+            positive_class = class_support[1]["class"]
             patient_ids = [(r["sample_id"], r["y_true"]) for r in original_preds]
             original_probs = [num(r["prob"]) for r in original_preds]
             for method in METHODS:
@@ -106,8 +109,10 @@ def main() -> None:
                       "original patient probabilities differ")
                 ps = [num(r["prob"]) for r in group]
                 yy = [int(r["y_positive"]) for r in group]
-                check(all(y in (0,1) for y in yy) and set(yy) == {0,1},
-                      "invalid positive-class encoding")
+                check(all(y in (0,1) for y in yy) and set(yy) == {0,1} and
+                      all(int(r["y_true"] == positive_class) == y
+                          for r, y in zip(group, yy)),
+                      "invalid positive-class encoding or factor orientation")
                 check(all(0<=p<=1 for p in ps), "probability outside [0,1]")
                 losses = [logloss(y,p) for y,p in zip(yy,ps)]
                 base_losses = [logloss(y,p) for y,p in zip(yy,original_probs)]

@@ -21,8 +21,8 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent.parent
 REF_SHA = "4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN_SHA = "4079a5ac400f1d2cfded523c7000f655470925ce"
-BRANCH = "feature/crit-v7-preflight-and-systemd-fix2"
-SERVICE = "crit7-fix2.service"
+BRANCH = "feature/crit-v7-systemd-env-fix3"
+SERVICE = "crit7-fix3.service"
 OUT = HERE / "results/crit_v7_original_rlr_2x3_v1"
 RUNNER = "scripts/crit_v7_2x3_guarded_batch.sh"
 
@@ -94,12 +94,21 @@ def main() -> int:
         "--service-type=exec",
         "--working-directory=" + str(HERE),
         "--nice=10",
-        "--setenv=PATH",
-        "--setenv=HOME",
     ]
+    # systemd-run requires KEY=VALUE; '--setenv=PATH' and
+    # '--setenv=HOME' are invalid and prevent service creation.
+    # Preserve the caller's R environment, without invoking a shell.
+    env_vars = {
+        "PATH": os.environ.get("PATH") or "/usr/local/bin:/usr/bin:/bin",
+        "HOME": os.environ.get("HOME") or str(Path.home()),
+    }
     for var in ("R_LIBS_USER", "R_LIBS_SITE", "LD_LIBRARY_PATH"):
         if var in os.environ:
-            runner_command.append("--setenv=" + var)
+            env_vars[var] = os.environ[var]
+    for name, value in env_vars.items():
+        if any(c in value for c in ("\\x00", "\\r", "\\n")):
+            raise RuntimeError("STOP: invalid environment value for " + name)
+        runner_command.append("--setenv=" + name + "=" + value)
     runner_command.extend(["/usr/bin/bash", RUNNER, str(ref)])
     result = command(*runner_command)
     print(result, flush=True)

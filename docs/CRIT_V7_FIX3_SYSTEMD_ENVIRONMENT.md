@@ -13,9 +13,16 @@ Failed to start transient service unit: Invalid environment block.
 
 ## Root cause
 
-Fix2 passed `--setenv=PATH` and `--setenv=HOME`, and optional
-R environment variables without values, to `systemd-run`.
-Each `--setenv` argument must provide a valid `NAME=VALUE` assignment.
+Fix2 passed the variable-name-only form `--setenv=PATH`,
+`--setenv=HOME`, and optional R environment variables in the same
+form. **The NAME-only form is documented as valid** (it inherits the
+corresponding calling-process environment value). Therefore, the
+console message alone does not prove that omission of `=VALUE`
+was the root cause. The host rejected the assembled environment block,
+but no per-variable detail was available. Fix3 switches to explicit
+`NAME=VALUE` arguments and checks control characters to remove this
+ambiguity. If the problem persists, collect host-side environment
+diagnostics rather than asserting a scientific failure.
 This is an infrastructure failure; it says nothing about the synthetic
 or biomedical performance of CRIT.
 

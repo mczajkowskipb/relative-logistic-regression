@@ -106,7 +106,7 @@ def main() -> int:
         if var in os.environ:
             env_vars[var] = os.environ[var]
     for name, value in env_vars.items():
-        if any(c in value for c in ("\\x00", "\\r", "\\n")):
+        if any(c in value for c in ("\x00", "\r", "\n")):
             raise RuntimeError("STOP: invalid environment value for " + name)
         runner_command.append("--setenv=" + name + "=" + value)
     runner_command.extend(["/usr/bin/bash", RUNNER, str(ref)])

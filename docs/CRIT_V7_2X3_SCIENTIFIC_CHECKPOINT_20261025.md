@@ -55,3 +55,44 @@ On the two accepted chen folds, the reported global interaction deltas were −0
 - Preserve fix3 SHA and files; create new code/experiment branches and output directories for any future scientific changes.
 
 **Scientific gate: EXPERIMENTALLY FEASIBLE; SCIENTIFIC ADVANTAGE UNPROVEN.**
+
+## Full six-fold read-only manifest inspection (operator output, 2026-10-25)
+
+The following values were extracted by an operator-run Python script from the existing 24-row `run_manifest.csv`, verified to reside in the pinned fix3 worktree. No models were refitted. `confirmation_lower` is the selection-statistic lower value AFTER one-SE and complexity-cost adjustments, **not** an external confidence interval.
+
+| Dataset | Fold | Tree accepted | Confirmation lower | Global interaction ΔLL | CRIT ΔLL | Original Brier | Global interaction Brier | CRIT Brier |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| chen-2002 | 00 | 0 | −0.001232921 | −0.008467017 | 0 | 0.053951 | 0.049628 | 0.053951 |
+| chen-2002 | 01 | 1 | +0.013741061 | −0.012521440 | −0.003734686 | 0.074066 | 0.069716 | 0.072860 |
+| chen-2002 | 02 | 1 | +0.020378850 | +0.004055763 | −0.007803831 | 0.017754 | 0.019760 | 0.015370 |
+| gordon-2002 | 00 | 0 | −0.001933791 | −0.000222638 | 0 | 0.000027 | 0.000019 | 0.000027 |
+| gordon-2002 | 01 | 0 | −0.002417689 | +0.000679455 | 0 | 0.009584 | 0.009918 | 0.009584 |
+| gordon-2002 | 02 | 0 | −0.001965667 | +0.000175792 | 0 | 0.028356 | 0.028277 | 0.028356 |
+
+Train/test sizes: chen-2002 = 143/36 for each fold; gordon-2002 = 144/37, 145/36, 145/36. All 6 model-fit `warning_count` values reported as zero.
+
+### Dataset-level (means of the three fold deltas in each dataset)
+
+| Dataset | GLOBAL_CAL | GLOBAL_INTERACTION | CRIT_TREE |
+| --- | ---: | ---: | ---: |
+| chen-2002 | −0.000377215 | **−0.005644232** | −0.003846172 |
+| gordon-2002 | −0.000125454 | +0.000210870 | **0.000000000** |
+
+Across the six folds the arithmetic mean CRIT-minus-GLOBAL_INTERACTION delta is **+0.000793595** (smaller logloss is better). On the two accepted folds alone, CRIT has mean −0.005769259 vs GLOBAL_INTERACTION −0.004232839 relative to original RLR. This is an observational, *post-selection* contrast; it is not a controlled efficacy comparison.
+
+### Biological rule identifiers in the accepted folds
+
+- chen-2002 fold 01: gate `f_16745 > f_6257`; FALSE leaf `f_23794 > f_5763`; TRUE leaf `f_20000 > f_4055`.
+- chen-2002 fold 02: gate `f_3506 > f_5763`; FALSE leaf `f_23794 > f_7943`; TRUE leaf `f_20682 > f_6297`.
+
+Only the FALSE-leaf relation contains the same feature identifier `f_23794` on both accepted folds; the paired partner changes. No stable complete gate or leaf-pair recurs across those two fits. These feature IDs are NOT automatically gene symbols; any biological annotation requires a documented mapping from the locked source data.
+
+### Decision for the next research stage
+
+1. **Do not run the entire exposed 19×5 benchmark yet.** Freeze the six-fold evidence and diagnose effect sizes, routing, and selection optimism from saved predictions only.
+2. Make any literal GLM using the exact `(1, z, (1−z)r_false, z r_true)` model design a **representation/parity check**; it must produce the same fitted predictions under identical penalty coding and optimization, not be advertised as an independent predictive baseline.
+3. A genuinely informative comparator is a **non-tree interaction learner** with an aligned feature-selection budget, a comparable regularization budget, and the **same confirmation/reversion-to-original policy**. Preserve a separate unconfirmed interaction control as a diagnostic.
+4. Fix the repeated-use-of-V design: nominate a *single* gate/candidate from discovery D, and use V only for its predetermined acceptance test, or pre-register a statistically defensible multiplicity correction. With n≈143–145 in outer training, subdividing V again may be unstable.
+5. Define and lock independent external dataset/cohort/batch validation before future method selection. The original 19 used datasets cannot serve that confirmatory role.
+
+**Next scientific gate: paired patient-level diagnostic audit and a locked fairness protocol; avoid premature CRIT-v8 tuning.**

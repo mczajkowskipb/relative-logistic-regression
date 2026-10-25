@@ -95,9 +95,9 @@ def main() -> int:
         "--working-directory=" + str(HERE),
         "--nice=10",
     ]
-    # systemd-run requires KEY=VALUE; '--setenv=PATH' and
-    # '--setenv=HOME' are invalid and prevent service creation.
-    # Preserve the caller's R environment, without invoking a shell.
+    # The NAME-only form is documented, but fix2's environment block
+    # was rejected on Ubuntu. Pass explicit NAME=VALUE to rule out
+    # ambiguous environment inheritance and validate control characters.
     env_vars = {
         "PATH": os.environ.get("PATH") or "/usr/local/bin:/usr/bin:/bin",
         "HOME": os.environ.get("HOME") or str(Path.home()),

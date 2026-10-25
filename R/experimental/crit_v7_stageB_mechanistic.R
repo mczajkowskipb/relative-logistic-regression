@@ -40,6 +40,13 @@ jj <- 0L
 for(dataset in c("chen-2002","gordon-2002")) {
  inp <- old_inputs[old_inputs$dataset==dataset,,drop=FALSE]
  need(nrow(inp)==1L,"missing dataset input")
+ # Recheck the source-file byte identity, not just its cohort label.
+ sha_line <- suppressWarnings(system2("sha256sum",
+     shQuote(normalizePath(inp$source_path[[1L]],mustWork=TRUE)),
+     stdout=TRUE))
+ need(length(sha_line)==1L && grepl("^[a-f0-9]{64}[[:space:]]",sha_line[[1L]]) &&
+      identical(tolower(substr(sha_line[[1L]],1L,64L)),
+                tolower(inp$sha256[[1L]])),"original dataset SHA256 mismatch")
  # Original exact input data and original patient IDs are checked on every fold.
  xy <- read_xy_file(inp$source_path[[1L]])
  folds <- make_repeated_stratified_folds(

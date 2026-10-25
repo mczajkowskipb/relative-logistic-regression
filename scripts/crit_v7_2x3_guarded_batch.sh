@@ -14,8 +14,8 @@ HEAD="$(git rev-parse HEAD)"
 REF_SHA="4873878f57f806bf5b52144756f8087b17fa540c"
 MAIN="4079a5ac400f1d2cfded523c7000f655470925ce"
 test "$(git rev-parse origin/main)" = "$MAIN"
-test "$(git rev-parse origin/feature/crit-v7-preflight-and-systemd-fix2)" = "$HEAD" || {
- echo "CRIT7_STOP: this runner requires its own pinned fix2 branch HEAD" >&2
+test "$(git rev-parse origin/feature/crit-v7-systemd-env-fix3)" = "$HEAD" || {
+ echo "CRIT7_STOP: this runner requires its own pinned fix3 branch HEAD" >&2
  exit 2
 }
 echo "CRIT7_SOURCE_REF=PASS $HEAD"

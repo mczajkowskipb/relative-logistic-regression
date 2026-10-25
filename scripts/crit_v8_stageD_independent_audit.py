@@ -29,10 +29,15 @@ def num(x):
     return f
 
 def main():
-    check(len(sys.argv)==2,"usage audit.py CRIT7_WORKTREE")
+    check(len(sys.argv)==3,"usage audit.py CRIT7_WORKTREE ORIGINAL_REF")
     v7=Path(sys.argv[1]).resolve(strict=True)
     v7manifest=read(v7/"results/crit_v7_original_rlr_2x3_v1"/"run_manifest.csv")
     check(len(v7manifest)==24,"v7 prior manifest incomplete")
+    original_ref=Path(sys.argv[2]).resolve(strict=True)
+    original_archive=original_ref/"results/rlmt_dc_published_data_5fold_v1"
+    original_manifest=read(original_archive/"run_manifest.csv")
+    original_keys={(r["dataset"],r["split_id"],r["method"]):r for r in original_manifest}
+    check(len(original_manifest)==285,"original archive inventory incomplete")
     gains=read(OUT/"candidate_V_gains.csv")
     scores=read(OUT/"candidate_score_manifest.csv")
     sim=read(OUT/"null_draws.csv")
@@ -68,6 +73,13 @@ def main():
         ref_ids=[r["sample_id"] for r in candidate[1]]
         n=len(ref_ids)
         check(n>=20 and len(set(ref_ids))==n,"invalid V patient support")
+        orig=original_keys[ds,sid,"RLR"]
+        olddir=(original_ref/orig["model_dir"]).resolve(strict=True)
+        check(olddir.is_relative_to(original_archive.resolve(strict=True)),
+              "archived model path traversal")
+        class_rows=read(olddir.parent/"class_support.csv")
+        check(len(class_rows)==2,"original factor class levels not found")
+        positive=class_rows[1]["class"]
         lowers=[]
         for rank in METHODS:
             rr=candidate[rank]
@@ -81,6 +93,13 @@ def main():
                 check(0<=p0<=1 and 0<=p1<=1,
                       "candidate probability outside [0,1]")
                 gain=num(row["patient_gain"])
+                y=int(row["y_true"]==positive)
+                p0=max(1e-15,min(1-1e-15,p0))
+                p1=max(1e-15,min(1-1e-15,p1))
+                recomputed=-(y*math.log(p0)+(1-y)*math.log1p(-p0))+(
+                            y*math.log(p1)+(1-y)*math.log1p(-p1))
+                check(abs(gain-recomputed)<1e-9,
+                      "saved patient logloss gain incorrect")
                 losses.append(gain)
             avg=sum(losses)/n
             se=math.sqrt(sum((g-avg)**2 for g in losses)/(n-1)/n)

@@ -8,7 +8,7 @@ source("R/new/40_rlmt_dc_utils.R")
 source("R/new/42_rlmt_dc_run.R")
 source("R/experimental/rlmt_v4_rank_repair.R")
 source("R/experimental/crit_v7_original_rlr_two_leaf.R")
-source("R/experimental/crit_v8_single_nomination.R")
+source("R/experimental/crit_v9_d_crossfit_one_shot.R")
 need <- function(ok,msg) {
  if(!isTRUE(ok))stop("CRIT9_SYNTH_STOP: ",msg,call.=FALSE)
  message("PASS ",msg)

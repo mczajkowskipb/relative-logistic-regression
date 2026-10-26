@@ -71,7 +71,7 @@ jobs:
           git hash-object R/new/07_world_protocol_utils.R \
             > results/rlr_same_pairs_weighting_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
           printf '%s\n' \
-            'EXPOSED ORIGINAL PAPER COMPCANCER: 2 original datasets x 3 original outer folds x K10/20/50 x 2 arms, identical selected gene-disjoint pairs and ternary m10 representation, same glmnet alpha0.5 CV lambda.min. Learned individual relational coefficients versus one scalar learned on mean equal vote. Test E used only once. No new cohorts or trees; full patient-level independent audit.' \
+            'EXPOSED ORIGINAL PAPER COMPCANCER: 2 original datasets x 3 original outer folds x K10/20/50 x 2 arms, identical selected gene-disjoint pairs and ternary m10 representation, RLR alpha0.5 CV lambda.min, while scalar calibrated equal-vote comparator is conventional Platt GLM fit on training only. The same shortlisted signed m10 relations are used by both. Learned individual relational coefficients versus calibrated single-slope equal vote. Test E used only once. No new cohorts or trees; full patient-level independent audit.' \
             > results/rlr_same_pairs_weighting_v1/PROTOCOL.txt
 
       - name: Download and verify public expression matrices

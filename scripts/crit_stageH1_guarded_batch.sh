@@ -34,14 +34,20 @@ do
 done
 command -v Rscript >/dev/null
 command -v python3 >/dev/null
-Rscript --vanilla -e 'parse("R/experimental/crit_stageH1_screening_pilot.R")' >/dev/null
+Rscript --vanilla -e '
+ parse("R/experimental/crit_stageH1_pool_guard_fix1.R")
+ parse("R/experimental/test_crit_stageH1_fix1_guards.R")
+ parse("R/experimental/crit_stageH1_screening_pilot.R")
+' >/dev/null
+echo "=== H1 FIX1 POOL-BUDGET REGRESSION ==="
+Rscript --vanilla R/experimental/test_crit_stageH1_fix1_guards.R
 python3 - <<'PY'
 from pathlib import Path
 p=Path("scripts/crit_stageH1_independent_audit.py")
 compile(p.read_text(encoding="utf-8"),str(p),"exec")
 print("STAGEH1_SOURCE_PARSE=PASS")
 PY
-OUT="results/crit_stageH1_bounded_screening_v1"
+OUT="results/crit_stageH1_bounded_screening_fix1_v1"
 test ! -e "$OUT" && test ! -L "$OUT" || {
  echo "H1_STOP: destination already exists; never overwrite" >&2; exit 2;
 }
@@ -52,6 +58,7 @@ fi
 mkdir -p "$OUT"
 printf '%s\n' "$HEAD" > "$OUT/CODE_SHA.txt"
 printf '%s\n' "$H0_SHA" > "$OUT/H0_SOURCE_SHA.txt"
+printf '%s\n' "STAGEH1_HISTORICAL_FAILED_OUTPUT_UNTOUCHED=TRUE" > "$OUT/FAILURE_ARCHIVE_POLICY.txt"
 printf '%s\n' \
  "SCREENING-ONLY D=120; true Bernoulli null offset 0.5 (not original-RLR OOF); 32/64/128/256/512 genes; XOR and null; 8 replicates; fixed random vs per-study random vs rank-covariance-weighted induced-gene graph, each 320-pair pool; exhaustive all 496 pairs only p32; shortlist six undirected disjoint pair-product interactions; all D data only; no parent fitting, V gate, holdout E, or formal type-I calibration; development only" \
  > "$OUT/PROTOCOL.txt"
@@ -60,7 +67,7 @@ on_exit() {
  printf 'STAGEH1_BATCH_EXIT=%s\n' "$rc" > "$OUT/status.txt"
 }
 trap on_exit EXIT
-echo "=== 1. D-ONLY 256 STRATEGY/RANKING RUNS ==="
+echo "=== 1. D-ONLY 256 STRATEGY/RANKING RUNS — H1 FIX1 ==="
 Rscript --vanilla R/experimental/crit_stageH1_screening_pilot.R \
  > "$OUT/256_screening_runs.log" 2>&1 || {
  tail -n 100 "$OUT/256_screening_runs.log" >&2; exit 1;

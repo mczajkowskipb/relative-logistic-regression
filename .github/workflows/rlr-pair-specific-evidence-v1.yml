@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   real-development-smoke:
-    name: Same selected RLR gene pairs: original vs adaptive and graded rank margins
+    name: 'Same selected RLR pairs - original vs adaptive and graded rank margins'
     runs-on: ubuntu-latest
     timeout-minutes: 55
     steps:

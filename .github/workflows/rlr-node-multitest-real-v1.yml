@@ -1,0 +1,126 @@
+name: RLR node sparse multirelation tests real pilot
+
+on:
+  push:
+    branches: [analysis/rlr-node-multitest-final-v1]
+    paths:
+      - '.github/workflows/rlr-node-multitest-real-v1.yml'
+      - 'R/experimental/rlr_node_multitest_v1.R'
+      - 'R/experimental/rlr_node_multitest_v1.R'
+      - 'scripts/rlr_node_multitest_fetch_real_v1.py'
+      - 'scripts/rlr_node_multitest_independent_audit_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-development-smoke:
+    name: Original RLR versus 1/2/5 rank relations as node split test
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision Ubuntu system R + original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots \
+            r-cran-biocmanager
+          Rscript --version
+          # Avoid obsolete BiocManager repository indexing for historical R 4.3:
+          # install the *version-pinned* upstream Bioconductor 3.18 package.
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+                break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e '
+            for(pkg in c("switchBox","glmnet","foreign","pROC","jsonlite"))
+              stopifnot(requireNamespace(pkg,quietly=TRUE))
+            cat("SPARSE_EXACT_RLR_DEPENDENCIES=PASS\n")
+            print(sessionInfo())'
+      - name: Inspect locked source and create isolated results
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/crit_v7_original_rlr_two_leaf.R")' >/dev/null
+          test -f R/new/07_world_protocol_utils.R
+          Rscript --vanilla -e 'for(f in c(
+           "R/experimental/rlr_node_multitest_v1.R",
+           "R/experimental/rlr_node_multitest_v1.R"))
+            parse(f)'
+          python3 -m py_compile \
+            scripts/rlr_node_multitest_fetch_real_v1.py \
+            scripts/rlr_node_multitest_independent_audit_v1.py
+          mkdir -p results/rlr_node_multitest_v1
+          printf '%s\n' "$GITHUB_SHA" \
+            > results/rlr_node_multitest_v1/SOURCE_SHA.txt
+          git hash-object R/new/07_world_protocol_utils.R \
+            > results/rlr_node_multitest_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
+          git hash-object R/experimental/rlmt_v4_rank_repair.R \
+            > results/rlr_node_multitest_v1/ORIGINAL_RLR_WRAPPER_BLOB_SHA.txt
+          printf '%s\n' \
+            'DIAGNOSTIC REUSED COMP CANCER: all three 3fold outer splits, 2 datasets, 4 arms; original RLR strict OOF; interpretably sparse regularized RLR in NODE with k=2/5 ternary rank-margin relations, single rank relation control, two leaf offset constants; one V gate each; original RLR exact fallback and heldout E patient predictions. NOT independent biomedical validation. No adaptive use of E.' \
+            > results/rlr_node_multitest_v1/PROTOCOL.txt
+
+      - name: Download and verify public expression matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_node_multitest_fetch_real_v1.py 2>&1 | tee \
+             results/rlr_node_multitest_v1/source_data.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+             results/rlr_node_multitest_v1/source_data.log
+
+      - name: Actual frozen original RLR plus sparse-leaf models
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_node_multitest_v1.R 2>&1 | tee \
+            results/rlr_node_multitest_v1/model_fit.log
+          grep -qx 'NODE_REAL_2_DATASETS_X_3_OUTER_FOLDS=PASS' \
+            results/rlr_node_multitest_v1/model_fit.log
+          grep -qx 'NODE_REAL_EXACT_FALLBACK_VERIFIED=PASS' \
+            results/rlr_node_multitest_v1/model_fit.log
+
+      - name: Independently recompute all genuine heldout E metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_node_multitest_independent_audit_v1.py 2>&1 | tee \
+            results/rlr_node_multitest_v1/independent_audit.log
+          grep -qx 'NODE_REAL_24_METHOD_STUDIES_INDEPENDENTLY_AUDITED=PASS' \
+            results/rlr_node_multitest_v1/independent_audit.log
+          grep -qx 'NODE_REAL_EXACT_PATIENT_LEVEL_RLR_FALLBACK=PASS' \
+            results/rlr_node_multitest_v1/independent_audit.log
+          printf 'NODE_REAL_PILOT_EXIT=0\n' \
+            > results/rlr_node_multitest_v1/status.txt
+
+      - name: Archive all evidence and failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-node-multitest-v1-${{ github.run_id }}
+          path: |
+            results/rlr_node_multitest_v1/*.csv
+            results/rlr_node_multitest_v1/*.json
+            results/rlr_node_multitest_v1/*.txt
+            results/rlr_node_multitest_v1/*.log
+          if-no-files-found: warn
+          retention-days: 21

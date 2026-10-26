@@ -1,0 +1,38 @@
+name: RLR sparse tree data source preflight
+
+on:
+  push:
+    branches:
+      - analysis/rlr-sparse-leaf-pilot-v1
+    paths:
+      - '.github/workflows/rlr-sparse-data-preflight.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - name: Probe public CompCancer dataset URLs and shape
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/rlr_sparse_leaf_real_pilot_v1
+          python -u scripts/rlr_sparse_leaf_fetch_real.py 2>&1 \
+            | tee results/rlr_sparse_leaf_real_pilot_v1/source_preflight.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+            results/rlr_sparse_leaf_real_pilot_v1/source_preflight.log
+      - name: Capture source verification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-sparse-source-probe-${{ github.run_id }}
+          path: |
+            results/rlr_sparse_leaf_real_pilot_v1/*.log
+            results/rlr_sparse_leaf_real_pilot_v1/*.json
+          if-no-files-found: warn
+          retention-days: 7

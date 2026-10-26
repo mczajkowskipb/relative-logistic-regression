@@ -122,8 +122,7 @@ utils::write.csv(spl,file.path(OUT,"split_manifest.csv"),row.names=FALSE)
 for(K in KS){
   rows<-sm[sm$K==K & sm$method=="CALIBRATED_EQUAL_VOTE",]
   message(sprintf("SAME_PAIR_SUMMARY K=%d EQUAL_VOTE_vs_RLR deltaLL=%+.8f RLR_wins=%d/6",
-    K,mean(rows$logloss*(-1)+
-           sm$logloss[sm$K==K&sm$method=="ORIGINAL_RLR"]),
+    K,mean(rows$delta_logloss),
     sum(rows$delta_logloss>0L)))
 }
 cat("SAME_PAIRS_2_ORIGINAL_COMPCANCER_COHORTS=PASS\n")

@@ -3,10 +3,11 @@
 from __future__ import annotations
 import csv
 import math
+import os
 from collections import defaultdict
 from pathlib import Path
 
-OUT=Path("results/rlr_rank_gate_v1")
+OUT=Path(os.environ.get("RANK_GATE_AUDIT_OUT","results/rlr_rank_gate_v1"))
 N={"chowdary-2006":104,"singh-2002":102}
 ARMS=("ORIGINAL_RLR","GLOBAL_MAIN_CONTROL",
       "RANK_STUMP_UNGATED","RANK_STUMP_V_GATED")

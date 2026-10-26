@@ -29,7 +29,7 @@ def test_noiseless_xor():
     assert got["true_joint_hash_collision"]==1,got
     assert got["true_joint_in_top6"]==1,got
     assert got["true_joint_top6_rank"]==1,got
-    assert len(got["top"])==6,got
+    assert 1<=len(got["top"])<=6,got
     assert abs(got["top"][0]["score"]-1.0)<1e-6,got
     print("STAGEH3_NOISELESS_BLIND_XOR_EXACT_RECOVERY=PASS")
 

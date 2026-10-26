@@ -25,27 +25,27 @@ pi <- 0L
 ri <- 0L
 for(nm in databases) {
   path<-file.path(OUT,"source_data",paste0(nm,".csv"))
-  sparse_need(file.exists(path),"missing sourced real matrix")
+  node_need(file.exists(path),"missing sourced real matrix")
   tab<-utils::read.csv(path,check.names=FALSE,stringsAsFactors=FALSE)
-  sparse_need(all(c("sample_id","class") %in% names(tab)),
+  node_need(all(c("sample_id","class") %in% names(tab)),
               "missing phenotype/identifier column")
   X<-as.data.frame(tab[,setdiff(names(tab),c("sample_id","class")),drop=FALSE],
                    check.names=FALSE)
   rownames(X)<-tab$sample_id
   y<-factor(tab[["class"]])
-  sparse_need(all(vapply(X,function(z)is.numeric(z)&&all(is.finite(z)),
+  node_need(all(vapply(X,function(z)is.numeric(z)&&all(is.finite(z)),
                           logical(1))) && length(levels(y))==2L &&
               nrow(X)>=100L && ncol(X)>=100L,
               "real-data public matrix schema wrong")
   folds<-make_repeated_stratified_folds(
        y,n_folds=3L,n_repeats=1L,seed=42L)
-  sparse_need(length(folds)==3L,
+  node_need(length(folds)==3L,
               "outer fold partition count changed")
   for(fi in seq_len(N_OUTER)) {
     fold<-folds[[fi]]
     tr<-fold$train_idx
     te<-fold$test_idx
-    sparse_need(!length(intersect(tr,te)) &&
+    node_need(!length(intersect(tr,te)) &&
                 identical(sort(c(tr,te)),seq_len(nrow(X))),
                 "outer E contamination or coverage")
     rid<-paste0(nm,":outer_",fi-1L)
@@ -60,12 +60,12 @@ for(nm in databases) {
             conditionMessage(e),call.=FALSE)
     })
     baseline<-fit$preds$ORIGINAL_RLR$prob
-    sparse_need(length(baseline)==nrow(E) && 
+    node_need(length(baseline)==nrow(E) && 
                 all(is.finite(baseline)),
                 "original RLR test vector invalid")
     for(method in methods) {
       pred<-fit$preds[[method]]
-      sparse_need(!is.null(pred),"missing predeclared arm")
+      node_need(!is.null(pred),"missing predeclared arm")
       y01<-as.numeric(y[te]==levels(y)[2L])
       ll<-node_ll(y01,pred$prob)
       oldll<-node_ll(y01,baseline)
@@ -94,7 +94,7 @@ for(nm in databases) {
           stringsAsFactors=FALSE)
       }
       if(method!="ORIGINAL_RLR"&&!isTRUE(pred$accepted))
-        sparse_need(identical(baseline,pred$prob),
+        node_need(identical(baseline,pred$prob),
                     "unaccepted model fails exact original fallback")
     }
     ri<-ri+1L
@@ -114,7 +114,7 @@ for(nm in databases) {
 allm<-do.call(rbind,metric_rows)
 allp<-do.call(rbind,pred_rows)
 allr<-do.call(rbind,run_rows)
-sparse_need(nrow(allm)==length(databases)*N_OUTER*length(methods) &&
+node_need(nrow(allm)==length(databases)*N_OUTER*length(methods) &&
             nrow(allr)==length(databases)*N_OUTER &&
             all(allm$method %in% methods),
             "pilot inventory incomplete")

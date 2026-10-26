@@ -2,7 +2,8 @@
 # This pilot DOES NOT fit original RLR, trees or V/E confirmation.
 # It uses the known Bernoulli-null 0.5 residual, only for the synthetic D screen.
 # The goal is retrieval-versus-budget scaling, not biomarker/model performance.
-OUT <- "results/crit_stageH1_bounded_screening_v1"
+source("R/experimental/crit_stageH1_pool_guard_fix1.R")
+OUT <- "results/crit_stageH1_bounded_screening_fix1_v1"
 need <- function(ok,msg)if(!isTRUE(ok))
     stop("STAGEH1_STOP: ",msg,call.=FALSE)
 need(dir.exists(OUT)&&file.exists(file.path(OUT,"CODE_SHA.txt")) &&
@@ -83,10 +84,12 @@ interaction_rank <- function(X,residual,pool) {
   C<-abs(crossprod(R,R*as.numeric(residual)))
   # Undirected pair-by-pair screen. Only gene-disjoint pairs permitted.
   idx<-which(upper.tri(C),arr.ind=TRUE)
-  disjoint<-vapply(seq_len(nrow(idx)),function(j) {
-    a<-idx[j,1L];b<-idx[j,2L]
-    length(intersect(pool[,a],pool[,b]))==0L
-  },logical(1))
+  # Vectorized exact equivalent of gene-disjoint pair test.
+  a<-idx[,1L]; b<-idx[,2L]
+  disjoint<-pool[1L,a]!=pool[1L,b] &
+            pool[1L,a]!=pool[2L,b] &
+            pool[2L,a]!=pool[1L,b] &
+            pool[2L,a]!=pool[2L,b]
   idx<-idx[disjoint,,drop=FALSE]
   scores<-C[idx]
   ord<-order(-scores,idx[,1L],idx[,2L])
@@ -114,10 +117,7 @@ for(sc in seq_along(scenarios))for(p in p_values)for(rep in seq_len(repetitions)
   for(method in names(strategies)) {
     pool<-strategies[[method]]
     K<-ncol(pool)
-    need(K<=if(method=="EXHAUSTIVE32")496L else budget &&
-         !anyDuplicated(pair_key(pool)),
-         "pool budget exceeded or duplicated")
-    need(all(pool[1L,]<pool[2L,]),"not canonical pair orientation")
+    critH1_need_pool(pool,method,budget=budget)
     start<-proc.time()[["elapsed"]]
     ranked<-interaction_rank(dat$X,dat$residual,pool)
     screening_seconds<-proc.time()[["elapsed"]]-start

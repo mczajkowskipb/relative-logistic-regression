@@ -1,0 +1,17 @@
+RLR original CompCancer 11-cohort full matched-pairs evaluation trigger — 2026-10-26
+
+Launch conditions verified:
+- GitHub-hosted 11/11 individual smoke cases SUCCESS, run #40326452733.
+- Strict original 11 source inventory verified, run #40325493713.
+- Literal original RLR benchmark function fit_rlr_train_test() untouched.
+- Comparison uses identical trained shortlist of ternary within-patient rank pairs,
+  elastic net alpha=0.5, CV lambda.min, original 5-fold x 10/2-repetition schedule.
+- Full 470 outer splits per model, 3 K values => 2820 fits.
+- Per-patient independent audit is mandatory per cohort.
+- 11-dataset analysis and Holm-adjusted signed-rank test require all jobs PASS.
+- Publicly reconstructed source matrices only: original processed ARFF SHA256
+  NOT VERIFIED; no claim of strict original ARFF numerical reproduction.
+- Nonpublication source data, no clinical datasets beyond original article inventory.
+- This does not change the manuscript or original RLR code.
+
+Research gate: run only finite preregistered equal regularization component comparison.

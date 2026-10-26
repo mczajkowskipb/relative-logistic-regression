@@ -6,7 +6,7 @@ on:
     paths:
       - '.github/workflows/rlr-node-multitest-real-v1.yml'
       - 'R/experimental/rlr_node_multitest_v1.R'
-      - 'R/experimental/rlr_node_multitest_v1.R'
+      - 'R/experimental/rlr_node_multitest_real_v1.R'
       - 'scripts/rlr_node_multitest_fetch_real_v1.py'
       - 'scripts/rlr_node_multitest_independent_audit_v1.py'
   workflow_dispatch:
@@ -63,7 +63,7 @@ jobs:
           test -f R/new/07_world_protocol_utils.R
           Rscript --vanilla -e 'for(f in c(
            "R/experimental/rlr_node_multitest_v1.R",
-           "R/experimental/rlr_node_multitest_v1.R"))
+           "R/experimental/rlr_node_multitest_real_v1.R"))
             parse(f)'
           python3 -m py_compile \
             scripts/rlr_node_multitest_fetch_real_v1.py \
@@ -92,7 +92,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          Rscript --vanilla R/experimental/rlr_node_multitest_v1.R 2>&1 | tee \
+          Rscript --vanilla R/experimental/rlr_node_multitest_real_v1.R 2>&1 | tee \
             results/rlr_node_multitest_v1/model_fit.log
           grep -qx 'NODE_REAL_2_DATASETS_X_3_OUTER_FOLDS=PASS' \
             results/rlr_node_multitest_v1/model_fit.log

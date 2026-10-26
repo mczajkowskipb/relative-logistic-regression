@@ -1,0 +1,126 @@
+name: RLR pair-specific rank confidence paper pilot
+
+on:
+  push:
+    branches: [analysis/rlr-pair-specific-rank-confidence-pilot-v1]
+    paths:
+      - '.github/workflows/rlr-pair-specific-evidence-v1.yml'
+      - 'R/experimental/rlr_pair_specific_evidence_v1.R'
+      - 'R/experimental/rlr_pair_specific_real_v1.R'
+      - 'scripts/rlr_pair_specific_fetch.py'
+      - 'scripts/rlr_pair_specific_independent_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-development-smoke:
+    name: Same selected RLR gene pairs: original vs adaptive and graded rank margins
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision Ubuntu system R + original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots \
+            r-cran-biocmanager
+          Rscript --version
+          # Avoid obsolete BiocManager repository indexing for historical R 4.3:
+          # install the *version-pinned* upstream Bioconductor 3.18 package.
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+                break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e '
+            for(pkg in c("switchBox","glmnet","foreign","pROC","jsonlite"))
+              stopifnot(requireNamespace(pkg,quietly=TRUE))
+            cat("SPARSE_EXACT_RLR_DEPENDENCIES=PASS\n")
+            print(sessionInfo())'
+      - name: Inspect locked source and create isolated results
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/crit_v7_original_rlr_two_leaf.R")' >/dev/null
+          test -f R/new/07_world_protocol_utils.R
+          Rscript --vanilla -e 'for(f in c(
+           "R/experimental/rlr_pair_specific_evidence_v1.R",
+           "R/experimental/rlr_pair_specific_real_v1.R"))
+            parse(f)'
+          python3 -m py_compile \
+            scripts/rlr_pair_specific_fetch.py \
+            scripts/rlr_pair_specific_independent_audit.py
+          mkdir -p results/rlr_pair_specific_evidence_v1
+          printf '%s\n' "$GITHUB_SHA" \
+            > results/rlr_pair_specific_evidence_v1/SOURCE_SHA.txt
+          git hash-object R/new/07_world_protocol_utils.R \
+            > results/rlr_pair_specific_evidence_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
+          git hash-object R/experimental/rlmt_v4_rank_repair.R \
+            > results/rlr_pair_specific_evidence_v1/ORIGINAL_RLR_WRAPPER_BLOB_SHA.txt
+          printf '%s\n' \
+            'DIAGNOSTIC REUSED PUBLICATION COMPCANCER: all 3 outer folds of 2 paper datasets, K=10/20/50, 3 modes: exact m10, training-only pair-specific q25 margin, training-only graded m10/q75; identical supervised pair shortlist per outer split and K; frozen alpha0.5 lambda.min; no trees; independent E patient audit; no new clinical datasets; not independent biomedical validation.' \
+            > results/rlr_pair_specific_evidence_v1/PROTOCOL.txt
+
+      - name: Download and verify public expression matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_pair_specific_fetch.py 2>&1 | tee \
+             results/rlr_pair_specific_evidence_v1/source_data.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+             results/rlr_pair_specific_evidence_v1/source_data.log
+
+      - name: Original RLR vs pair-specific margin and graded rank evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_pair_specific_real_v1.R 2>&1 | tee \
+            results/rlr_pair_specific_evidence_v1/model_fit.log
+          grep -qx 'RLR_MARGIN_6_FROZEN_OUTER_FOLDS=PASS' \
+            results/rlr_pair_specific_evidence_v1/model_fit.log
+          grep -qx 'RLR_MARGIN_54_METHOD_FITS=PASS' \
+            results/rlr_pair_specific_evidence_v1/model_fit.log
+
+      - name: Independently recompute all genuine heldout E metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_pair_specific_independent_audit.py 2>&1 | tee \
+            results/rlr_pair_specific_evidence_v1/independent_audit.log
+          grep -qx 'RLR_MARGIN_54_SPLIT_METHOD_METRICS_AUDITED=PASS' \
+            results/rlr_pair_specific_evidence_v1/independent_audit.log
+          grep -qx 'RLR_MARGIN_E_PATIENTS_PARTITIONED_WITHOUT_OVERLAP=PASS' \
+            results/rlr_pair_specific_evidence_v1/independent_audit.log
+          printf 'RLR_MARGIN_PILOT_EXIT=0\n' \
+            > results/rlr_pair_specific_evidence_v1/status.txt
+
+      - name: Archive all evidence and failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-pair-specific-v1-${{ github.run_id }}
+          path: |
+            results/rlr_pair_specific_evidence_v1/*.csv
+            results/rlr_pair_specific_evidence_v1/*.json
+            results/rlr_pair_specific_evidence_v1/*.txt
+            results/rlr_pair_specific_evidence_v1/*.log
+          if-no-files-found: warn
+          retention-days: 21

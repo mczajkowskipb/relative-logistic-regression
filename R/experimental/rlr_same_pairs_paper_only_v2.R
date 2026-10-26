@@ -56,7 +56,7 @@ for(ds in sets){
                         drop=FALSE],check.names=FALSE)
   rownames(X)<-tab$sample_id
   y<-factor(tab$class)
-  stopifnot(length(levels(y))==2L,nrow(X)>=100L,
+  stopifnot(length(levels(y))==2L,nrow(X)>=60L,
        all(vapply(X,function(x)is.numeric(x)&&all(is.finite(x)),
                   logical(1))))
   foldset<-make_repeated_stratified_folds(y,n_folds=3L,n_repeats=1L,

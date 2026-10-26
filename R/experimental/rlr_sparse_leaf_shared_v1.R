@@ -49,7 +49,7 @@ sparse_y <- function(y) as.numeric(y==levels(y)[2L])
 sparse_design <- function(X, gatepair, features_a, features_b,
                           kind) {
   n<-nrow(X)
-  rel<-function(j) ifelse(X[[j$gene_a]]>X[[j$gene_b]],1,-1)
+  rel<-function(j) ifelse(X[[j$gene_left[[1L]]]]>X[[j$gene_right[[1L]]]],1,-1)
   getmat<-function(pairs) {
     if(!nrow(pairs))return(matrix(numeric(0),nrow=n,ncol=0))
     encode_pair_matrix(X,pairs,m=10L)

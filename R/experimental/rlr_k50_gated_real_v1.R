@@ -100,6 +100,7 @@ for(f in folds){
    V_improvement=proposal$gain,
    V_gate_accepted=isTRUE(proposal$accept),
    n_root_candidates=proposal$root_nominated,
+   inner_candidate_diagnostics=proposal$diagnostic,
    main_selected_pairs=apply_disjointness(original_pool,K=50L,d=2L)$ordered_pair,
    root_pair=if(pred_tree$used_tree)
       proposal$candidates$ordered_pair[[proposal$root]] else NULL,
@@ -144,6 +145,13 @@ for(f in folds){
  message(sprintf("RGT50_OUTER_DONE dataset=%s split=%s tree=%s inner_val_gain=%+.5f proposed_root_n=%d",
   DS,f$split_id,ifelse(pred_tree$used_tree,"YES","FALLBACK"),
   proposal$gain,proposal$root_nominated))
+ message(sprintf("RGT50_DV_DIAGNOSTICS %s %s valid_branch=%d valid_fit=%d nonzero_coeff=%d positive_V_gain=%d max_V_gain=%s",
+  DS,f$split_id,proposal$diagnostic$branch_designs_valid,
+  proposal$diagnostic$correction_fits_valid,
+  proposal$diagnostic$corrections_with_nonzero_coefficients,
+  proposal$diagnostic$candidates_with_positive_validation_gain,
+  ifelse(is.na(proposal$diagnostic$max_unpenalized_validation_gain),
+    "NA",sprintf("%+.5f",proposal$diagnostic$max_unpenalized_validation_gain))))
  unlink(splitdir,recursive=TRUE,force=TRUE)
 }
 df<-do.call(rbind,metrics)

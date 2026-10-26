@@ -12,7 +12,9 @@ def read(p):
  need(p.is_file(),"missing "+str(p))
  with p.open(newline="",encoding="utf-8") as f:return list(csv.DictReader(f))
 def stats(y,p):
- p=[min(1-1e-7,max(1e-7,v)) for v in p]
+ # BA, macro-F1 and Brier are computed from ORIGINAL raw probabilities.
+ # Only logarithmic loss is clipped, exactly as in the R implementation.
+ pc=[min(1-1e-7,max(1e-7,v)) for v in p]
  z=[int(v>=.5) for v in p]
  ba=sum(sum(y[i]==c and z[i]==c for i in range(len(y)))/
       max(1,sum(v==c for v in y)) for c in (0,1))/2
@@ -20,7 +22,7 @@ def stats(y,p):
         max(1,sum(v==c for v in y)+sum(v==c for v in z))
         for c in (0,1))/2
  ll=sum(-(v*math.log(t)+(1-v)*math.log1p(-t))
-         for v,t in zip(y,p))/len(y)
+         for v,t in zip(y,pc))/len(y)
  br=sum((v-t)**2 for v,t in zip(y,p))/len(y)
  return dict(BA=ba,macro_F1=f1,logloss=ll,brier=br)
 def main():

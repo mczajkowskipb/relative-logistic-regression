@@ -33,7 +33,22 @@ jobs:
             r-cran-proc r-cran-jsonlite r-cran-gplots \
             r-cran-biocmanager
           Rscript --version
-          sudo Rscript --vanilla -e 'BiocManager::install("switchBox",ask=FALSE,update=FALSE,quiet=TRUE)'
+          # Avoid obsolete BiocManager repository indexing for historical R 4.3:
+          # install the *version-pinned* upstream Bioconductor 3.18 package.
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+                break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
           Rscript --vanilla -e '
             for(pkg in c("switchBox","glmnet","foreign","pROC","jsonlite"))
               stopifnot(requireNamespace(pkg,quietly=TRUE))

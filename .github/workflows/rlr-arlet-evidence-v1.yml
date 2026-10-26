@@ -1,0 +1,83 @@
+name: RLR ARLET ternary evidence cascade pilot
+on:
+  push:
+    branches: [analysis/rlr-arlet-evidence-tree-pilot-v1]
+    paths:
+      - '.github/workflows/rlr-arlet-evidence-v1.yml'
+      - 'R/experimental/rlr_arlet_evidence_tree_v1.R'
+      - 'R/experimental/rlr_arlet_real_pilot_v1.R'
+      - 'scripts/rlr_arlet_source_gate_v1.py'
+      - 'scripts/rlr_arlet_fetch_one_v1.py'
+      - 'scripts/rlr_arlet_independent_audit_v1.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  arlet-real-cohorts:
+    name: 'ARLET original-paper cohort ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 115
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        dataset: [chen-2002, singh-2002, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision original RLR frozen dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core r-cran-foreign r-cran-glmnet r-cran-proc r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib https://bioconductor.uib.no/packages/3.18/bioc/src/contrib; do
+            if curl --fail --location --silent --show-error --connect-timeout 10 --max-time 35 "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("foreign","glmnet","pROC","switchBox","jsonlite")) stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Validate untouched original RLR and pilot syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_arlet_source_gate_v1.py scripts/rlr_arlet_fetch_one_v1.py scripts/rlr_arlet_independent_audit_v1.py
+          Rscript --vanilla -e 'parse("R/new/07_world_protocol_utils.R");parse("R/experimental/rlr_arlet_evidence_tree_v1.R");parse("R/experimental/rlr_arlet_real_pilot_v1.R")' >/dev/null
+          mkdir -p "results/rlr_arlet_v1/$RLR_DATASET_ID"
+          git hash-object R/new/07_world_protocol_utils.R > "results/rlr_arlet_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_BLOB_SHA.txt"
+          echo "$GITHUB_SHA" > "results/rlr_arlet_v1/$RLR_DATASET_ID/PILOT_SHA.txt"
+      - name: Acquire exactly specified manuscript cohort with provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_arlet_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/source_fetch.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' "results/rlr_arlet_v1/$RLR_DATASET_ID/source_fetch.log"
+      - name: Real heldout E comparison of original RLR, TSP, kTSP, TSPDT proxy and ARLET/EA
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_arlet_real_pilot_v1.R 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
+          grep -qx "ARLET_3_FOLD_6_METHODS_DATASET=${RLR_DATASET_ID}_PASS" "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
+      - name: Independent patient-level BA, macro-F1, logloss and route evidence audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_arlet_independent_audit_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
+          grep -qx 'ARLET_PATIENT_LEVEL_3_FOLDS_6_METHODS_REPLAYED=PASS' "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
+      - name: Archive results and reproducibility evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-arlet-v1-${{ matrix.dataset }}-${{ github.run_id }}
+          path: |
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.log
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.txt
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.json
+            results/rlr_arlet_v1/${{ matrix.dataset }}/pilot/*.csv
+            results/rlr_arlet_v1/${{ matrix.dataset }}/pilot/*.json
+          if-no-files-found: warn
+          retention-days: 21

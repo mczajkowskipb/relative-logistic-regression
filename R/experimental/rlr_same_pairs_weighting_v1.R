@@ -1,6 +1,6 @@
 # Controlled component study for the original unpublished RLR article.
 # SAME supervised pair pool, SAME d2/K shortlist, SAME ternary m=10.
-# Compare scalar calibrated equal-vote model vs learned individual RLR weights.
+# Compare single-slope Platt calibrated equal votes vs learned individual RLR weights.
 # Only training labels used in candidates and fits; E used for evaluation.
 source("R/new/07_world_protocol_utils.R")
 OUT<-"results/rlr_same_pairs_weighting_v1"
@@ -18,21 +18,33 @@ splits<-list()
 
 run_model<-function(X,y,testR,arm) {
   y01<-as.numeric(y==levels(y)[2L])
-  seed<-42L
-  set.seed(seed)
-  train<-if(arm=="ORIGINAL_RLR")X else
-     matrix(rowMeans(X),ncol=1L,dimnames=list(NULL,"mean_equal_vote"))
-  eval<-if(arm=="ORIGINAL_RLR")testR else
-     matrix(rowMeans(testR),ncol=1L,
-            dimnames=list(NULL,"mean_equal_vote"))
-  if(ncol(train)==1L && stats::sd(as.numeric(train))<1e-12) {
-    return(rep(mean(y01),nrow(eval)))
+  if(arm=="CALIBRATED_EQUAL_VOTE") {
+    # Univariate Platt calibration on the *same* signed m10 rank-pair
+    # vote representation. glmnet requires >=2 columns, so use the
+    # standard one-slope logistic model for this fair baseline.
+    vote<-rowMeans(X)
+    vote_E<-rowMeans(testR)
+    if(stats::sd(vote)<1e-12)
+      return(rep(mean(y01),length(vote_E)))
+    calibrated<-suppressWarnings(stats::glm(y01 ~ vote,
+                         family=stats::binomial()))
+    if(!isTRUE(calibrated$converged)||
+       any(!is.finite(stats::coef(calibrated))))
+      return(rep(mean(y01),length(vote_E)))
+    p<-as.numeric(stats::predict(calibrated,
+                 newdata=data.frame(vote=vote_E),
+                 type="response"))
+    stopifnot(length(p)==length(vote_E),all(is.finite(p)),
+              all(p>=0&p<=1))
+    return(p)
   }
-  cv<-glmnet::cv.glmnet(x=train,y=y01,family="binomial",alpha=.5,
+  stopifnot(arm=="ORIGINAL_RLR")
+  set.seed(42L)
+  cv<-glmnet::cv.glmnet(x=X,y=y01,family="binomial",alpha=.5,
     nfolds=safe_nfolds(y,5L),type.measure="deviance")
-  p<-as.numeric(stats::predict(cv,newx=eval,s="lambda.min",
+  p<-as.numeric(stats::predict(cv,newx=testR,s="lambda.min",
                                type="response"))
-  stopifnot(length(p)==nrow(eval),all(is.finite(p)),
+  stopifnot(length(p)==nrow(testR),all(is.finite(p)),
             all(p>=0&p<=1))
   p
 }

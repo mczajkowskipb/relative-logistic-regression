@@ -7,7 +7,7 @@ rownames(X)<-sprintf("sample_%03d",seq_len(n))
 T<-X
 for(i in seq_len(n)) {
   a<-exp(rnorm(1,sd=1));b<-rnorm(1,sd=12)
-  T[i,]<-as.numeric(X[i,])*a+b
+  T[i,]<-unlist(X[i,,drop=FALSE],use.names=FALSE)*a+b
 }
 R<-aa_ranks(X);R2<-aa_ranks(T)
 stopifnot(identical(unname(R),unname(R2)))

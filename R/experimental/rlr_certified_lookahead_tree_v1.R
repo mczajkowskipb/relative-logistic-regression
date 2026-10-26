@@ -137,7 +137,17 @@ cl2_learn<-function(RD,RV,beta,intercept,epsilon=.05,
   }
   valid<-cl2_eval(RV,beta,intercept,best$policy,epsilon)
   Vgain<-mean(Vstatic$evaluated)-mean(valid$evaluated)
-  accept<-best$policy$type=="lookahead" && Vgain>=min_v_gain
+  # A genuine conditional tree must select DIFFERENT second tests after
+  # at least two observed ternary root outcomes. A reordered fixed sequence
+  # is not counted as a tree-specific scientific improvement.
+  state_diverse<-FALSE
+  if(best$policy$type=="lookahead"){
+    seen<-sort(unique(as.integer(RD[,best$policy$root])))
+    state_diverse<-length(seen)>=2L &&
+      length(unique(best$policy$second[as.character(seen)]))>=2L
+  }
+  accept<-best$policy$type=="lookahead" && state_diverse &&
+          Vgain>=min_v_gain
   chosen<-if(accept)best$policy else no_tree
   # Note: full original RLR was trained on T (which contains V).
   # This is a *policy validation* gate only, not independent revalidation

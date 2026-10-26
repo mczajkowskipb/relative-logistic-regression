@@ -1,0 +1,29 @@
+name: RLR C-RET depth2 exhaustive certificate unit test
+on:
+  push:
+    branches: [analysis/rlr-certified-lookahead-tree-v1]
+    paths:
+      - '.github/workflows/rlr-cl2-exhaustive-unit-v1.yml'
+      - 'R/experimental/rlr_certified_lookahead_tree_v1.R'
+      - 'R/experimental/rlr_certified_lookahead_unit_v1.R'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exhaustive-ternary-states:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install base R
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Verify all 81 four-relation ternary combinations
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_certified_lookahead_unit_v1.R             2>&1 | tee cl2_unit.log
+          grep -qx 'CL2_ALL_81_TERNARY_VECTORS_FULL_CLASS_AND_POSTERIOR_CERTIFIED=PASS' cl2_unit.log
+          grep -qx 'CL2_TRAIN_ONLY_OPTIMIZER_UNIT_SMOKE=PASS' cl2_unit.log

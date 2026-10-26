@@ -14,7 +14,7 @@ def read(p):
 def stats(y,p):
  # BA, macro-F1 and Brier are computed from ORIGINAL raw probabilities.
  # Only logarithmic loss is clipped, exactly as in the R implementation.
- pc=[min(1-1e-7,max(1e-7,v)) for v in p]
+ pc=[min(1-1e-8,max(1e-8,v)) for v in p]
  z=[int(v>=.5) for v in p]
  ba=sum(sum(y[i]==c and z[i]==c for i in range(len(y)))/
       max(1,sum(v==c for v in y)) for c in (0,1))/2

@@ -59,7 +59,6 @@ jobs:
         run: |
           set -euo pipefail
           test -f manuscript_lock/RLR3_submission_final.tex
-          Rscript --vanilla -e 'parse("R/experimental/crit_v7_original_rlr_two_leaf.R")' >/dev/null
           test -f R/new/07_world_protocol_utils.R
           Rscript --vanilla -e 'for(f in c(
            "R/experimental/rlr_pair_specific_evidence_v1.R",
@@ -73,8 +72,6 @@ jobs:
             > results/rlr_pair_specific_evidence_v1/SOURCE_SHA.txt
           git hash-object R/new/07_world_protocol_utils.R \
             > results/rlr_pair_specific_evidence_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
-          git hash-object R/experimental/rlmt_v4_rank_repair.R \
-            > results/rlr_pair_specific_evidence_v1/ORIGINAL_RLR_WRAPPER_BLOB_SHA.txt
           printf '%s\n' \
             'DIAGNOSTIC REUSED PUBLICATION COMPCANCER: all 3 outer folds of 2 paper datasets, K=10/20/50, 3 modes: exact m10, training-only pair-specific q25 margin, training-only graded m10/q75; identical supervised pair shortlist per outer split and K; frozen alpha0.5 lambda.min; no trees; independent E patient audit; no new clinical datasets; not independent biomedical validation.' \
             > results/rlr_pair_specific_evidence_v1/PROTOCOL.txt

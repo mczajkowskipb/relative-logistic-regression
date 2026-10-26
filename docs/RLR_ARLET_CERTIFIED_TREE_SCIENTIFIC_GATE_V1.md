@@ -10,10 +10,16 @@ Controls call untouched original `fit_rlr_train_test`, `fit_tsp1_manual_train_te
 
 [ARLET GitHub Actions #40366023886](https://github.com/mczajkowskipb/relative-logistic-regression/actions/runs/40366023886)
 
-**Independent-completed cohorts at this note's time:**
+**Complete experiment: all 3/3 original-paper cohorts passed independent patient-level audit:**
 
 | Dataset | Model | Mean BA | Macro-F1 | Logloss |
 |---|---|---:|---:|---:|
+| Chen-2002 | Original RLR | **.91291** | **.91352** | **.19818** |
+| Chen-2002 | kTSP-9 | .87331 | .86451 | .32202 |
+| Chen-2002 | TSP-1 | .81193 | .79826 | 3.24183 |
+| Chen-2002 | TSPDT GREEDY PROXY | .80801 | .80041 | .35281 |
+| Chen-2002 | ARLET deterministic | .90067 | .89750 | .27131 |
+| Chen-2002 | ARLET EA | .88924 | .89488 | .30771 |
 | Singh-2002 | Original RLR | .91231 | .91061 | .33194 |
 | Singh-2002 | kTSP-9 | .92211 | .92147 | .28230 |
 | Singh-2002 | TSP-1 | .82394 | .81980 | 2.84095 |
@@ -27,9 +33,9 @@ Controls call untouched original `fit_rlr_train_test`, `fit_tsp1_manual_train_te
 | Yeoh-2002-v1 | ARLET deterministic | .74524 | .79654 | .25352 |
 | Yeoh-2002-v1 | ARLET EA | .72222 | .77397 | .24178 |
 
-**Scientific interpretation:** Positive signal on Singh, substantial failure on Yeoh (both discrimination and logloss). Not sufficiently robust to add ARLET v1 to manuscript. EA did not improve deterministic ARLET on Singh or Yeoh. In addition, TSP-1 raw hard probabilities of 0 or 1 produce very large logloss by design, so its logloss should NOT be used to claim a calibrated superiority; BA and macro-F1 are informative.
+**Scientific interpretation:** Positive signal on Singh; ARLET is below original RLR on **Chen** (smaller BA and much worse logloss) and substantially worse on **Yeoh**. It is better than kTSP-9 and greedy TSPDT PROXY on Chen but still inferior to original RLR. Not sufficiently robust to add ARLET v1 to manuscript. EA did not improve deterministic ARLET on any of the three cohorts. In addition, TSP-1 raw hard probabilities of 0 or 1 produce very large logloss by design, so its logloss should NOT be used to claim a calibrated superiority; BA and macro-F1 are informative.
 
-**ARLET Chen**: at the moment of this report, GitHub runner remained in apt dependency provisioning; do not fabricate result or count it as validation failure.
+**ARLET Chen**: GitHub runner eventually completed SUCCESS, all three outer folds and independent patient-level audit PASS. This is a **negative scientific result** for ARLET versus original RLR, not a technical failure.
 
 ## Hypothesis B: exact-class certified RLR evidence evaluation as a structured three-way early-exit tree
 

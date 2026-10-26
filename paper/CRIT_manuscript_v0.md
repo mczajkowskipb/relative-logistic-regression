@@ -46,7 +46,9 @@ Original pair-ranking methods include TSP and k-TSP [R1,R2]. Pair-ordering decis
 
 The archived RLR manuscript [R5] addresses a different question: improving the *probabilistic combination* of already selected relative-ordering predictors. Our present question is **interaction-aware discovery of relational predictors**, including pure XOR cases where ordinary marginal pair ranking fails.
 
-We do not yet claim that our specific LSH implementation is unique among all XOR, Boolean-function discovery, feature-interaction or approximate-nearest-neighbor algorithms; a dedicated comparison to general-purpose interaction search and binary LSH is needed before a final novelty statement. Nor do we assert practical transcriptome-wide scalability: creating signatures for all unordered gene pairs already requires \(O(n p^2)\) memory or streamable computation.
+We do not yet claim that our specific LSH implementation is unique among all XOR, Boolean-function discovery, feature-interaction or approximate-nearest-neighbor algorithms; a dedicated comparison to general-purpose interaction search and binary LSH is needed before a final novelty statement.
+
+Notably, efficient search for Boolean combinations including XOR in genome-wide association logic networks was studied much earlier (e.g., *Inferring combinatorial association logic networks in multimodal genome-wide screens*, Bioinformatics 2010 [R7]). We must distinguish our particular **within-sample rank-relation signature representation and binary hash-join heuristic** from these already established combinatorial interaction methods; merely detecting XOR is not an original scientific claim. Nor do we assert practical transcriptome-wide scalability: creating signatures for all unordered gene pairs already requires \(O(n p^2)\) memory or streamable computation.
 
 ## 3. Methods
 
@@ -181,3 +183,5 @@ We documented a reproducible blind hash-based approach to retrieving interaction
 - [ ] Empirical baselines and novelty comparison beyond classical pair trees and existing feature interaction algorithms.
 - [ ] Citation details/permission/author contribution approval and appropriate journal formatting.
 - [ ] Explicit conclusion revisited after all studies, including negative results.
+
+- [R7] *Inferring combinatorial association logic networks in multimodal genome-wide screens.* Bioinformatics (2010). https://pmc.ncbi.nlm.nih.gov/articles/PMC2881395/ (author details and DOI to verify in bibliography lock).

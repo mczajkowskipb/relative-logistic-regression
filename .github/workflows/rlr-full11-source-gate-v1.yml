@@ -1,0 +1,44 @@
+name: RLR 11 original CompCancer source gate
+
+on:
+  push:
+    branches: [analysis/rlr-same-pairs-full11-source-gate-v1]
+    paths:
+      - 'scripts/rlr_full11_source_gate_v1.py'
+      - '.github/workflows/rlr-full11-source-gate-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Source inventory, platform, binary phenotype, dimensionality and source SHA256
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_full11_source_gate_v1.py
+          mkdir -p results/rlr_full11_source_gate_v1
+          python3 -u scripts/rlr_full11_source_gate_v1.py 2>&1 |
+            tee results/rlr_full11_source_gate_v1/source_check.log
+          grep -qx "PAPER_11_STRICT_PUBLISHED_DATASET_NAMES_AND_BINARY_PHENOTYPES=PASS" \
+            results/rlr_full11_source_gate_v1/source_check.log
+          grep -qx "PAPER_11_SOURCE_URL_AND_RECONSTRUCTED_CSV_SHA256_ARCHIVED=PASS" \
+            results/rlr_full11_source_gate_v1/source_check.log
+          grep -qx "PAPER_11_ORIGINAL_PROCESSED_ARFF_PARITY=NOT_VERIFIED" \
+            results/rlr_full11_source_gate_v1/source_check.log
+      - name: Archive checksums and auditable inventory (no processed omics matrices)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-11-source-gate-${{ github.run_id }}
+          path: |
+            results/rlr_full11_source_gate_v1/source_check.log
+            results/rlr_full11_source_gate_v1/source_inventory.csv
+            results/rlr_full11_source_gate_v1/source_inventory.json
+          if-no-files-found: warn
+          retention-days: 21

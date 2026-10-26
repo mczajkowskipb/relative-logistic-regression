@@ -67,49 +67,75 @@ sparse_design <- function(X, gatepair, features_a, features_b,
         sweep(A,1L,a,"*"),sweep(B,1L,b,"*"))
 }
 sparse_select <- function(D,y,poo,pd,cfg=sparse_cfg()) {
-  all<-pd$pairs
-  sparse_need(nrow(all)>=6L, "original D parent too few gene pairs")
-  R<-encode_pair_matrix(D,all,m=10L)
-  gates<-vapply(seq_len(nrow(all)),function(i){
-    g<-D[[all$gene_left[[i]]]]>D[[all$gene_right[[i]]]]
-    ok<-sum(g)>=cfg$min_node&&sum(!g)>=cfg$min_node&&
-       all(table(factor(y[g],levels=levels(y)))>=cfg$min_class_node) &&
-       all(table(factor(y[!g],levels=levels(y)))>=cfg$min_class_node)
+  # Root-split search does NOT depend solely on the K=10 marginally
+  # selected original-RLR pairs. Strong marginal pair rules may produce
+  # nearly pure leaves with inadequate per-class support.
+  base<-pd$pairs
+  sparse_need(nrow(base)>=5L, "original D parent too few gene pairs")
+  R<-encode_pair_matrix(D,base,m=10L)
+  residual<-sparse_y(y)-poo
+  nbase<-nrow(base)
+  # Joint independent gate proposal: unsupervised rank-variability
+  # + parent pairs + 256 fixed-seed random unordered comparisons.
+  # No V/E observation affects proposal, gate ranking or feature ranking.
+  gp<-crit7_pool(D,base,cfg=crit7_cfg())
+  sparse_need(nrow(gp)>0L,"empty gate proposal")
+  gp$gene_left<-gp$gene_a
+  gp$gene_right<-gp$gene_b
+  scores<-vapply(seq_len(nrow(gp)),function(i) {
+    gate<-gp[i,,drop=FALSE]
+    z<-D[[gate$gene_left[[1L]]]]>D[[gate$gene_right[[1L]]]]
+    ok<-sum(z)>=cfg$min_node&&sum(!z)>=cfg$min_node&&
+        all(table(factor(y[z],levels=levels(y)))>=cfg$min_class_node) &&
+        all(table(factor(y[!z],levels=levels(y)))>=cfg$min_class_node)
     if(!ok)return(-Inf)
-    r<-sparse_y(y)-poo
-    abs(mean(r[g])-mean(r[!g]))*sqrt(sum(g)*sum(!g)/length(g))
+    abs(mean(residual[z])-mean(residual[!z]))*
+       sqrt(sum(z)*sum(!z)/length(z))
   },numeric(1))
-  sparse_need(any(is.finite(gates)),"no balanced rank gate in D")
-  gate_index<-which.max(gates)
-  gate<-all[gate_index,,drop=FALSE]
-  g<-D[[gate$gene_left]]>D[[gate$gene_right]]
-  r<-sparse_y(y)-poo
-  candidates<-seq_len(nrow(all))
-  candidates<-setdiff(candidates,gate_index)
-  score<-function(indices) {
-    vapply(candidates,function(j){
-      z<-R[indices,j]
-      if(stats::sd(z)==0)return(-Inf)
-      abs(sum((r[indices]-mean(r[indices]))*(z-mean(z))))/
-          sqrt(sum((z-mean(z))^2)+1e-8)
-    },numeric(1))
-  }
-  a<-candidates[order(-score(which(!g)),candidates)]
-  b<-candidates[order(-score(which(g)),candidates)]
-  allsc<-vapply(candidates,function(j){
+  allsc<-vapply(seq_len(nbase),function(j) {
     z<-R[,j]
     if(stats::sd(z)==0)return(-Inf)
-    abs(sum((r-mean(r))*(z-mean(z))))/
-        sqrt(sum((z-mean(z))^2)+1e-8)
+    abs(sum((residual-mean(residual))*(z-mean(z))))/
+         sqrt(sum((z-mean(z))^2)+1e-8)
   },numeric(1))
-  global<-candidates[order(-allsc,candidates)]
-  sparse_need(length(a)>=5&&length(b)>=5&&length(global)>=5,
-              "not enough leaf feature candidates")
-  list(gate=gate,gate_index=gate_index,
-       left=all[a,,drop=FALSE],right=all[b,,drop=FALSE],
-       global=all[global,,drop=FALSE],
-       leaf_sizes=c(left=sum(!g),right=sum(g)),
-       original_pair_count=nrow(all))
+  global_order<-order(-allsc,seq_len(nbase))
+  sparse_need(length(global_order)>=5L,"not enough global predictors")
+  if(!any(is.finite(scores))) {
+    return(list(gate=NULL,gate_index=NA_integer_,gate_n=nrow(gp),
+        left=base[FALSE,,drop=FALSE],right=base[FALSE,,drop=FALSE],
+        global=base[global_order,,drop=FALSE],
+        leaf_sizes=c(left=NA_integer_,right=NA_integer_),
+        original_pair_count=nbase,selection_reason="NO_FEASIBLE_GATE"))
+  }
+  gi<-which.max(scores)
+  gate<-gp[gi,,drop=FALSE]
+  z<-D[[gate$gene_left[[1L]]]]>D[[gate$gene_right[[1L]]]]
+  # Exclude the identical gate relation from local predictor list.
+  same<-which(
+      (base$gene_left==gate$gene_left[[1L]] &
+       base$gene_right==gate$gene_right[[1L]]) |
+      (base$gene_left==gate$gene_right[[1L]] &
+       base$gene_right==gate$gene_left[[1L]]))
+  candidates<-setdiff(seq_len(nbase),same)
+  sparse_need(length(candidates)>=5L,
+              "too few leaf predictors after gate exclusion")
+  rank_leaf<-function(indices) {
+    val<-vapply(candidates,function(j){
+      t<-R[indices,j]
+      if(stats::sd(t)==0)return(-Inf)
+      abs(sum((residual[indices]-mean(residual[indices]))*
+                   (t-mean(t))))/
+           sqrt(sum((t-mean(t))^2)+1e-8)
+    },numeric(1))
+    candidates[order(-val,candidates)]
+  }
+  left<-rank_leaf(which(!z))
+  right<-rank_leaf(which(z))
+  list(gate=gate,gate_index=gi,gate_n=nrow(gp),
+       left=base[left,,drop=FALSE],right=base[right,,drop=FALSE],
+       global=base[global_order,,drop=FALSE],
+       leaf_sizes=c(left=sum(!z),right=sum(z)),
+       original_pair_count=nbase,selection_reason="D_ONLY_BALANCED_GATE")
 }
 sparse_spec <- function(selection,k,variant) {
   if(variant=="GLOBAL") {
@@ -152,13 +178,15 @@ sparse_one <- function(T,y,E,methods=c("GLOBAL_2","GLOBAL_5",
   output<-list(ORIGINAL_RLR=list(prob=pb,accepted=NA,
                                 v_mean=NA_real_,v_lower=NA_real_,
                                 reason="unchanged_exact_parent"))
-  outmeta<-list(root_pair=paste(sel$gate$gene_left,sel$gate$gene_right,
-                                sep=">"),
+  outmeta<-list(root_pair=if(is.null(sel$gate))"NO_FEASIBLE_GATE" else
+                  paste(sel$gate$gene_left,sel$gate$gene_right,sep=">"),
                 original_active_pair_budget=parent_cfg$K,
                 leaf_sizes=sel$leaf_sizes,
                 train_ids=rownames(T),E_ids=rownames(E),
                 D_ids=rownames(D),V_ids=rownames(V),
-                candidate_original_pairs=sel$original_pair_count)
+                candidate_original_pairs=sel$original_pair_count,
+                root_candidates_n=sel$gate_n,
+                root_selection_reason=sel$selection_reason)
   for(method in methods) {
     part<-strsplit(method,"_",fixed=TRUE)[[1L]]
     variant<-part[[1L]]
@@ -166,6 +194,13 @@ sparse_one <- function(T,y,E,methods=c("GLOBAL_2","GLOBAL_5",
     sparse_need(k %in% cfg$k &&
                 variant %in% c("GLOBAL","SHARED","INDEPENDENT"),
                 "unknown arm")
+    if(variant!="GLOBAL" && is.null(sel$gate)) {
+      output[[method]]<-list(
+        prob=pb,accepted=FALSE,v_mean=NA_real_,v_lower=NA_real_,
+        reason="no_feasible_D_rank_gate",
+        fit_dims=c(0L,0L,k),model_pairs=list())
+      next
+    }
     spec<-sparse_spec(sel,k,variant)
     Zd<-sparse_design(D,spec$gate,spec$fa,spec$fb,spec$kind)
     Zv<-sparse_design(V,spec$gate,spec$fa,spec$fb,spec$kind)

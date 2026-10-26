@@ -4,7 +4,7 @@ Dataset, not repeat/fold, is unit for any exploratory Wilcoxon comparison.
 Strictly labels source reconstructions NOT exact original ARFF provenance.
 """
 from __future__ import annotations
-import argparse,csv,json,math
+import argparse,csv,json,math,itertools
 from collections import defaultdict
 from pathlib import Path
 SETS=("alizadeh-2000-v1","armstrong-2002-v1","bittner-2000",
@@ -20,6 +20,35 @@ def write_csv(file,rows):
  with file.open("w",newline="",encoding="utf8") as f:
   w=csv.DictWriter(f,fieldnames=list(rows[0]))
   w.writeheader();w.writerows(rows)
+def exact_signed_rank_p(diffs):
+  """Exact two-sided signed-rank sign-permutation p for n<=11 datasets.
+  Drops exact zeros, assigns midranks to tied absolute effects, enumerates
+  all 2^n possible sign assignments (no asymptotic approximation).
+  """
+  x=[float(v) for v in diffs if abs(v)>0]
+  n=len(x)
+  if n==0:return 1.0
+  assert n<=11
+  magnitudes=[abs(v) for v in x]
+  order=sorted(range(n),key=lambda i:magnitudes[i])
+  ranks=[0.]*n
+  j=0
+  while j<n:
+    end=j+1
+    while end<n and magnitudes[order[end]]==magnitudes[order[j]]:
+      end+=1
+    mid=(j+1+end)/2
+    for k in range(j,end):ranks[order[k]]=mid
+    j=end
+  observed=sum(ranks[i] for i in range(n) if x[i]>0)
+  center=sum(ranks)/2
+  extreme=0
+  for signs in itertools.product((0,1),repeat=n):
+    total=sum(ranks[i] for i in range(n) if signs[i])
+    if abs(total-center)>=abs(observed-center)-1e-12:
+      extreme+=1
+  return extreme/(2**n)
+
 def main():
  p=argparse.ArgumentParser()
  p.add_argument("--input",default="downloaded")
@@ -70,19 +99,16 @@ def main():
        source_parity="ORIGINAL_ARFF_SHA256_NOT_VERIFIED"))
  write_csv(output/"dataset_level.csv",item)
  summary=[]
- from scipy.stats import wilcoxon
  for k in K:
   vals=[next(x for x in item if x["dataset"]==ds and x["K"]==k) for ds in SETS]
   d=[x["mean_delta_logloss"] for x in vals]
-  t=wilcoxon(d,alternative="two-sided",zero_method="wilcox",
-             correction=False,method="auto")
   summary.append(dict(K=k,n_datasets=11,
     n_total_outer_folds=sum(x["n_outer_folds"] for x in vals),
     dataset_mean_delta_logloss=sum(d)/len(d),
     dataset_median_delta_logloss=sorted(d)[len(d)//2],
     n_RLR_better_datasets=sum(x>0 for x in d),
     n_equal_vote_better_datasets=sum(x<0 for x in d),
-    wilcoxon_two_sided_p_raw=float(t.pvalue),
+    wilcoxon_two_sided_p_raw=exact_signed_rank_p(d),
     scientific_stage="EXPLORATORY_RECONSTRUCTED_SOURCE_NO_ARFF_PARITY"))
  ps=[x["wilcoxon_two_sided_p_raw"] for x in summary]
  order=sorted(range(len(ps)),key=lambda j:ps[j])

@@ -15,7 +15,7 @@ from pathlib import Path
 import numpy as np
 
 ROOT=Path(__file__).resolve().parent.parent
-OUT=ROOT/"results/crit_stageH3_blind_lsh_v1"
+OUT=ROOT/"results/crit_stageH3_blind_lsh_fix1_v1"
 PS=(32,64,128,256,512)
 REPS=4
 N=120

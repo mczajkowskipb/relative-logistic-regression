@@ -153,6 +153,10 @@ rgt_select<-function(D,yD,V,yV,seed=42L,path) {
   best<-list(root=NA_integer_,branches=NULL,
              gain=0,BAchange=0,validation_ll=null_ll,
              n_nonzero_corrections=0L)
+  diagnostic<-list(branch_designs_valid=0L,correction_fits_valid=0L,
+    corrections_with_nonzero_coefficients=0L,
+    candidates_with_positive_validation_gain=0L,
+    max_unpenalized_validation_gain=NA_real_)
   for(root in roots) {
     branches<-rgt_branch_pairs(BD,
       as.integer(yD==levels(yD)[2L]),parent$pD,
@@ -160,6 +164,8 @@ rgt_select<-function(D,yD,V,yV,seed=42L,path) {
       minbranch=10L,each=3L)
     count<-sum(lengths(branches))
     if(count<3L)next
+    diagnostic$branch_designs_valid<-
+      diagnostic$branch_designs_valid+1L
     A<-rgt_design(D,nom$candidates,root,branches)
     B<-rgt_design(V,nom$candidates,root,branches)
     rgt_need(identical(colnames(A),colnames(B)),
@@ -167,11 +173,20 @@ rgt_select<-function(D,yD,V,yV,seed=42L,path) {
     fit<-rgt_correct_fit(A,as.integer(yD==levels(yD)[2L]),
                           parent$pD,lambda=.05)
     if(is.null(fit))next
+    diagnostic$correction_fits_valid<-
+      diagnostic$correction_fits_valid+1L
     pr<-rgt_correct_pred(fit,B,parent$pV,lambda=.05)
     gain<-null_ll-rgt_ll(as.integer(yV==levels(yV)[2L]),pr)
     ba_change<-rgt_ba(as.integer(yV==levels(yV)[2L]),pr)-null_ba
     bb<-as.numeric(stats::coef(fit,s=.05))[-1L]
     nnz<-sum(abs(bb)>1e-9)
+    if(nnz>0L)diagnostic$corrections_with_nonzero_coefficients<-
+       diagnostic$corrections_with_nonzero_coefficients+1L
+    if(gain>0)diagnostic$candidates_with_positive_validation_gain<-
+       diagnostic$candidates_with_positive_validation_gain+1L
+    diagnostic$max_unpenalized_validation_gain<-
+       if(is.na(diagnostic$max_unpenalized_validation_gain))gain else
+         max(diagnostic$max_unpenalized_validation_gain,gain)
     # Fixed predeclared validation model complexity cost.
     objective<-gain-.0015*nnz
     if(nnz>=1L && ba_change>=(-.02) &&
@@ -187,6 +202,7 @@ rgt_select<-function(D,yD,V,yV,seed=42L,path) {
      best$gain>=.01 && best$BAchange>=(-.02)
   best$baseline_ll<-null_ll
   best$root_nominated<-length(roots)
+  best$diagnostic<-diagnostic
   best$candidates<-nom$candidates
   best
 }

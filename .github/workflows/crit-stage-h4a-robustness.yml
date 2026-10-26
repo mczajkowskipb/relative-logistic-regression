@@ -1,0 +1,88 @@
+name: CRIT Stage H4A frozen LSH robustness
+
+on:
+  push:
+    branches:
+      - analysis/crit-stageH4A-blind-lsh-robustness-v1
+    paths:
+      - '.github/workflows/crit-stage-h4a-robustness.yml'
+      - 'scripts/crit_stageH4A_frozen_robustness.py'
+      - 'scripts/crit_stageH4A_independent_audit.py'
+      - 'docs/CRIT_STAGEH4A_FROZEN_LSH_PROTOCOL.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-robustness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout isolated H4A research version
+        uses: actions/checkout@v4
+
+      - name: Use Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install pinned NumPy
+        run: python -m pip install 'numpy==2.3.4'
+
+      - name: Verify frozen H3 source and unit regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_BLOB=dcffff64207ff71d7c52872a7c1f62e04617ceaf
+          ACTUAL_BLOB="$(git hash-object scripts/crit_stageH3_blind_lsh_pilot.py)"
+          test "$ACTUAL_BLOB" = "$EXPECTED_BLOB"
+          echo "STAGEH4A_FROZEN_H3_SOURCE_PARITY=PASS"
+          python -m py_compile \
+            scripts/crit_stageH4A_frozen_robustness.py \
+            scripts/crit_stageH4A_independent_audit.py \
+            scripts/crit_stageH3_blind_lsh_pilot.py
+          python scripts/test_crit_stageH3_hash_join.py
+
+      - name: Create new development-only results
+        run: |
+          set -euo pipefail
+          mkdir -p results/crit_stageH4A_blind_robustness_v1
+          printf '%s\n' "$GITHUB_SHA" > results/crit_stageH4A_blind_robustness_v1/SOURCE_SHA.txt
+          printf '%s\n' "dcffff64207ff71d7c52872a7c1f62e04617ceaf" \
+            > results/crit_stageH4A_blind_robustness_v1/FROZEN_H3_BLOB_SHA.txt
+          printf '%s\n' "EXPLORATORY DEVELOPMENT ONLY: 288 independent D-only synthetic studies, fixed H3 LSH 18 bits/24 tables, 36 predeclared n x p x amplitude cells, no original RLR, V, E or biomedical datasets" \
+            > results/crit_stageH4A_blind_robustness_v1/PROTOCOL.txt
+
+      - name: Execute 288 fixed-method robustness studies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -u scripts/crit_stageH4A_frozen_robustness.py \
+            2>&1 | tee results/crit_stageH4A_blind_robustness_v1/experiment.log
+          grep -qx 'STAGEH4A_288_FROZEN_LSH_STUDIES=PASS' \
+            results/crit_stageH4A_blind_robustness_v1/experiment.log
+          grep -qx 'STAGEH4A_36_PREDECLARED_CELLS=PASS' \
+            results/crit_stageH4A_blind_robustness_v1/experiment.log
+
+      - name: Independent 288-study patient score and provenance replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/crit_stageH4A_independent_audit.py \
+            2>&1 | tee results/crit_stageH4A_blind_robustness_v1/independent_audit.log
+          grep -qx 'STAGEH4A_288_SOURCE_SEED_AND_FEATURE_AUDITS=PASS' \
+            results/crit_stageH4A_blind_robustness_v1/independent_audit.log
+          grep -qx 'STAGEH4A_36_CELLS_AUDITED=PASS' \
+            results/crit_stageH4A_blind_robustness_v1/independent_audit.log
+          printf 'STAGEH4A_BATCH_EXIT=0\n' \
+            > results/crit_stageH4A_blind_robustness_v1/status.txt
+
+      - name: Retain science evidence, including failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crit-stage-h4a-${{ github.run_id }}
+          path: results/crit_stageH4A_blind_robustness_v1/
+          if-no-files-found: warn
+          retention-days: 21

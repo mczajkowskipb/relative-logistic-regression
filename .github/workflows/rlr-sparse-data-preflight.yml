@@ -17,6 +17,15 @@ jobs:
     timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
+      - name: Probe system R without package installation
+        shell: bash
+        run: |
+          if command -v Rscript >/dev/null 2>&1; then
+            Rscript --version
+            Rscript -e 'cat("PREINSTALLED_R=YES\\n"); cat(R.version.string,"\\n")'
+          else
+            echo 'PREINSTALLED_R=NO'
+          fi
       - name: Probe public CompCancer dataset URLs and shape
         shell: bash
         run: |

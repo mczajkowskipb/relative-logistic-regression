@@ -1,0 +1,108 @@
+name: RLR rank invariant contextual stump V1
+
+on:
+  push:
+    branches: [analysis/rlr-rank-invariant-stump-v1]
+    paths:
+      - 'R/experimental/rlr_rank_gate_core_v1.R'
+      - 'R/experimental/test_rlr_rank_gate_invariance_v1.R'
+      - 'R/experimental/rlr_rank_gate_pilot_v1.R'
+      - 'scripts/rlr_rank_gate_independent_audit_v1.py'
+      - '.github/workflows/rlr-rank-invariant-stump-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  rank-invariant-stump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots \
+            r-cran-biocmanager
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+              break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("glmnet","switchBox","foreign","pROC","jsonlite")) stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Parse R and Python, then run invariant tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'for(f in c(
+           "R/experimental/rlr_rank_gate_core_v1.R",
+           "R/experimental/rlr_rank_gate_pilot_v1.R",
+           "R/experimental/test_rlr_rank_gate_invariance_v1.R")) parse(f)'
+          python3 -m py_compile scripts/rlr_rank_gate_independent_audit_v1.py
+          Rscript --vanilla R/experimental/test_rlr_rank_gate_invariance_v1.R \
+            2>&1 | tee /tmp/rank_gate_unit.log
+          grep -qx 'RANK_GATE_ALL_MECHANICAL_TESTS=PASS' /tmp/rank_gate_unit.log
+      - name: Prepare isolated source and output manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          test -f R/new/07_world_protocol_utils.R
+          test ! -e results/rlr_rank_gate_v1
+          test ! -e results/rlr_pair_specific_evidence_v1
+          mkdir -p results/rlr_rank_gate_v1 results/rlr_pair_specific_evidence_v1
+          printf '%s\n' "$GITHUB_SHA" > results/rlr_rank_gate_v1/SOURCE_SHA.txt
+          git hash-object R/new/07_world_protocol_utils.R \
+            > results/rlr_rank_gate_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
+          printf '%s\n' \
+            'Within-patient rank only; 2 original exposed publication datasets; 3 frozen outer 3-fold E partitions; K20 original RLR; D-only residual rank-pair candidates; binary gates ORDER/WIDE; inner V gate against parent and non-tree control; ridge correction same parent logit; no raw ratios, EA or external cohorts; exploratory.' \
+            > results/rlr_rank_gate_v1/PROTOCOL.txt
+      - name: Download original-paper source and run pilot
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_pair_specific_fetch.py 2>&1 | tee \
+            results/rlr_rank_gate_v1/source_data.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+            results/rlr_rank_gate_v1/source_data.log
+          cp results/rlr_pair_specific_evidence_v1/input_manifest.json \
+            results/rlr_rank_gate_v1/input_manifest.json
+          Rscript --vanilla R/experimental/rlr_rank_gate_pilot_v1.R 2>&1 | tee \
+            results/rlr_rank_gate_v1/fit.log
+          grep -qx 'RANK_GATE_824_HELDOUT_PATIENT_PROBABILITY_ROWS=PASS' \
+            results/rlr_rank_gate_v1/fit.log
+      - name: Independently audit all E patients
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_rank_gate_independent_audit_v1.py 2>&1 | tee \
+            results/rlr_rank_gate_v1/independent_audit.log
+          grep -qx 'RANK_GATE_E_COVERAGE_AND_FALLBACK=PASS' \
+            results/rlr_rank_gate_v1/independent_audit.log
+          printf 'RANK_GATE_PILOT_EXIT=0\n' > results/rlr_rank_gate_v1/status.txt
+      - name: Archive evidence even if failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-rank-stump-v1-${{ github.run_id }}
+          path: |
+            results/rlr_rank_gate_v1/*.csv
+            results/rlr_rank_gate_v1/*.json
+            results/rlr_rank_gate_v1/*.log
+            results/rlr_rank_gate_v1/*.txt
+          if-no-files-found: warn
+          retention-days: 21

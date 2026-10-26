@@ -1,0 +1,121 @@
+name: RLR paper-only equally regularized vote control
+
+on:
+  push:
+    branches: [analysis/rlr-same-pairs-fair-regularization-v3]
+    paths:
+      - '.github/workflows/rlr-same-pairs-fair-v3.yml'
+      - 'R/experimental/rlr_same_pairs_fair_v3.R'
+      - 'scripts/rlr_same_pairs_fetch_v3.py'
+      - 'scripts/rlr_same_pairs_audit_v3.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  real-development-smoke:
+    name: 'Same-pair RLR vs identical-elastic-net equal-weight votes'
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Provision Ubuntu system R + original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots \
+            r-cran-biocmanager
+          Rscript --version
+          # Avoid obsolete BiocManager repository indexing for historical R 4.3:
+          # install the *version-pinned* upstream Bioconductor 3.18 package.
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl --fail --location --silent --show-error \
+              --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+                break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e '
+            for(pkg in c("switchBox","glmnet","foreign","pROC","jsonlite"))
+              stopifnot(requireNamespace(pkg,quietly=TRUE))
+            cat("SPARSE_EXACT_RLR_DEPENDENCIES=PASS\n")
+            print(sessionInfo())'
+      - name: Inspect locked source and create isolated results
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          test -f R/new/07_world_protocol_utils.R
+          Rscript --vanilla -e 'for(f in c(
+           "R/experimental/rlr_same_pairs_fair_v3.R"))
+            parse(f)'
+          python3 -m py_compile \
+            scripts/rlr_same_pairs_fetch_v3.py \
+            scripts/rlr_same_pairs_audit_v3.py
+          mkdir -p results/rlr_same_pairs_fair_v3
+          printf '%s\n' "$GITHUB_SHA" \
+            > results/rlr_same_pairs_fair_v3/SOURCE_SHA.txt
+          git hash-object R/new/07_world_protocol_utils.R \
+            > results/rlr_same_pairs_fair_v3/ORIGINAL_RLR_CORE_BLOB_SHA.txt
+          printf '%s\n' \
+            'EXPOSED ORIGINAL PAPER COMPCANCER: Armstrong-2002-v1 and Singh-2002 (both original manuscript 11), 3 outer folds x K10/20/50 x 2 arms, identical selected gene-disjoint pairs and ternary m10 representation, RLR alpha0.5 CV lambda.min, while aggregate equal-vote comparator is also glmnet alpha0.5 CV lambda.min with only one varying column and one excluded constant column. The same shortlisted signed m10 relations are used by both. Learned individual relational coefficients versus regularized single-slope equal vote. Test E used only once. Schliep source-text reconstruction not yet exact original ARFF SHA parity; no novel cohorts or trees; independent 1044 patient-level test scores audited.' \
+            > results/rlr_same_pairs_fair_v3/PROTOCOL.txt
+
+      - name: Download and verify public expression matrices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_same_pairs_fetch_v3.py 2>&1 | tee \
+             results/rlr_same_pairs_fair_v3/source_data.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+             results/rlr_same_pairs_fair_v3/source_data.log
+
+      - name: RLR against identical-pair equal-vote scalar probabilistic model
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_same_pairs_fair_v3.R 2>&1 | tee \
+            results/rlr_same_pairs_fair_v3/model_fit.log
+          grep -qx 'SAME_PAIRS_6_OUTER_E_PARTITIONS=PASS' \
+            results/rlr_same_pairs_fair_v3/model_fit.log
+          grep -qx 'SAME_PAIRS_36_FROZEN_METHOD_FITS=PASS' \
+            results/rlr_same_pairs_fair_v3/model_fit.log
+
+      - name: Independently recompute all genuine heldout E metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_same_pairs_audit_v3.py 2>&1 | tee \
+            results/rlr_same_pairs_fair_v3/independent_audit.log
+          grep -qx 'SAME_PAIRS_36_METHOD_STUDIES_REPLAYED=PASS' \
+            results/rlr_same_pairs_fair_v3/independent_audit.log
+          grep -qx 'SAME_PAIRS_ALL_E_SPLITS_DISJOINT_AND_COMPLETE=PASS' \
+            results/rlr_same_pairs_fair_v3/independent_audit.log
+          printf 'SAME_PAIRS_PILOT_EXIT=0\n' \
+            > results/rlr_same_pairs_fair_v3/status.txt
+
+      - name: Archive all evidence and failure logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-same-pairs-fair-v3-${{ github.run_id }}
+          path: |
+            results/rlr_same_pairs_fair_v3/*.csv
+            results/rlr_same_pairs_fair_v3/*.json
+            results/rlr_same_pairs_fair_v3/*.txt
+            results/rlr_same_pairs_fair_v3/*.log
+          if-no-files-found: warn
+          retention-days: 21

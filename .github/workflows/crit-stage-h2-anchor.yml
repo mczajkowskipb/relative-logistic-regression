@@ -1,0 +1,66 @@
+name: CRIT Stage H2 oracle-anchored screening
+
+on:
+  push:
+    branches: [analysis/crit-stageH2-anchored-completion-v1]
+    paths:
+      - '.github/workflows/crit-stage-h2-anchor.yml'
+      - 'R/experimental/crit_stageH2_anchored_pair_completion.R'
+      - 'scripts/crit_stageH2_independent_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anchor-completion:
+    name: D-only oracle anchor screen
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout research branch
+        uses: actions/checkout@v4
+
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - name: Parse and preflight experiment
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/crit_stageH2_anchored_pair_completion.R")' >/dev/null
+          python3 -m py_compile scripts/crit_stageH2_independent_audit.py
+          mkdir -p results/crit_stageH2_anchored_completion_v1
+          printf '%s\n' "$GITHUB_SHA" > results/crit_stageH2_anchored_completion_v1/SOURCE_SHA.txt
+          printf '%s\n' 'Stage H2: 96 D-only synthetic studies; 288 oracle/sham anchor scans; no RLR, V or E; no sensitive data' > results/crit_stageH2_anchored_completion_v1/PROTOCOL.txt
+
+      - name: Run 96 synthetic studies and 288 oracle/sham scans
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/crit_stageH2_anchored_pair_completion.R 2>&1 \
+            | tee results/crit_stageH2_anchored_completion_v1/run.log
+          grep -qx 'STAGEH2_96_D_ONLY_SYNTHETIC_DATASETS=PASS' results/crit_stageH2_anchored_completion_v1/run.log
+          grep -qx 'STAGEH2_288_ANCHORED_SCANS=PASS' results/crit_stageH2_anchored_completion_v1/run.log
+
+      - name: Independent candidate and rank auditor
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/crit_stageH2_independent_audit.py 2>&1 \
+            | tee results/crit_stageH2_anchored_completion_v1/independent_audit.log
+          grep -qx 'STAGEH2_288_PAIR_AND_METRIC_PROVENANCE=PASS' \
+             results/crit_stageH2_anchored_completion_v1/independent_audit.log
+          grep -qx 'STAGEH2_ORACLE_VS_SHAM_TARGET_IDENTITIES_AUDITED=PASS' \
+             results/crit_stageH2_anchored_completion_v1/independent_audit.log
+          printf 'STAGEH2_BATCH_EXIT=0\n' > results/crit_stageH2_anchored_completion_v1/status.txt
+
+      - name: Archive all evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crit-stage-h2-anchor-${{ github.run_id }}
+          path: results/crit_stageH2_anchored_completion_v1/
+          if-no-files-found: warn
+          retention-days: 14

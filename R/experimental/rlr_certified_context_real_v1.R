@@ -59,7 +59,7 @@ for(fold in folds){
       active_mean=if(is.null(a))mean(rowSums(RE[,abs(beta)>1e-12,drop=FALSE]!=0))
                      else mean(a$active_n),
       stop_early_fraction=if(is.null(a))0 else
-           mean(a$evaluated<a$n_global_active),
+           mean(a$evaluated<sum(abs(beta)>1e-12)),
       mean_abs_prob_error=mean(abs(p-original)),
       EA_train_savings=if(method=="CERT_TREE_CONTEXT")NA_real_ else NA_real_,
       input_provenance="SCHLIEP_RECONSTRUCTED_SOURCE_NO_ORIGINAL_ARFF_PARITY")

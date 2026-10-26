@@ -95,7 +95,7 @@ def main():
             stop(math.isfinite(score) and score>=0 and score<=past+1e-7,
                  "not descending finite interaction score")
             past=score
-            stop(1<=a<b<=K and not ({a,b} in used),
+            stop(1<=a<b<=K and frozenset((a,b)) not in used,
                  "joint candidate index order invalid")
             used.add(frozenset((a,b)))
             pairA=pairs[a-1]

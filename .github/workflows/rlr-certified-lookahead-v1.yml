@@ -1,0 +1,88 @@
+name: RLR certified globally optimized depth two tree pilot
+on:
+  push:
+    branches: [analysis/rlr-certified-lookahead-tree-v1]
+    paths:
+      - '.github/workflows/rlr-certified-lookahead-v1.yml'
+      - 'R/experimental/rlr_certified_early_exit_v1.R'
+      - 'R/experimental/rlr_arlet_evidence_tree_v1.R'
+      - 'R/experimental/rlr_certified_context_tree_v1.R'
+      - 'R/experimental/rlr_certified_lookahead_tree_v1.R'
+      - 'R/experimental/rlr_certified_lookahead_real_v1.R'
+      - 'scripts/rlr_arlet_source_gate_v1.py'
+      - 'scripts/rlr_arlet_fetch_one_v1.py'
+      - 'scripts/rlr_certified_lookahead_audit_v1.py'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  arlet-real-cohorts:
+    name: 'Depth2 C-RET full-structure paper cohort ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 115
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        dataset: [alizadeh-2000-v1, pomeroy-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision original RLR frozen dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core r-cran-foreign r-cran-glmnet r-cran-proc r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib https://bioconductor.uib.no/packages/3.18/bioc/src/contrib; do
+            if curl --fail --location --silent --show-error --connect-timeout 10 --max-time 35 "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("foreign","glmnet","pROC","switchBox","jsonlite")) stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Validate untouched original RLR and pilot syntax
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_arlet_source_gate_v1.py scripts/rlr_arlet_fetch_one_v1.py scripts/rlr_certified_lookahead_audit_v1.py
+          Rscript --vanilla -e 'parse("R/new/07_world_protocol_utils.R");parse("R/experimental/rlr_arlet_evidence_tree_v1.R");parse("R/experimental/rlr_certified_early_exit_v1.R");parse("R/experimental/rlr_certified_context_tree_v1.R");parse("R/experimental/rlr_certified_lookahead_tree_v1.R");parse("R/experimental/rlr_certified_lookahead_real_v1.R")' >/dev/null
+          mkdir -p "results/rlr_arlet_v1/$RLR_DATASET_ID"
+          git hash-object R/new/07_world_protocol_utils.R > "results/rlr_arlet_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_BLOB_SHA.txt"
+          echo "$GITHUB_SHA" > "results/rlr_arlet_v1/$RLR_DATASET_ID/PILOT_SHA.txt"
+      - name: Acquire exactly specified manuscript cohort with provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_arlet_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/source_fetch.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' "results/rlr_arlet_v1/$RLR_DATASET_ID/source_fetch.log"
+      - name: Compare original RLR static myopic and global depth2 ternary tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "results/rlr_cl2_v1/$RLR_DATASET_ID"
+          Rscript --vanilla R/experimental/rlr_certified_lookahead_real_v1.R 2>&1 | tee "results/rlr_cl2_v1/$RLR_DATASET_ID/model.log"
+          grep -qx "CL2_3_FOLDS_4_ARMS_DATASET=${RLR_DATASET_ID}_PASS" "results/rlr_cl2_v1/$RLR_DATASET_ID/model.log"
+      - name: Independently verify all patient posterior certificates and branch choices
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_certified_lookahead_audit_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_cl2_v1/$RLR_DATASET_ID/audit.log"
+          grep -qx 'CL2_INDEPENDENT_ALL_CLASS_AND_POSTERIOR_CERTIFICATES=PASS' "results/rlr_cl2_v1/$RLR_DATASET_ID/audit.log"
+      - name: Archive results and reproducibility evidence
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-depth2-global-tree-v1-${{ matrix.dataset }}-${{ github.run_id }}
+          path: |
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.log
+            results/rlr_cl2_v1/${{ matrix.dataset }}/*.log
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.txt
+            results/rlr_arlet_v1/${{ matrix.dataset }}/*.json
+            results/rlr_cl2_v1/${{ matrix.dataset }}/*.csv
+            results/rlr_cl2_v1/${{ matrix.dataset }}/*.json
+          if-no-files-found: warn
+          retention-days: 21

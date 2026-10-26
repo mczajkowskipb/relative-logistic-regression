@@ -21,10 +21,11 @@ rg_ranks <- function(X, schema=NULL) {
 rg_pairs <- function(X, pool, max_pool=650L, max_extra=700L) {
   base <- pool[seq_len(min(nrow(pool),as.integer(max_pool))),
                c("gene_left","gene_right"),drop=FALSE]
-  # An explicit D-only non-TSP candidate expansion: high-MAD genes.
-  # MAD is used for feature SELECTION on training samples, never as prediction input.
-  mad <- vapply(X, stats::mad, numeric(1))
-  top <- names(sort(mad,decreasing=TRUE))[seq_len(min(48L,ncol(X)))]
+  # Training-only expansion uses variability of within-sample gene RANKS.
+  # Raw-value MAD would violate independent per-patient monotone invariance.
+  rank_matrix <- rg_ranks(X)
+  rank_mad <- apply(rank_matrix,2L,stats::mad)
+  top <- names(sort(rank_mad,decreasing=TRUE))[seq_len(min(48L,ncol(X)))]
   extra <- if (length(top)>1L) {
     cmb <- utils::combn(top,2L)
     data.frame(gene_left=cmb[1,],gene_right=cmb[2,],

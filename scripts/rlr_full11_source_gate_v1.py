@@ -61,7 +61,10 @@ def acquire(name,platform,n,p,shard,expected):
        from collections import Counter
        widths=Counter(len(r) for r in rows)
        print(f"SOURCE_DIAGNOSTIC {name}: expected_probes={p} rows={len(rows)} width_histogram={dict(widths)} first_probe_headers={[x[0] if x else '(blank)' for x in rows[2:7]]} last_probe_headers={[x[0] if x else '(blank)' for x in rows[-7:]]}",flush=True)
-    need(len(rows)==p+2, f"{name}: expected {p+2} lines, got {len(rows)}")
+    actual_p=len(rows)-2
+    need(actual_p>0, f"{name}: no expression probe rows")
+    if actual_p!=p:
+       print(f"SOURCE_METADATA_MISMATCH {name}: inventory_n_probes={p} actual_source_n_probes={actual_p}",flush=True)
     ids=[v.strip().strip('"') for v in rows[0] if v.strip()]
     labels=[v.strip().strip('"') for v in rows[1] if v.strip()]
     need(len(ids)==len(labels)==n,f"{name}: expected {n} ids/classes, got {len(ids)}/{len(labels)}")
@@ -79,23 +82,27 @@ def acquire(name,platform,n,p,shard,expected):
        need(all(math.isfinite(x) for x in value),f"{name}: nonfinite values at probe {i}")
        vals.append(value)
     # Duplicate probe identifiers are reported, not renamed/silently modified.
-    need(len(probes)==p, "probe data inventory")
+    need(len(probes)==actual_p, "probe data inventory")
     dup=len(probes)-len(set(probes))
     clean=DATA/f"{name}.csv"
     with clean.open("w",encoding="utf-8",newline="") as f:
        w=csv.writer(f)
        w.writerow(["sample_id","class"]+[str(z) for z in probes])
        for j in range(n):
-          w.writerow([ids[j],labels[j]]+[vals[k][j] for k in range(p)])
+          w.writerow([ids[j],labels[j]]+[vals[k][j] for k in range(actual_p)])
     return dict(dataset=name,platform=platform,shard=shard,
        source_url=url,source_sha256=file_sha(raw),
-       converted_csv_sha256=file_sha(clean),n_samples=n,n_probes=p,
+       converted_csv_sha256=file_sha(clean),n_samples=n,
+       n_probes=actual_p,inventory_n_probes=p,
+       metadata_dim_match=(actual_p==p),
        class_counts={k:labels.count(k) for k in sorted(set(labels))},
        duplicate_probe_headers=dup,
        original_arff_expected_sha256=expected[f"data/CompCancer/{name}.arff"],
        original_csv_expected_sha256=expected[f"data/CompCancer/{name}.csv"],
        exact_original_arff_sha256_verified=False,
-       provenance_status="SOURCE_TEXT_VERIFIED_ORIGINAL_ARFF_NOT_AVAILABLE")
+       provenance_status=("SOURCE_TEXT_AND_CATALOG_MATCH_ARFF_NOT_VERIFIED"
+                          if actual_p==p else
+                          "SOURCE_TEXT_CATALOG_PROBE_COUNT_MISMATCH_ARFF_NOT_VERIFIED"))
 def main():
     need(not DATA.exists(),"output path exists, no overwrite")
     DATA.mkdir(parents=True)
@@ -113,6 +120,8 @@ def main():
       w.writeheader()
       for r in reports:w.writerow(r)
     print("PAPER_11_STRICT_PUBLISHED_DATASET_NAMES_AND_BINARY_PHENOTYPES=PASS")
+    print("PAPER_11_CATALOG_PROBE_COUNTS_MATCH="+("PASS" if all(x["metadata_dim_match"] for x in reports) else "PARTIAL"))
+    print("PAPER_11_ALL_SOURCE_ACTUAL_DIMENSIONS="+",".join(f"{x['dataset']}:{x['n_probes']}" for x in reports))
     print("PAPER_11_SOURCE_URL_AND_RECONSTRUCTED_CSV_SHA256_ARCHIVED=PASS")
     print("PAPER_11_ORIGINAL_PROCESSED_ARFF_PARITY=NOT_VERIFIED")
     print("PAPER_11_FULL_470_SPLITS=NOT_RUN")

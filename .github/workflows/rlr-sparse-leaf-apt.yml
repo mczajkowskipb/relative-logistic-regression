@@ -33,7 +33,7 @@ jobs:
             r-cran-proc r-cran-jsonlite r-cran-gplots \
             r-cran-biocmanager
           Rscript --version
-          Rscript --vanilla -e 'BiocManager::install("switchBox",ask=FALSE,update=FALSE,quiet=TRUE)'
+          sudo Rscript --vanilla -e 'BiocManager::install("switchBox",ask=FALSE,update=FALSE,quiet=TRUE)'
           Rscript --vanilla -e '
             for(pkg in c("switchBox","glmnet","foreign","pROC","jsonlite"))
               stopifnot(requireNamespace(pkg,quietly=TRUE))

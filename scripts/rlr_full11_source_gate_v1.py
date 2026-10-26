@@ -72,8 +72,11 @@ def acquire(name,platform,n,p,shard,expected):
        from collections import Counter
        duplicates={k:v for k,v in Counter(ids).items() if v>1}
        print(f"SOURCE_SAMPLE_DIAGNOSTIC {name}: unique_ids={len(set(ids))}/{n} duplicate_ids={duplicates} empty_ids={sum(not q for q in ids)} class_counts={dict(Counter(labels))}",flush=True)
-    need(len(set(ids))==n and len(set(labels))==2 and all(ids),
-         f"{name}: nonunique ids or invalid binary labels")
+    # The first source row is a sample annotation, NOT always a unique ID.
+    # Golub-v1 for example repeats ALL-B/ALL-T/AML phenotypic subtypes.
+    # Preserve original source column ORDER with guaranteed unique ordinals.
+    need(len(set(labels))==2, f"{name}: nonbinary source phenotype labels")
+    stable_ids=[f"{name}__source_column_{j+1:04d}" for j in range(n)]
     probes=[]
     vals=[]
     for i,line in enumerate(rows[2:]):
@@ -93,13 +96,15 @@ def acquire(name,platform,n,p,shard,expected):
        w=csv.writer(f)
        w.writerow(["sample_id","class"]+[str(z) for z in probes])
        for j in range(n):
-          w.writerow([ids[j],labels[j]]+[vals[k][j] for k in range(actual_p)])
+          w.writerow([stable_ids[j],labels[j]]+[vals[k][j] for k in range(actual_p)])
     return dict(dataset=name,platform=platform,shard=shard,
        source_url=url,source_sha256=file_sha(raw),
        converted_csv_sha256=file_sha(clean),n_samples=n,
        n_probes=actual_p,inventory_n_probes=p,
        metadata_dim_match=(actual_p==p),
        class_counts={k:labels.count(k) for k in sorted(set(labels))},
+       sample_header_unique_values=len(set(ids)),
+       sample_id_policy="POSITIONAL_IN_ORIGINAL_SOURCE_COLUMN_ORDER",
        duplicate_probe_headers=dup,
        original_arff_expected_sha256=expected[f"data/CompCancer/{name}.arff"],
        original_csv_expected_sha256=expected[f"data/CompCancer/{name}.csv"],

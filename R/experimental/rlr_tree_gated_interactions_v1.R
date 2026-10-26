@@ -105,17 +105,27 @@ tgr_branch_rels<-function(B,y,candidate,root,branch_min=8L,rel_k=3L){
 tgr_root_candidates<-function(B,y,candidate,main,max_roots=9L){
   # Root gate must be ternary. Require evidence of inactive/active states,
   # reasonable support, and not duplicate global RLR main features.
-  sz<-nrow(B);rr<-integer()
   used<-main$ordered_pair
-  for(j in seq_len(min(180L,ncol(B)))){
+  stats<-vapply(seq_len(ncol(B)),function(j){
     v<-B[,j]
-    counts<-table(factor(v,levels=c(-1,0,1)))
-    if(sum(counts>=7L)<2L || sum(v==0)<4L || sum(v!=0)<9L)next
-    if(candidate$ordered_pair[[j]] %in% used)next
-    rr<-c(rr,j)
-    if(length(rr)>=max_roots)break
-  }
-  rr
+    counts<-as.integer(table(factor(v,levels=c(-1,0,1))))
+    # m10 inactivity may be uncommon when p >> 10: DO NOT require
+    # an arbitrary number of zero states, which would block all gates.
+    if(sum(counts>=5L)<2L || sum(v!=0)<8L ||
+       candidate$ordered_pair[[j]] %in% used)return(-Inf)
+    # Prefer diversified relational evidence, not only the globally
+    # strongest supervised pairs. All scores use D only.
+    freq<-counts/sum(counts)
+    entropy<- -sum(freq[freq>0]*log(freq[freq>0]))
+    entropy+0.001*sum(v==0)
+  },numeric(1))
+  possible<-which(is.finite(stats))
+  if(!length(possible))return(integer())
+  h<-possible[order(-stats[possible],possible)]
+  # Within-size root candidates: first 5 high-entropy and 4
+  # seeded widely spread candidates from entire original+expanded pool.
+  # Root ranking is D-only and fixed in this pre-declared method.
+  unique(head(h,max_roots))
 }
 tgr_propose<-function(D,y,V,v_y,K=10L,seed=42L){
   aa<-tgr_allpairs(D,factor(y),seed)

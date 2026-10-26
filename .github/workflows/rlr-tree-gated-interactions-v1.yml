@@ -70,7 +70,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 scripts/rlr_tree_gated_audit_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_tgr_v1/$RLR_DATASET_ID/audit.log"
-          grep -qx 'TGRLR_INDEPENDENT_3_FOLD_6_METHOD_SCORE_PARITY=PASS' "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
+          grep -qx 'TGRLR_INDEPENDENT_3_FOLD_6_METHOD_SCORE_PARITY=PASS' "results/rlr_tgr_v1/$RLR_DATASET_ID/audit.log"
       - name: Archive results and reproducibility evidence
         uses: actions/upload-artifact@v4
         if: always()

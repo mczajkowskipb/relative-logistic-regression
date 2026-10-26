@@ -13,7 +13,7 @@ from pathlib import Path
 from statistics import mean
 
 ROOT=Path(__file__).resolve().parent.parent
-OUT=ROOT/"results/crit_stageH1_bounded_screening_v1"
+OUT=ROOT/"results/crit_stageH1_bounded_screening_fix1_v1"
 PS=(32,64,128,256,512)
 SCENARIOS=("null","xor")
 STRATEGIES=("FIXED_RANDOM","SEED_RANDOM","AWARE_GRAPH")

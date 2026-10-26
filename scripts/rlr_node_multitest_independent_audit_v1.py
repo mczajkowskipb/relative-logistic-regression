@@ -27,7 +27,7 @@ def main():
     methods={(r["dataset"],int(r["outer_fold"]),r["method"]):r for r in sm}
     expected={(ds,f,m) for ds in SETS for f in range(3) for m in METHODS}
     need(set(methods)==expected and len(sm)==len(expected)==24,
-         "28 method-study rows missing or duplicates")
+         "24 method-study rows missing or duplicates")
     expected_r={(ds,f) for ds in SETS for f in range(3)}
     need({(r["dataset"],int(r["outer_fold"])) for r in runs}==expected_r and
          len(runs)==6,"dataset/split manifest not complete")
@@ -88,14 +88,14 @@ def main():
                      "patient metric independently recomputed differs: "+str(key)+field)
             need(r["scientific_stage"]=="EXPOSED_BIOMEDICAL_DEV_ONLY",
                  "unwarranted scientific validation label")
-    print("=== SPARSE RLR REAL PUBLIC BIOLOGICAL PILOT ===")
+    print("=== RLR NODE MULTITEST REAL PUBLIC BIOLOGICAL PILOT ===")
     for m in METHODS:
         rr=[methods[ds,fold,m] for ds,fold in sorted(expected_r)]
         accepted=sum(r["accepted"]=="1" for r in rr)
         d=sum(float(r["delta_E_logloss"]) for r in rr)/len(rr)
-        print(f"{m:16s} V_accepted={accepted}/4 mean_E_deltaLL={d:+.6f}")
+        print(f"{m:16s} V_accepted={accepted}/6 mean_E_deltaLL={d:+.6f}")
     print("NODE_REAL_24_METHOD_STUDIES_INDEPENDENTLY_AUDITED=PASS")
     print(f"NODE_REAL_{recomputed}_PATIENT_PREDICTION_METRICS_REPLAYED=PASS")
     print("NODE_REAL_EXACT_PATIENT_LEVEL_RLR_FALLBACK=PASS")
-    print("SPARSE_REAL_NOT_INDEPENDENT_BIOMEDICAL_CONFIRMATION")
+    print("NODE_REAL_NOT_INDEPENDENT_BIOMEDICAL_CONFIRMATION")
 if __name__=="__main__":main()

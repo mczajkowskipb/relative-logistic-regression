@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           python3 -m py_compile scripts/rlr_arlet_source_gate_v1.py scripts/rlr_arlet_fetch_one_v1.py scripts/rlr_arlet_independent_audit_v1.py
-          Rscript --vanilla -e 'parse("R/new/07_world_protocol_utils.R");parse("R/experimental/rlr_arlet_evidence_tree_v1.R");parse("R/experimental/rlr_arlet_real_pilot_v1.R")' >/dev/null
+          Rscript --vanilla -e 'parse("R/new/07_world_protocol_utils.R");parse("R/experimental/rlr_arlet_evidence_tree_v1.R");parse("R/experimental/rlr_certified_early_exit_v1.R");parse("R/experimental/rlr_certified_real_v1.R")' >/dev/null
           mkdir -p "results/rlr_arlet_v1/$RLR_DATASET_ID"
           git hash-object R/new/07_world_protocol_utils.R > "results/rlr_arlet_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_BLOB_SHA.txt"
           echo "$GITHUB_SHA" > "results/rlr_arlet_v1/$RLR_DATASET_ID/PILOT_SHA.txt"
@@ -61,13 +61,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          Rscript --vanilla R/experimental/rlr_arlet_real_pilot_v1.R 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
-          grep -qx "ARLET_3_FOLD_6_METHODS_DATASET=${RLR_DATASET_ID}_PASS" "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
+          Rscript --vanilla R/experimental/rlr_certified_real_v1.R 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
+          grep -qx "CRET_3_FOLDS_CERTIFIED=${RLR_DATASET_ID}_PASS" "results/rlr_arlet_v1/$RLR_DATASET_ID/model.log"
       - name: Independent all-patient certificate and exactly-preserved-class audit
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/rlr_arlet_independent_audit_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
+          python3 scripts/rlr_certified_independent_audit_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
           grep -qx 'CRET_CERTIFICATES_AND_EXACT_CLASSES_VALIDATED=PASS' "results/rlr_arlet_v1/$RLR_DATASET_ID/audit.log"
       - name: Archive results and reproducibility evidence
         uses: actions/upload-artifact@v4
@@ -78,7 +78,7 @@ jobs:
             results/rlr_arlet_v1/${{ matrix.dataset }}/*.log
             results/rlr_arlet_v1/${{ matrix.dataset }}/*.txt
             results/rlr_arlet_v1/${{ matrix.dataset }}/*.json
-            results/rlr_arlet_v1/${{ matrix.dataset }}/pilot/*.csv
-            results/rlr_arlet_v1/${{ matrix.dataset }}/pilot/*.json
+            results/rlr_arlet_v1/${{ matrix.dataset }}/certified_tree/*.csv
+            results/rlr_arlet_v1/${{ matrix.dataset }}/certified_tree/*.json
           if-no-files-found: warn
           retention-days: 21

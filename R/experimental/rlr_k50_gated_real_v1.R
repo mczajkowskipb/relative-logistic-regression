@@ -122,14 +122,14 @@ for(f in folds){
       n_train=nrow(T),n_E=nrow(E),
       logloss=rgt_ll(ey,p),brier=mean((p-ey)^2),
       BA=rgt_ba(ey,p),macro_F1=rgt_f1(ey,p),
-      tree_accepted=if(nm=="RGT50_GATED_RESIDUAL_TREE")pred_tree$tree_used else NA,
+      tree_accepted=if(nm=="RGT50_GATED_RESIDUAL_TREE")pred_tree$used_tree else NA,
       global_n_relations=if(nm=="RGT50_GATED_RESIDUAL_TREE")
-              pred_tree$global_extra+50L else NA_integer_,
+              pred_tree$global_extra+nrow(apply_disjointness(original_pool,K=50L,d=2L)) else NA_integer_,
       branch_n_extra=if(nm=="RGT50_GATED_RESIDUAL_TREE")
               pred_tree$global_extra else NA_integer_,
-      mean_path_evaluated=if(nm=="RGT50_GATED_RESIDUAL_TREE")
+      mean_additional_path_evaluated=if(nm=="RGT50_GATED_RESIDUAL_TREE")
               pred_tree$path_extra_mean else NA_real_,
-      mean_path_active=if(nm=="RGT50_GATED_RESIDUAL_TREE")
+      root_relation_active_rate=if(nm=="RGT50_GATED_RESIDUAL_TREE")
               pred_tree$root_active_rate else NA_real_,
       scientific_stage="RGT50_ORIGINAL_PAPER_RECONSTRUCTED_SOURCE_ARFF_NOT_VERIFIED")
    for(i in seq_len(nrow(E))){
@@ -142,7 +142,7 @@ for(f in folds){
     DS,f$split_id,nm,rgt_ba(ey,p),rgt_f1(ey,p),rgt_ll(ey,p)))
  }
  message(sprintf("RGT50_OUTER_DONE dataset=%s split=%s tree=%s inner_val_gain=%+.5f proposed_root_n=%d",
-  DS,f$split_id,ifelse(pred_tree$tree_used,"YES","FALLBACK"),
+  DS,f$split_id,ifelse(pred_tree$used_tree,"YES","FALLBACK"),
   proposal$gain,proposal$root_nominated))
  unlink(splitdir,recursive=TRUE,force=TRUE)
 }

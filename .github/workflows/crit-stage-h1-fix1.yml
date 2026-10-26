@@ -1,0 +1,70 @@
+name: CRIT H1 fix1 synthetic screening
+
+on:
+  push:
+    branches:
+      - analysis/crit-stageH1-fix1-budget-guard-v1
+    paths:
+      - '.github/workflows/crit-stage-h1-fix1.yml'
+      - 'R/experimental/crit_stageH1_screening_pilot.R'
+      - 'R/experimental/crit_stageH1_pool_guard_fix1.R'
+      - 'R/experimental/test_crit_stageH1_fix1_guards.R'
+      - 'scripts/crit_stageH1_independent_audit.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-screening:
+    name: D-only synthetic pool and pair screening
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out this pinned scientific version
+        uses: actions/checkout@v4
+
+      - name: Set up base R for synthetic-only study
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: 'release'
+
+      - name: Source parse and R budget guard regression
+        run: |
+          Rscript --vanilla R/experimental/test_crit_stageH1_fix1_guards.R
+          python3 -m py_compile scripts/crit_stageH1_independent_audit.py
+
+      - name: Create new isolated output tree
+        run: |
+          mkdir -p results/crit_stageH1_bounded_screening_fix1_v1
+          printf '%s\n' "$GITHUB_SHA" \
+             > results/crit_stageH1_bounded_screening_fix1_v1/CODE_SHA.txt
+          printf '%s\n' "Synthetic 80 D-only studies, 256 screening runs; no datasets/secrets; no E labels or original RLR; failure of Stage H1 v1 preserved" \
+             > results/crit_stageH1_bounded_screening_fix1_v1/PROTOCOL.txt
+
+      - name: Run 80 standalone synthetic D screens
+        run: |
+          Rscript --vanilla R/experimental/crit_stageH1_screening_pilot.R \
+            2>&1 | tee results/crit_stageH1_bounded_screening_fix1_v1/256_screening_runs.log
+          grep -qx 'STAGEH1_256_SCREENING_RUNS_COMPLETE=PASS' \
+            results/crit_stageH1_bounded_screening_fix1_v1/256_screening_runs.log
+
+      - name: Independent archived screening audit
+        run: |
+          python3 scripts/crit_stageH1_independent_audit.py \
+            2>&1 | tee results/crit_stageH1_bounded_screening_fix1_v1/independent_audit.log
+          grep -qx 'STAGEH1_256_INDEPENDENT_PROVENANCE_CHECKS=PASS' \
+            results/crit_stageH1_bounded_screening_fix1_v1/independent_audit.log
+          grep -qx 'STAGEH1_D_ONLY_PAIR_BUDGETS_AND_SYMMETRIC_JOINT_AUDITED=PASS' \
+            results/crit_stageH1_bounded_screening_fix1_v1/independent_audit.log
+          printf 'STAGEH1_BATCH_EXIT=0\n' \
+            > results/crit_stageH1_bounded_screening_fix1_v1/status.txt
+
+      - name: Preserve synthetic results and logs, including failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crit-h1-fix1-synthetic-${{ github.run_id }}
+          path: results/crit_stageH1_bounded_screening_fix1_v1/
+          if-no-files-found: warn
+          retention-days: 14

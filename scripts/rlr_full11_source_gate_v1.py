@@ -68,6 +68,10 @@ def acquire(name,platform,n,p,shard,expected):
     ids=[v.strip().strip('"') for v in rows[0] if v.strip()]
     labels=[v.strip().strip('"') for v in rows[1] if v.strip()]
     need(len(ids)==len(labels)==n,f"{name}: expected {n} ids/classes, got {len(ids)}/{len(labels)}")
+    if len(set(ids))!=n or len(set(labels))!=2 or not all(ids):
+       from collections import Counter
+       duplicates={k:v for k,v in Counter(ids).items() if v>1}
+       print(f"SOURCE_SAMPLE_DIAGNOSTIC {name}: unique_ids={len(set(ids))}/{n} duplicate_ids={duplicates} empty_ids={sum(not q for q in ids)} class_counts={dict(Counter(labels))}",flush=True)
     need(len(set(ids))==n and len(set(labels))==2 and all(ids),
          f"{name}: nonunique ids or invalid binary labels")
     probes=[]

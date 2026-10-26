@@ -13,7 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
-OUT=Path("results/crit_stageH3_blind_lsh_v1")
+OUT=Path("results/crit_stageH3_blind_lsh_fix1_v1")
 PS=(32,64,128,256,512)
 SCENARIOS=("null","xor")
 REPS=4

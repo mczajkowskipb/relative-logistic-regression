@@ -57,6 +57,10 @@ def acquire(name,platform,n,p,shard,expected):
     raw=DATA/f"{name}_source.txt"
     raw.write_bytes(body)
     rows=list(csv.reader(body.decode("utf-8-sig").splitlines(),delimiter="\t"))
+    if len(rows)!=p+2:
+       from collections import Counter
+       widths=Counter(len(r) for r in rows)
+       print(f"SOURCE_DIAGNOSTIC {name}: expected_probes={p} rows={len(rows)} width_histogram={dict(widths)} first_probe_headers={[x[0] if x else '(blank)' for x in rows[2:7]]} last_probe_headers={[x[0] if x else '(blank)' for x in rows[-7:]]}",flush=True)
     need(len(rows)==p+2, f"{name}: expected {p+2} lines, got {len(rows)}")
     ids=[v.strip().strip('"') for v in rows[0] if v.strip()]
     labels=[v.strip().strip('"') for v in rows[1] if v.strip()]

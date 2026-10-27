@@ -109,8 +109,8 @@ for ds in datasets:
 dest=Path(a.out);dest.mkdir(parents=True,exist_ok=True)
 with (dest/"all11_firstfold_matched_budget_results.csv").open("w",newline="",encoding="utf-8") as f:
  w=csv.DictWriter(f,fieldnames=allrows[0].keys());w.writeheader();w.writerows(allrows)
-print("MB_RLR_ALL_11_DATASETS_144_METHOD_ROWS_REPLAYED=PASS" if len(allrows)==144 else "MB_RLR_AUDIT_ERROR_COUNT")
 check(len(allrows)==11*len(arms),"not 11 x12 arms")
+print("MB_RLR_ALL_11_DATASETS_132_METHOD_ROWS_REPLAYED=PASS")
 print("MB_RLR_REAL_KTSP_MATCH_K_SELECTED_FROM_ORIGINAL_RLR_T_ONLY=PASS")
 print("MB_RLR_ORIGINAL_E_PATIENTS_ALIGNED_AND_SCORES_INDEPENDENT=PASS")
 for model in arms:

@@ -87,7 +87,7 @@ jobs:
             results/rlr_anchor_lookahead_child_rlr_v1/input_manifest.json
           Rscript --vanilla R/experimental/rlr_anchor_lookahead_pilot_v1.R 2>&1 | tee \
             results/rlr_anchor_lookahead_child_rlr_v1/fit.log
-          grep -qx 'LOOKAHEAD_1236_PATIENT_METHOD_PREDICTIONS=PASS' \
+          grep -qx 'LOOKAHEAD_1648_PATIENT_METHOD_PREDICTIONS=PASS' \
             results/rlr_anchor_lookahead_child_rlr_v1/fit.log
       - name: Independent all-patient E metrics and fallback audit
         shell: bash

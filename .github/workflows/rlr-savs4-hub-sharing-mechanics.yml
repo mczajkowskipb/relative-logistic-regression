@@ -22,7 +22,19 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends r-base-core
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+            r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
       - name: Verify shared anchor hub with novel branch pair and monotone patient invariance
         shell: bash
         run: |

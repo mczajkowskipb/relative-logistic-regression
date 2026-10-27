@@ -1,0 +1,43 @@
+name: RLR paper-source original ARFF provenance preflight
+
+on:
+  push:
+    branches: [analysis/rlr-original11-full470-benchmark-v1]
+    paths:
+      - '.github/workflows/rlr-original-arff-source-inventory-v1.yml'
+      - 'scripts/rlr_original_paper_arff_sha256_preflight_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  source_inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Original paper data inventory, no synthetic replacements
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_original_paper_arff_sha256_preflight_v1.py
+          mkdir -p results/original_arff_sha256_inventory
+          python3 scripts/rlr_original_paper_arff_sha256_preflight_v1.py \
+            --root . --out results/original_arff_sha256_inventory \
+            | tee results/original_arff_sha256_inventory/inventory.log
+          grep -qx 'ORIGINAL_RLR_RAW_PATIENT_DATA_NOT_EXPORTED=PASS' \
+            results/original_arff_sha256_inventory/inventory.log
+          test -s results/original_arff_sha256_inventory/original_paper_world_inventory.csv
+          if grep -qx 'ORIGINAL_RLR_ALL_PAPER_WORLD_ARFF_INVENTORY=PASS' \
+               results/original_arff_sha256_inventory/inventory.log; then
+            echo 'ALL_FIVE_ARFF_WORLDS_AVAILABLE_IN_GITHUB=PASS'
+          else
+            echo 'ORIGINAL_ARFF_NOT_IN_GITHUB=EXPECTED; THIS IS AN HONEST INPUT LIMITATION'
+          fi
+      - name: Upload source SHA manifest with no patients
+        uses: actions/upload-artifact@v4
+        with:
+          name: RLR-original-ARFF-source-preflight-${{ github.run_id }}
+          path: results/original_arff_sha256_inventory/
+          retention-days: 21

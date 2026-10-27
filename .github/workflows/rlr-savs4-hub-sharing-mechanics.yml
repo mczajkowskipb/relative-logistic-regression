@@ -1,0 +1,39 @@
+name: SAVS4 gene-hub reuse standalone math invariant
+
+on:
+  push:
+    branches: [analysis/rlr-savs-hub-sharing-v4]
+    paths:
+      - '.github/workflows/rlr-savs4-hub-sharing-mechanics.yml'
+      - 'R/experimental/test_rlr_savs_hub_sharing_v4.R'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  invariance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R without costly bioconductor
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Verify shared anchor hub with novel branch pair and monotone patient invariance
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/test_rlr_savs_hub_sharing_v4.R | tee hub_mechanics.log
+          grep -qx 'SAVS4_ROOT_HUB_ALLOWED_BUT_IDENTICAL_PAIR_FORBIDDEN=PASS' hub_mechanics.log
+          grep -qx 'SAVS4_PATHWISE_REUSE_PATIENT_MONOTONE_INVARIANT=PASS' hub_mechanics.log
+          grep -qx 'SAVS4_ALL_MECHANICAL_TESTS=PASS' hub_mechanics.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: savs4-hub-invariance-${{ github.run_id }}
+          path: hub_mechanics.log
+          retention-days: 21

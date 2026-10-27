@@ -57,7 +57,7 @@ for ds in datasets:
  check(len(paths)==needed,ds+f" original {needed} folds required, found {len(paths)}")
  for path in paths:
   root=path.parent
-  m=rd(paths[0]);probs=rd(root/"patient_E.csv")
+  m=rd(path);probs=rd(root/"patient_E.csv")
   manifest=rd(root/"train_budget_manifest.csv")
   check(len(m)==len(arms) and {x["method"] for x in m}==set(arms),
        ds+" arm count wrong")

@@ -1,0 +1,313 @@
+name: Original 470 matched kTSP effective pair budgets versus margin aware RLR
+
+on:
+  push:
+    branches: [analysis/rlr-margin-budget-full470-v1]
+    paths:
+      - '.github/workflows/rlr-margin-budget-full470.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repetitions:
+    name: 'RLR margin effective budget ${{ matrix.dataset }} rep ${{ matrix.rep }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - dataset: alizadeh-2000-v1
+            rep: 0
+          - dataset: alizadeh-2000-v1
+            rep: 1
+          - dataset: alizadeh-2000-v1
+            rep: 2
+          - dataset: alizadeh-2000-v1
+            rep: 3
+          - dataset: alizadeh-2000-v1
+            rep: 4
+          - dataset: alizadeh-2000-v1
+            rep: 5
+          - dataset: alizadeh-2000-v1
+            rep: 6
+          - dataset: alizadeh-2000-v1
+            rep: 7
+          - dataset: alizadeh-2000-v1
+            rep: 8
+          - dataset: alizadeh-2000-v1
+            rep: 9
+          - dataset: armstrong-2002-v1
+            rep: 0
+          - dataset: armstrong-2002-v1
+            rep: 1
+          - dataset: armstrong-2002-v1
+            rep: 2
+          - dataset: armstrong-2002-v1
+            rep: 3
+          - dataset: armstrong-2002-v1
+            rep: 4
+          - dataset: armstrong-2002-v1
+            rep: 5
+          - dataset: armstrong-2002-v1
+            rep: 6
+          - dataset: armstrong-2002-v1
+            rep: 7
+          - dataset: armstrong-2002-v1
+            rep: 8
+          - dataset: armstrong-2002-v1
+            rep: 9
+          - dataset: bittner-2000
+            rep: 0
+          - dataset: bittner-2000
+            rep: 1
+          - dataset: bittner-2000
+            rep: 2
+          - dataset: bittner-2000
+            rep: 3
+          - dataset: bittner-2000
+            rep: 4
+          - dataset: bittner-2000
+            rep: 5
+          - dataset: bittner-2000
+            rep: 6
+          - dataset: bittner-2000
+            rep: 7
+          - dataset: bittner-2000
+            rep: 8
+          - dataset: bittner-2000
+            rep: 9
+          - dataset: chen-2002
+            rep: 0
+          - dataset: chen-2002
+            rep: 1
+          - dataset: chen-2002
+            rep: 2
+          - dataset: chen-2002
+            rep: 3
+          - dataset: chen-2002
+            rep: 4
+          - dataset: chen-2002
+            rep: 5
+          - dataset: chen-2002
+            rep: 6
+          - dataset: chen-2002
+            rep: 7
+          - dataset: chen-2002
+            rep: 8
+          - dataset: chen-2002
+            rep: 9
+          - dataset: golub-1999-v1
+            rep: 0
+          - dataset: golub-1999-v1
+            rep: 1
+          - dataset: golub-1999-v1
+            rep: 2
+          - dataset: golub-1999-v1
+            rep: 3
+          - dataset: golub-1999-v1
+            rep: 4
+          - dataset: golub-1999-v1
+            rep: 5
+          - dataset: golub-1999-v1
+            rep: 6
+          - dataset: golub-1999-v1
+            rep: 7
+          - dataset: golub-1999-v1
+            rep: 8
+          - dataset: golub-1999-v1
+            rep: 9
+          - dataset: gordon-2002
+            rep: 0
+          - dataset: gordon-2002
+            rep: 1
+          - dataset: gordon-2002
+            rep: 2
+          - dataset: gordon-2002
+            rep: 3
+          - dataset: gordon-2002
+            rep: 4
+          - dataset: gordon-2002
+            rep: 5
+          - dataset: gordon-2002
+            rep: 6
+          - dataset: gordon-2002
+            rep: 7
+          - dataset: gordon-2002
+            rep: 8
+          - dataset: gordon-2002
+            rep: 9
+          - dataset: pomeroy-2002-v1
+            rep: 0
+          - dataset: pomeroy-2002-v1
+            rep: 1
+          - dataset: pomeroy-2002-v1
+            rep: 2
+          - dataset: pomeroy-2002-v1
+            rep: 3
+          - dataset: pomeroy-2002-v1
+            rep: 4
+          - dataset: pomeroy-2002-v1
+            rep: 5
+          - dataset: pomeroy-2002-v1
+            rep: 6
+          - dataset: pomeroy-2002-v1
+            rep: 7
+          - dataset: pomeroy-2002-v1
+            rep: 8
+          - dataset: pomeroy-2002-v1
+            rep: 9
+          - dataset: shipp-2002-v1
+            rep: 0
+          - dataset: shipp-2002-v1
+            rep: 1
+          - dataset: shipp-2002-v1
+            rep: 2
+          - dataset: shipp-2002-v1
+            rep: 3
+          - dataset: shipp-2002-v1
+            rep: 4
+          - dataset: shipp-2002-v1
+            rep: 5
+          - dataset: shipp-2002-v1
+            rep: 6
+          - dataset: shipp-2002-v1
+            rep: 7
+          - dataset: shipp-2002-v1
+            rep: 8
+          - dataset: shipp-2002-v1
+            rep: 9
+          - dataset: singh-2002
+            rep: 0
+          - dataset: singh-2002
+            rep: 1
+          - dataset: singh-2002
+            rep: 2
+          - dataset: singh-2002
+            rep: 3
+          - dataset: singh-2002
+            rep: 4
+          - dataset: singh-2002
+            rep: 5
+          - dataset: singh-2002
+            rep: 6
+          - dataset: singh-2002
+            rep: 7
+          - dataset: singh-2002
+            rep: 8
+          - dataset: singh-2002
+            rep: 9
+          - dataset: west-2001
+            rep: 0
+          - dataset: west-2001
+            rep: 1
+          - dataset: yeoh-2002-v1
+            rep: 0
+          - dataset: yeoh-2002-v1
+            rep: 1
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+      RLR_REP: ${{ matrix.rep }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R original kTSP switchBox and original RLR packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Freeze original unpublished RLR source and test mathematical invariance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_margin_aware_budget_full470_onefold_v1.R")' >/dev/null
+          python3 -m py_compile scripts/rlr_margin_aware_budget_full470_audit_v1.py
+          Rscript --vanilla R/experimental/test_rlr_margin_aware_budget_v1.R | tee /tmp/MB_RLR_unit.log
+          grep -qx 'MB_RLR_UNIT_COMPLETE=PASS' /tmp/MB_RLR_unit.log
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_margin_budget_full470_v1/$RLR_DATASET_ID"
+          git hash-object R/new/07_world_protocol_utils.R > /tmp/original_rlr_sha.txt
+      - name: Fetch original paper named CompCancer cohort public source with SHA provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee /tmp/MB_RLR_source.log
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            /tmp/MB_RLR_source.log
+      - name: Run all five original outer folds within one exact original repetition
+        shell: bash
+        run: |
+          set -euo pipefail
+          for F in 0 1 2 3 4; do
+            export RLR_FOLD="$F"
+            SPLIT_ID=$(printf 'rep%02d_fold%02d' "$RLR_REP" "$F")
+            OUT="results/rlr_margin_budget_full470_v1/$RLR_DATASET_ID/$SPLIT_ID"
+            mkdir -p "$OUT"
+            git rev-parse HEAD > "$OUT/SOURCE_SHA.txt"
+            cp /tmp/original_rlr_sha.txt "$OUT/ORIGINAL_RLR_CORE_SHA.txt"
+            cp /tmp/MB_RLR_source.log "$OUT/source.log"
+            cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+              "$OUT/source_manifest.json"
+            printf '%s\n' 'Original unpublished RLR full 470-design 9x10x5+2x2x5 train-only new margin m10 pair selector vs literal original RLR20/50; real native switchBox kTSP K10/15/20/25 plus K budgets determined from original RLR global nonzero beta and mean patientwise m10 active rank relations on T only. E receives no tuning; prior repeated exploratory cohorts, processed original ARFF SHA parity unverified.' > "$OUT/PROTOCOL.txt"
+            Rscript --vanilla R/experimental/rlr_margin_aware_budget_full470_onefold_v1.R 2>&1 | tee "$OUT/fit.log"
+            grep -qx 'MB_RLR_ALL_MATCHED_E_METHODS_PREDICTIONS=PASS' "$OUT/fit.log"
+            grep -qx 'MB_RLR_ALL_COMPLEXITY_MATCHING_FROM_T_ONLY=PASS' "$OUT/fit.log"
+          done
+          echo 'MB_RLR_FIVEFOLD_ORIGINAL_REPETITION_FULLY_COMPUTED=PASS'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-margin-budget-full470-${{ matrix.dataset }}-rep-${{ matrix.rep }}-${{ github.run_id }}
+          path: results/rlr_margin_budget_full470_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  audit:
+    name: Independently replay 5640 method fold scores and original 11 dataset means
+    needs: repetitions
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rlr-margin-budget-full470-*
+          path: downloaded
+      - name: Check each patient every original repetition and genuine matched pair counts
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/rlr-margin-budget-full470-audit
+          python3 scripts/rlr_margin_aware_budget_full470_audit_v1.py \
+            --input downloaded --out results/rlr-margin-budget-full470-audit \
+            | tee results/rlr-margin-budget-full470-audit/audit.log
+          grep -qx 'MB_RLR_ALL_470_5640_METHOD_ROWS_REPLAYED=PASS' \
+            results/rlr-margin-budget-full470-audit/audit.log
+          grep -qx 'MB_RLR_ORIGINAL_470_REPETITIONS_EXACT_E_PATIENT_COVERAGE=PASS' \
+            results/rlr-margin-budget-full470-audit/audit.log
+          grep -qx 'MB_RLR_REAL_KTSP_MATCH_K_SELECTED_FROM_ORIGINAL_RLR_T_ONLY=PASS' \
+            results/rlr-margin-budget-full470-audit/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-margin-budget-full470-independent-all11-summary-${{ github.run_id }}
+          path: results/rlr-margin-budget-full470-audit/
+          retention-days: 21

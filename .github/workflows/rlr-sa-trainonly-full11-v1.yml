@@ -101,6 +101,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          # tee opens its log before the Python command creates its --out dir.
+          mkdir -p results/sa_rlr_trainonly_aggregate_v1
           python3 scripts/rlr_sa_trainonly_full11_aggregate_v1.py \
             --input downloaded --out results/sa_rlr_trainonly_aggregate_v1 \
             | tee results/sa_rlr_trainonly_aggregate_v1_summary.log

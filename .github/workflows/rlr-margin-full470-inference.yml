@@ -1,0 +1,53 @@
+name: RLR margin full470 independent 11 cohort inference
+
+on:
+  push:
+    branches: [analysis/rlr-margin-budget-full470-v1]
+    paths:
+      - '.github/workflows/rlr-margin-full470-inference.yml'
+      - 'scripts/rlr_margin_budget_full470_inference_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  infer:
+    name: Dataset-level paired statistical audit, 11 independent cohorts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch audited immutable 470 fold summaries
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p audited
+          gh run download 40589807042 --repo "${{ github.repository }}" \
+            --name rlr-margin-budget-full470-independent-all11-summary-40589807042 \
+            --dir audited
+          test -s audited/all11_dataset_mean_matched_budget.csv
+          grep -qx 'MB_RLR_ALL_470_5640_METHOD_ROWS_REPLAYED=PASS' audited/audit.log
+      - name: Exact 2 power 11 sign permutations, Holm F1, dataset bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_margin_budget_full470_inference_v1.py
+          mkdir -p results/rlr-margin-full470-inference
+          python3 scripts/rlr_margin_budget_full470_inference_v1.py \
+            --dataset-means audited/all11_dataset_mean_matched_budget.csv \
+            --out results/rlr-margin-full470-inference \
+            --bootstrap 30000 | tee results/rlr-margin-full470-inference/inference.log
+          grep -qx 'MB_RLR_FULL470_DATASET_LEVEL_SIGNFLIP_AND_BOOTSTRAP=PASS' \
+            results/rlr-margin-full470-inference/inference.log
+          test -s results/rlr-margin-full470-inference/final_11_dataset_science_inference.md
+          test -s results/rlr-margin-full470-inference/paired_11_dataset_signflip_bootstrap.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-margin-original470-dataset-inference-${{ github.run_id }}
+          path: results/rlr-margin-full470-inference/
+          retention-days: 21

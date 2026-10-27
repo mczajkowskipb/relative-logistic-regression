@@ -22,6 +22,20 @@ Logloss, positive-class F1, Macro-F1, BA, AUC, Brier plus median/mean patient-ac
 
 **Important limit:** fewer evaluated within-patient *comparisons* does **not** imply fewer genes need to be measured on the assay/platform (the whole transcriptomic profile is already collected). Thus claim is local **explanation size and comparison computations**, not reduced wet-lab diagnostic costs. Sparse voting as such is also prior art in kTSP; adaptive test-time evaluation trees / cost-sensitive feature acquisition have long precedent (e.g. Xu et al., ICML 2013, https://proceedings.mlr.press/v28/xu13.html). Methodological novelty requires **the particular stable rank anchor/reference selection + branch-conditional directed one-sided rule abstention + measurable patient-specific sparsity**, shown experimentally beyond globally identical feature union.
 
+## Direct manuscript structural evidence: not a new RLR contribution, but a baseline to beat
+
+The user's completed **UNPUBLISHED original RLR manuscript** already reports exactly four stages of sparseness: candidate shortlist, nominal K, nonzero global coefficients, and nonzero pair states per specific patient. In its CompCancer structural table (descriptive group-level means):
+
+| Model | Nominal K | Global active mean | Patient local active mean |
+|---|---:|---:|---:|
+| RLR-10 | 10 | 9.31 | 8.41 |
+| RLR-20 | 20 | 16.63 | 15.10 |
+| **RLR-50** | **50** | **28.09** | **25.55** |
+
+Original RLR is **not** a 50-active-pair prediction for every patient. Its ternary pair feature is exactly zero only when the absolute signed rank gap is below m (while both far-apart signs remain active), and the fitted logistic coefficient can also be zero. This original claim is already in `manuscript_lock/RLR3_submission_final.tex`, not a newly invented result and not to be presented as specific novelty of SAVS.
+
+The new SAVS V1 has at most four child *voting* rules per patient and 3 or 5 unconditional anchor-root comparisons. Both counts MUST be reported separately. A negative or inactive single-sided inequality does not represent the original RLR's ternary negative relation; it is an explicit no-vote. Do NOT compare only 2 activated votes versus 25.55 original active RLR relations without giving model F1/AUC and true tested comparison count and class coverage.
+
 ## Interim actual first completed D/V: Chen
 
 [#40552370636](https://github.com/mczajkowskipb/relative-logistic-regression/actions/runs/40552370636), D=108/V=35:

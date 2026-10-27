@@ -70,4 +70,12 @@ stopifnot(length(prob)==n,
           rg_ba(os_truth(y),prob)>.9,
           rg_ll(os_truth(y),prob)<rg_ll(os_truth(y),rep(.5,n)))
 cat("OASDT_PLANTED_DEPTH2_LEAF_SCORER=PASS\n")
+
+# Non-tree comparator must remain estimable with only one root score.
+one_node<-list(root=root,children=list(NULL,NULL))
+glm<-os_global_fit(r0,y,one_node,depth=1L)
+pp<-os_global_predict(r2,glm)
+stopifnot(isTRUE(glm$padded),length(pp)==n,
+          all(is.finite(pp)),all(pp>=0&pp<=1))
+cat("OASDT_SINGLE_SCORE_INERT_DUMMY_GLMNET=PASS\n")
 cat("OASDT_ALL_MECHANICAL_TESTS=PASS\n")

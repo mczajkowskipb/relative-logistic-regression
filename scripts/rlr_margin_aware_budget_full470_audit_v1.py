@@ -55,17 +55,18 @@ for ds in datasets:
  paths=list(Path(a.input).rglob(ds+"/rep*/method_metrics.csv"))
  needed=10 if ds in ("west-2001","yeoh-2002-v1") else 50
  check(len(paths)==needed,ds+f" original {needed} folds required, found {len(paths)}")
- root=paths[0].parent
- m=rd(paths[0]);probs=rd(root/"patient_E.csv")
- manifest=rd(root/"train_budget_manifest.csv")
- check(len(m)==len(arms) and {x["method"] for x in m}==set(arms),
-      ds+" arm count wrong")
- check(len(manifest)==1,ds+" one train manifest")
- z=manifest[0]
- check(z["dataset"]==ds and z["split_id"]==root.name and
-       z["provenance"]=="K_MATCH_ALWAYS_CHOSEN_FROM_ORIGINAL_RLR_OUTER_T_ONLY",
-       ds+" wrong matching protocol")
- T=z["T_ids"].split("|");E=z["E_ids"].split("|")
+ for path in paths:
+  root=path.parent
+  m=rd(paths[0]);probs=rd(root/"patient_E.csv")
+  manifest=rd(root/"train_budget_manifest.csv")
+  check(len(m)==len(arms) and {x["method"] for x in m}==set(arms),
+       ds+" arm count wrong")
+  check(len(manifest)==1,ds+" one train manifest")
+  z=manifest[0]
+  check(z["dataset"]==ds and z["split_id"]==root.name and
+        z["provenance"]=="K_MATCH_ALWAYS_CHOSEN_FROM_ORIGINAL_RLR_OUTER_T_ONLY",
+        ds+" wrong matching protocol")
+  T=z["T_ids"].split("|");E=z["E_ids"].split("|")
   rep=int(z["split_id"][3:5]);fold=int(z["split_id"][-2:])
   check(rep in range(2 if ds in ("west-2001","yeoh-2002-v1") else 10)
         and fold in range(5),"invalid original repetition/fold "+ds)
@@ -73,50 +74,50 @@ for ds in datasets:
   E_per_repeat[ds,rep][fold]=set(E)
   N_per_dataset[ds]=len(T)+len(E)
   allman.append(z)
- check(len(T)==int(z["n_T"]) and len(E)==int(z["n_E"]) and
-       len(set(T))==len(T) and len(set(E))==len(E) and
-       not(set(T)&set(E)),ds+" training/test overlap")
- ranges={"KTSP10":10,"KTSP15":15,"KTSP20":20,"KTSP25":25,
-  "KTSP_M20_GLOBAL":budget(float(z["K20_global"])),
-  "KTSP_M20_LOCAL":budget(float(z["K20_train_patient"])),
-  "KTSP_M50_GLOBAL":budget(float(z["K50_global"])),
-  "KTSP_M50_LOCAL":budget(float(z["K50_train_patient"]))}
- group=collections.defaultdict(list)
- for row in probs:group[row["method"]].append(row)
- check(set(group)==set(arms),ds+" missing patient model")
- for model in arms:
-  meta=next(x for x in m if x["method"]==model)
-  rr=group[model]
-  check(len(rr)==len(E) and {x["sample_id"] for x in rr}==set(E),
-        ds+"/"+model+" missing E patient")
-  rr=sorted(rr,key=lambda x:x["sample_id"])
-  y=[int(x["truth"]) for x in rr]
-  pp=[float(x["prob"]) for x in rr]
-  h=[int(x["label"]) for x in rr]
-  activity=[int(x["active"]) for x in rr]
-  cost=[int(x["tested"]) for x in rr]
-  check(all(x in (0,1) for x in y+h) and
-        all(math.isfinite(x) and 0<=x<=1 for x in pp),
-        ds+"/"+model+" invalid class probability")
-  check(all(0<=v<=u<=50 for v,u in zip(activity,cost)),
-        ds+"/"+model+" wrong activity")
-  if model.startswith("RLR") or model.startswith("MARGIN_RLR"):
-   check(all(hi==int(pi>=.5) for hi,pi in zip(h,pp)),
-         ds+" RLR threshold not standard")
-  else:
-   check(1<=int(meta["nominal_pairs"])<=ranges[model] and
-         len(set(cost))==1 and cost[0]==int(meta["nominal_pairs"]) and
-         all(x==cost[0] for x in activity),
-         ds+" real kTSP realized K mismatch "+model)
-  actual=stats(y,pp,h)
-  for key,val in actual.items():
-   check(abs(float(meta[key])-val)<1e-9,
-         f"{ds}/{model}/{key} mismatch")
-  for key,vals in (("test_mean_active_pairs",activity),
-                   ("test_mean_tested_pairs",cost)):
-   check(abs(float(meta[key])-sum(vals)/len(vals))<1e-9,
-         f"{ds}/{model}/{key} mismatch")
-  allrows.append(meta)
+  check(len(T)==int(z["n_T"]) and len(E)==int(z["n_E"]) and
+        len(set(T))==len(T) and len(set(E))==len(E) and
+        not(set(T)&set(E)),ds+" training/test overlap")
+  ranges={"KTSP10":10,"KTSP15":15,"KTSP20":20,"KTSP25":25,
+   "KTSP_M20_GLOBAL":budget(float(z["K20_global"])),
+   "KTSP_M20_LOCAL":budget(float(z["K20_train_patient"])),
+   "KTSP_M50_GLOBAL":budget(float(z["K50_global"])),
+   "KTSP_M50_LOCAL":budget(float(z["K50_train_patient"]))}
+  group=collections.defaultdict(list)
+  for row in probs:group[row["method"]].append(row)
+  check(set(group)==set(arms),ds+" missing patient model")
+  for model in arms:
+   meta=next(x for x in m if x["method"]==model)
+   rr=group[model]
+   check(len(rr)==len(E) and {x["sample_id"] for x in rr}==set(E),
+         ds+"/"+model+" missing E patient")
+   rr=sorted(rr,key=lambda x:x["sample_id"])
+   y=[int(x["truth"]) for x in rr]
+   pp=[float(x["prob"]) for x in rr]
+   h=[int(x["label"]) for x in rr]
+   activity=[int(x["active"]) for x in rr]
+   cost=[int(x["tested"]) for x in rr]
+   check(all(x in (0,1) for x in y+h) and
+         all(math.isfinite(x) and 0<=x<=1 for x in pp),
+         ds+"/"+model+" invalid class probability")
+   check(all(0<=v<=u<=50 for v,u in zip(activity,cost)),
+         ds+"/"+model+" wrong activity")
+   if model.startswith("RLR") or model.startswith("MARGIN_RLR"):
+    check(all(hi==int(pi>=.5) for hi,pi in zip(h,pp)),
+          ds+" RLR threshold not standard")
+   else:
+    check(1<=int(meta["nominal_pairs"])<=ranges[model] and
+          len(set(cost))==1 and cost[0]==int(meta["nominal_pairs"]) and
+          all(x==cost[0] for x in activity),
+          ds+" real kTSP realized K mismatch "+model)
+   actual=stats(y,pp,h)
+   for key,val in actual.items():
+    check(abs(float(meta[key])-val)<1e-9,
+          f"{ds}/{model}/{key} mismatch")
+   for key,vals in (("test_mean_active_pairs",activity),
+                    ("test_mean_tested_pairs",cost)):
+    check(abs(float(meta[key])-sum(vals)/len(vals))<1e-9,
+          f"{ds}/{model}/{key} mismatch")
+   allrows.append(meta)
 dest=Path(a.out);dest.mkdir(parents=True,exist_ok=True)
 with (dest/"all470_fold_matched_budget_results.csv").open("w",newline="",encoding="utf-8") as f:
  w=csv.DictWriter(f,fieldnames=allrows[0].keys());w.writeheader();w.writerows(allrows)

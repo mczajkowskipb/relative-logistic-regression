@@ -197,13 +197,18 @@ os_count_design <- function(R,tree,depth=2L) {
 }
 os_global_fit <- function(R,y,tree,depth=2L) {
   x<-os_count_design(R,tree,depth)
+  padded<-ncol(x)==1L
+  # glmnet >=4 requires >=2 columns. A permanently zero dummy does not
+  # change the score-only no-tree comparator or its fitted prediction.
+  if(padded)x<-cbind(x,OASDT_INERT_ZERO=rep(0,nrow(x)))
   fit<-glmnet::glmnet(x=x,y=os_truth(y),family="binomial",
       alpha=0,lambda=.10,standardize=FALSE)
-  list(fit=fit,tree=tree,depth=depth)
+  list(fit=fit,tree=tree,depth=depth,padded=padded)
 }
 os_global_predict <- function(R,model){
-  as.numeric(predict(model$fit,
-    newx=os_count_design(R,model$tree,model$depth),
+  x<-os_count_design(R,model$tree,model$depth)
+  if(model$padded)x<-cbind(x,OASDT_INERT_ZERO=rep(0,nrow(x)))
+  as.numeric(predict(model$fit,newx=x,
     s=.10,type="response"))
 }
 

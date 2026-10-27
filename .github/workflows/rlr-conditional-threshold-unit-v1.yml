@@ -1,0 +1,51 @@
+name: COT-RLR ordinal conditional threshold synthetic invariance
+
+on:
+  push:
+    branches: [analysis/rlr-conditional-threshold-stump-v1]
+    paths:
+      - '.github/workflows/rlr-conditional-threshold-unit-v1.yml'
+      - 'R/experimental/test_rlr_conditional_ordinal_threshold_v1.R'
+      - 'R/experimental/rlr_conditional_ordinal_threshold_v1.R'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ordinal-threshold-invariance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup R and original RLR switchBox packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Parse and test all conditional ordinal threshold invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_conditional_ordinal_threshold_v1.R");parse("R/experimental/test_rlr_conditional_ordinal_threshold_v1.R")' >/dev/null
+          Rscript --vanilla R/experimental/test_rlr_conditional_ordinal_threshold_v1.R \
+             2>&1 | tee /tmp/COT-unit.log
+          grep -qx 'COT_RLR_ALL_MECHANICAL_TESTS=PASS' /tmp/COT-unit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: COT-RLR-unit-${{ github.run_id }}
+          path: /tmp/COT-unit.log
+          retention-days: 21

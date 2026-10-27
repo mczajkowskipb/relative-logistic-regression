@@ -248,7 +248,7 @@ write.csv(data.frame(dataset=ds,split_id=split_id,
   V_parent_logloss_gain=gain_parent,V_global_logloss_gain=gain_global,
   V_macro_f1_change=deltaF1,V_ba_change=deltaBA,
   elapsed_seconds=proc.time()[["elapsed"]]-start,
-  evidence="ALREADY_EXPLORED_DATA_FIRST_OUTER_E_DEVELOPMENT"),
+  evidence="ORIGINAL_PAPER_NAMED_PUBLIC_SOURCE_RECONSTRUCTION_DEVELOPMENT"),
   file.path(out,"split_manifest.csv"),row.names=FALSE)
 crp_need(i==length(arms)&&j==length(arms)*nrow(E),
          "incomplete original paper comparison")

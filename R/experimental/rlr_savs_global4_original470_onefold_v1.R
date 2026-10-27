@@ -81,9 +81,13 @@ read_comparator<-function(name) {
 for(k in c(4L,10L,20L,50L)){
  nm<-paste0("KTSP",k)
  x<-read_comparator(paste0("ktsp",k))
- x$n_active<-rep(k,nrow(E))
- x$n_considered<-rep(k,nrow(E))
- x$panel_size<-k
+ realized<-nrow(read.csv(file.path(out,"baselines",
+                paste0("ktsp",k),"selected_pairs.csv")))
+ sv_need(realized>=1L && realized<=k,
+        "real switchBox kTSP panel outside nominal K")
+ x$n_active<-rep(realized,nrow(E))
+ x$n_considered<-rep(realized,nrow(E))
+ x$panel_size<-realized
  models[[nm]]<-x
 }
 tsp<-read_comparator("tsp1")

@@ -1,0 +1,47 @@
+name: SAVS V1 independently replay finished eleven-cohort D/V patients
+
+on:
+  push:
+    branches: [analysis/rlr-anchor-selective-abstention-stump-v1]
+    paths:
+      - '.github/workflows/rlr-savs-DV-independent-audit.yml'
+      - 'scripts/rlr_savs_original11_DV_audit_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  audit:
+    name: Recompute all 88 method arm scores from original 11 V patient files
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download completed original SAVS11 run artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh run download 40552370636 --repo ${{ github.repository }} -D downloaded
+          python3 -m py_compile scripts/rlr_savs_original11_DV_audit_v1.py
+      - name: Independently replay V metrics and patient activity
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/savs-v1-independent-audit
+          python3 scripts/rlr_savs_original11_DV_audit_v1.py \
+             --input downloaded --out results/savs-v1-independent-audit \
+             | tee results/savs-v1-independent-audit/audit.log
+          grep -qx 'SAVS_ALL11_EIGHTY_EIGHT_DV_METHOD_METRICS_RECALCULATED=PASS' \
+             results/savs-v1-independent-audit/audit.log
+          grep -qx 'SAVS_ALL11_PATIENTWISE_ABSTENTION_AND_COMPLEXITY_REPLAYED=PASS' \
+             results/savs-v1-independent-audit/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SAVS11-full-replayed-audit-${{ github.run_id }}
+          path: results/savs-v1-independent-audit/
+          retention-days: 21

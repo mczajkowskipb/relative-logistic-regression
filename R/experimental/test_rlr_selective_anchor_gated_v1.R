@@ -65,4 +65,15 @@ err<-tryCatch({rg_ranks(U[,rev(names(U)),drop=FALSE],
                         schema=names(X));FALSE},error=function(e)TRUE)
 stopifnot(err)
 cat("SA_RLR_FIXED_GENE_UNIVERSE_ENFORCED=PASS\n")
+# A small original-paper cohort can have a valid outer RLR baseline while
+# the nested D 5-fold glmnet step is not estimable; it must not hard fail.
+sm_id<-c(which(y==levels(y)[1L])[1:5],
+         which(y==levels(y)[2L])[1:5])
+sm_X<-X[sm_id,,drop=FALSE]
+sm_y<-factor(as.character(y[sm_id]),levels=levels(y))
+fallback<-sa_select(sm_X,sm_y)
+stopifnot(is.null(fallback$root),
+          identical(fallback$accepted,FALSE),
+          grepl("^D_CLASS_TOO_SMALL_FOR_GLMNET",fallback$reason))
+cat("SA_RLR_UNDERSIZED_NESTED_CV_EXPLICIT_FALLBACK=PASS\n")
 cat("SA_RLR_ALL_MECHANICAL_TESTS=PASS\n")

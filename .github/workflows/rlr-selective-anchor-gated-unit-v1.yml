@@ -1,0 +1,53 @@
+name: SA-RLR selective anchor gate mechanical invariance
+
+on:
+  push:
+    branches: [analysis/rlr-selective-anchor-gated-v1]
+    paths:
+      - 'R/experimental/rlr_selective_anchor_gated_v1.R'
+      - 'R/experimental/test_rlr_selective_anchor_gated_v1.R'
+      - '.github/workflows/rlr-selective-anchor-gated-unit-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  sa-rlr-structural-gates:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R dependencies for real logistic fits
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+            r-cran-jsonlite r-cran-gplots r-cran-biocmanager
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                 "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Verify original paper stays frozen and test new real R fits
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'for(f in c("R/experimental/rlr_selective_anchor_gated_v1.R","R/experimental/test_rlr_selective_anchor_gated_v1.R")) parse(f)'
+          Rscript --vanilla R/experimental/test_rlr_selective_anchor_gated_v1.R \
+             2>&1 | tee /tmp/sa-rlr-unit-v1.log
+          grep -qx 'SA_RLR_ALL_MECHANICAL_TESTS=PASS' /tmp/sa-rlr-unit-v1.log
+          echo 'SA_RLR_ORIGINAL_MANUSCRIPT_UNCHANGED=PASS'
+      - name: Archive unit evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sa-rlr-asymmetric-unit-${{ github.run_id }}
+          path: /tmp/sa-rlr-unit-v1.log
+          if-no-files-found: warn

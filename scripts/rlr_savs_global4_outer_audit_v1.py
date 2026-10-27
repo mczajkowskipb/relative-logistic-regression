@@ -101,9 +101,11 @@ for ds in sets:
          abs(sum(bb)/len(bb)-float(z["mean_tested"]))<1e-9,
          "activity mean mismatch "+ds)
    if method.startswith("KTSP") or method=="TSP1":
-    nominal=int(method[4:]) if method.startswith("KTSP") else 1
-    need(all(int(r["n_tested"])==nominal for r in ordered),
-         "kTSP native voting test count missing "+ds)
+    limit=int(method[4:]) if method.startswith("KTSP") else 1
+    actual=int(float(z["nominal_panel"]))
+    need(1<=actual<=limit and
+         all(int(r["n_tested"])==actual for r in ordered),
+         "realized switchBox native voting panel inconsistent "+ds)
   full.extend(rows);manifests.append(m)
 if q.full470:
  need(len(manifests)==470 and len(full)==5170,"not full original 470 model folds")

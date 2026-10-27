@@ -1,0 +1,121 @@
+name: RLR original 11 cohorts matched real kTSP LR CFO tree E benchmark V1
+
+on:
+  push:
+    branches: [analysis/rlr-original11-outer-benchmark-v1]
+    paths:
+      - '.github/workflows/rlr-original11-outer-firstfold-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dataset:
+    name: 'Original CompCancer E ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+      RLR_REP: "0"
+      RLR_FOLD: "0"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install original RLR + actual kTSP switchBox and glmnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("glmnet","switchBox","pROC","foreign"))stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Verify original RLR manuscript and source; syntax and Python preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_original11_cfo_outer_onefold_v1.R")' >/dev/null
+          python3 -m py_compile scripts/rlr_original11_cfo_outer_audit_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00"
+          echo "$GITHUB_SHA" > "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R \
+            > "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/ORIGINAL_RLR_CORE_SHA.txt"
+          printf '%s\n' 'Development-stage first outer original split; D nominations, V selection, original T OOF refit, E labels used strictly for metric, identical source cohort and patient fold for real kTSP10/20/50, TSP1, RLR10/20/50, LR, CFO tree and same-pairs global; no original processed ARFF SHA parity claim.' \
+            > "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/PROTOCOL.txt"
+      - name: Download same public original-paper cohort with actual provenance SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/source_manifest.json"
+      - name: Full original E: actual kTSP/TSP, RLR10-50, value-LR and frozen CFO tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_original11_cfo_outer_onefold_v1.R 2>&1 | tee \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/fit.log"
+          grep -qx 'CFO_OUTER_11_METHODS_TRUE_MATCHED_E_EVALUATION=PASS' \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/fit.log"
+          grep -qx 'CFO_OUTER_ALL_CLASSIFIER_HYPERPARAMETERS_TRAIN_ONLY=PASS' \
+            "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/fit.log"
+      - name: Archive each original E patient prediction and manifest
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfo-outer-first-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_original11_outer_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  audit:
+    name: Independently replay original 11 cohort matched E probabilities and baselines
+    needs: dataset
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cfo-outer-first-*
+          path: downloaded
+      - name: Independently recompute patient labels F1 AUC Brier logloss and V fallback
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/cfo-outer-original11-summary
+          python3 scripts/rlr_original11_cfo_outer_audit_v1.py \
+            --input downloaded --out results/cfo-outer-original11-summary \
+            --expected-splits 1 \
+            | tee results/cfo-outer-original11-summary/audit.log
+          grep -qx 'CFO_OUTER_11_COHORTS_E_MANIFEST_AND_NATIVE_KTSP_LABELS=PASS' \
+             results/cfo-outer-original11-summary/audit.log
+          grep -qx 'CFO_OUTER_121_MODEL_FOLD_METRICS_INDEPENDENT_REPLAY=PASS' \
+             results/cfo-outer-original11-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cfo-outer-original11-summary-${{ github.run_id }}
+          path: results/cfo-outer-original11-summary/
+          retention-days: 21

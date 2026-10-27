@@ -158,6 +158,21 @@ sa_select <- function(T,yT) {
   D<-T[sp$D,,drop=FALSE];V<-T[sp$V,,drop=FALSE]
   yd<-factor(as.character(yT[sp$D]),levels=levels(yT))
   yv<-factor(as.character(yT[sp$V]),levels=levels(yT))
+  # cv.glmnet rejects nfolds <=3. Original RLR on full outer T can
+  # still be fitted; therefore insufficient nested D training support
+  # must return an explicit SAFE fallback, not crash or invent tree labels.
+  small_fallback<-function(reason)list(root=NULL,pairs=NULL,
+      accepted=FALSE,considered=0L,proposed=0L,
+      working=0L,active=0L,v_gain_parent=NA_real_,
+      v_gain_samepairs=NA_real_,v_BA=NA_real_,reason=reason)
+  if(safe_nfolds(yd,5L)<4L)
+    return(small_fallback("D_CLASS_TOO_SMALL_FOR_GLMNET_4FOLD"))
+  oofplans<-make_repeated_stratified_folds(yd,3L,1L,731L)
+  if(any(vapply(oofplans,function(q) {
+    yy<-factor(as.character(yd[q$train_idx]),levels=levels(yd))
+    safe_nfolds(yy,5L)<4L
+  },logical(1))))
+    return(small_fallback("D_OOF_SUBTRAIN_TOO_SMALL_FOR_GLMNET_4FOLD"))
   pool<-compute_top_pairs_switchbox(D,yd,top_n=1000L,buffer_mult=5L)
   parent<-rg_parent(D,yd,V,pool,K=50L)
   parent_oof<-sa_parent_oof(D,yd,K=50L)

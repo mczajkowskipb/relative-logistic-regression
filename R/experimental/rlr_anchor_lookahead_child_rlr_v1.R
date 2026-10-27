@@ -224,7 +224,10 @@ la_select <- function(T,yT){
        v_ba_delta=NA_real_,working=0L,active=0L,
        proposed=roots$n_proposed,considered=length(roots$candidates),
        greedy_root=if(is.null(greedy))NULL else greedy$node,
-       greedy_pairs=NULL,reason="no_valid_tree")
+       greedy_pairs=NULL,
+       greedy_v_parent=NA_real_,greedy_v_global=NA_real_,
+       greedy_v_gate=NA_real_,greedy_v_BA=NA_real_,
+       reason="no_valid_tree")
   cand<-lapply(roots$candidates,function(c){
      la_val_candidate(D,yd,parent$train,V,parent$test,c$node)
   })
@@ -236,6 +239,16 @@ la_select <- function(T,yT){
   # coefficients on outer T with those pair IDs FROZEN.
   greedy_pairs<-if(is.null(greedyV))NULL else greedyV$structure$pairs
   fallback$greedy_pairs<-greedy_pairs
+  if(!is.null(greedyV)){
+    fallback$greedy_v_parent<-rg_ll(yy,parent$test)-
+                             rg_ll(yy,greedyV$p_tree)
+    fallback$greedy_v_global<-rg_ll(yy,greedyV$p_global)-
+                             rg_ll(yy,greedyV$p_tree)
+    fallback$greedy_v_gate<-rg_ll(yy,greedyV$p_gate)-
+                             rg_ll(yy,greedyV$p_tree)
+    fallback$greedy_v_BA<-rg_ba(yy,greedyV$p_tree)-
+                             rg_ba(yy,parent$test)
+  }
   if(length(cand)==0L)return(fallback)
   losses<-vapply(cand,function(c)rg_ll(yy,c$p_tree),numeric(1))
   best<-cand[[which.min(losses)]]
@@ -254,7 +267,12 @@ la_select <- function(T,yT){
        working=best$working,active=best$active,
        proposed=roots$n_proposed,considered=length(roots$candidates),
        greedy_root=if(is.null(greedy))NULL else greedy$node,
-       greedy_pairs=greedy_pairs,reason="V_GATE")
+       greedy_pairs=greedy_pairs,
+       greedy_v_parent=fallback$greedy_v_parent,
+       greedy_v_global=fallback$greedy_v_global,
+       greedy_v_gate=fallback$greedy_v_gate,
+       greedy_v_BA=fallback$greedy_v_BA,
+       reason="V_GATE")
 }
 
 la_evaluate <- function(T,yT,E,yE) {
@@ -263,6 +281,7 @@ la_evaluate <- function(T,yT,E,yE) {
   parent<-rg_parent(T,yT,E,pool,K=20L)
   original<-parent$test
   p_tree<-p_global<-p_gate<-p_greedy<-original
+  p_greedy_global<-p_greedy_gate<-original
   actual_active<-0L
   if(!is.null(sel$root)){
     # Freeze structure and D-only nominated pairs. Refit coefficients on T.
@@ -279,10 +298,16 @@ la_evaluate <- function(T,yT,E,yE) {
     greedyfit<-la_fit_structure(T,yT,parent$train,sel$greedy_root,
                                 pairs_fixed=sel$greedy_pairs)
     p_greedy<-la_predict_tree(E,original,greedyfit)
+    p_greedy_global<-la_global_control(T,yT,parent$train,
+                                       E,original,greedyfit)
+    p_greedy_gate<-la_gate_control(T,yT,parent$train,
+                                   E,original,sel$greedy_root)
   }
   gated<-if(isTRUE(sel$accepted))p_tree else original
   list(probs=list(ORIGINAL_RLR=original,
        GREEDY_ROOT_CHILD_RLR=p_greedy,
+       GREEDY_SAME_PAIRS_GLOBAL=p_greedy_global,
+       GREEDY_GATE_ONLY=p_greedy_gate,
        LOOKAHEAD_CHILD_RLR=p_tree,
        LOOKAHEAD_SAME_PAIRS_GLOBAL=p_global,
        LOOKAHEAD_GATE_ONLY=p_gate,

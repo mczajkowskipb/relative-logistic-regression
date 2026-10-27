@@ -25,7 +25,7 @@ For each fixed 3-fold outer test E:
    - a same-pairs global non-tree elastic-net correction using the union of all child-nominated pairs plus root gate, without branch-dependent coefficients;
    - a **greedy root** selected on D for its own class-separation leaf loss (same root panel heuristic) and fitted with the same child-RLR experts; this comparator is reported even if no lookahead root passes V.
 7. **Accept** the lookahead tree only if V logloss improvement is at least 0.008 versus original RLR, 0.004 versus same-pairs global, 0.004 versus gate-only, and V balanced accuracy loss no worse than 0.02. Report V improvement or loss versus greedy even when it fails acceptance. Otherwise **exact original RLR fallback** on E.
-8. Refit original RLR and the D-selected branch pair coefficients using all outer T, with root structure and pair identities fixed from D; predict E only once. The greedy-root control recomputes local pairs using T without any E labels. Predeclared outputs include full diagnostics even if 0/6 accepted.
+8. Refit original RLR and the D-selected branch pair coefficients using all outer T, with root structure and pair identities fixed from D; predict E only once. For a fair comparison the greedy root ALSO nominates its child pairs on inner D, and only their coefficients are refitted on outer T; the identities of greedy and lookahead child pairs are frozen from D. Predeclared outputs include full diagnostics even if 0/6 accepted.
 
 ## Computational upper bound
 
@@ -35,11 +35,17 @@ At most six D root expert fits per outer fold, each with two branch correction m
 
 - ORIGINAL_RLR
 - GREEDY_ROOT_CHILD_RLR
+- GREEDY_SAME_PAIRS_GLOBAL (greedy D-selected child pair union, but one shared global coefficient vector)
+- GREEDY_GATE_ONLY (the same greedy root without local gene-pair corrections)
 - LOOKAHEAD_CHILD_RLR (unconditionally fitted, diagnostic)
 - LOOKAHEAD_SAME_PAIRS_GLOBAL (same child gene-pair union; no branch-dependent coefficients)
 - LOOKAHEAD_GATE_ONLY
 - V_GATED_LOOKAHEAD_CHILD_RLR (actual inner-selected decision)
 
-Development datasets: already-exposed Chowdary-2006 (104 patients/182 genes) and Singh-2002 (102/339), source-reconstructed public matrices not checksum-confirmed to original processed ARFF. Outer 3-fold stratified E seed42 × one repeat => 6 E partitions, 36 model-fold metric records, 1236 heldout patient-method scores. Primary analysis Δ logloss versus original RLR; secondary Brier, BA, Macro-F1, number of fit local experts and nonzero relational coefficients, accepted root count, comparison against greedy/same-pair-global/gate-only. Independent Python scorer verifies all E rows, original class coding, patient separation/coverage, metric parity, and exact V-gated fallback.
+Development datasets: already-exposed Chowdary-2006 (104 patients/182 genes) and Singh-2002 (102/339), source-reconstructed public matrices not checksum-confirmed to original processed ARFF. Outer 3-fold stratified E seed42 × one repeat => 6 E partitions, 48 model-fold metric records, 1648 heldout patient-method scores. Primary analysis Δ logloss versus original RLR; secondary Brier, BA, Macro-F1, number of fit local experts and nonzero relational coefficients, accepted root count, comparison against greedy/same-pair-global/gate-only. Independent Python scorer verifies all E rows, original class coding, patient separation/coverage, metric parity, and exact V-gated fallback.
 
 **Stop condition:** A technically successful but unfavorable real-data result is archived as negative. These E folds have already been used repeatedly; do not modify the root screening, lambda, accept cutoffs, or support conditions after examining these heldout results and claim validation. If the child-RLR mechanism is infeasible or has no accepted roots, future research may probe conditional train-only signal and potential independent data, not sweep E. Original finished RLR paper stays intact; real CUDA TSPDT is not part of this experiment.
+
+## Audit amendment — comparison fairness, prior to complete eight-arm audit
+
+An intermediate six-arm run revealed that the greedy-root competitor selected its local pair *identities* anew on full outer T, whereas the lookahead root froze local pair IDs from D. This asymmetry was corrected before the complete eight-arm run: **both freeze candidate root and child pair IDs on D, then refit coefficients on T**. Two further logically necessary greedy-root controls (global union of exactly the greedy pair features, and gate-only) were added without altering lookahead feature nomination, penalties, threshold or V acceptance. The complete eight-arm design thus has 48 fold-method scores and 1648 heldout patient-method predictions, individually independently audited. These are **methodology repairs and controls on already exposed development E**, not an independent pre-registered confirmatory hypothesis.

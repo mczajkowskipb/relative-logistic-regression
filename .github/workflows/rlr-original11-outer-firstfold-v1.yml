@@ -69,7 +69,7 @@ jobs:
             "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/source.log"
           cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
             "results/rlr_original11_outer_v1/$RLR_DATASET_ID/rep00_fold00/source_manifest.json"
-      - name: Full original E: actual kTSP/TSP, RLR10-50, value-LR and frozen CFO tree
+      - name: 'Full original E - kTSP TSP RLR value-LR and frozen CFO tree'
         shell: bash
         run: |
           set -euo pipefail

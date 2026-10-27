@@ -1,0 +1,121 @@
+name: SAVS4 HONEST S H lookahead D V all original 11 cohorts
+
+on:
+  push:
+    branches: [analysis/rlr-savs-hub-sharing-v4]
+    paths:
+      - '.github/workflows/rlr-savs4-hub11-DV.yml'
+      - 'R/experimental/rlr_savs_hub_sharing_v4.R'
+      - 'R/experimental/rlr_savs_hub11_DV_v4.R'
+      - 'scripts/rlr_savs_hub11_DV_audit_v4.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cohort:
+    name: 'SAVS4 HONEST ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install original switchBox R environment
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+            r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Check original unpublished RLR and synthetic abstention invariance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'for(f in c("R/experimental/rlr_savs_hub_sharing_v4.R","R/experimental/rlr_savs_hub11_DV_v4.R"))parse(f)' >/dev/null
+          python3 -m py_compile scripts/rlr_savs_hub11_DV_audit_v4.py
+          Rscript --vanilla R/experimental/test_rlr_selective_anchor_vote_stump_v1.R \
+            2>&1 | tee /tmp/savs4_unit.log
+          grep -qx 'SAVS_ALL_MECHANICAL_TESTS=PASS' /tmp/savs4_unit.log
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+          cp /tmp/savs4_unit.log "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/unit.log"
+      - name: Fetch matching original-manuscript named source and provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/source_manifest.json"
+      - name: Freeze S-only root pool, choose in H, fit D and evaluate V
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_savs_hub11_DV_v4.R 2>&1 | tee \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/fit.log"
+          grep -qx 'SAVS4_HUB_SHARING_V_METRICS=PASS' \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/fit.log"
+          grep -qx 'SAVS4_OUTER_E_NEVER_USED=PASS' \
+            "results/rlr_savs_hub11_DV_v4/$RLR_DATASET_ID/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: savs4-hub11-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_savs_hub11_DV_v4/
+          retention-days: 21
+          if-no-files-found: warn
+  audit:
+    name: Independent replay of honest 11 cohort patient outcomes
+    needs: cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: savs4-hub11-*
+          path: downloaded
+      - name: Reconstruct 88 metrics from V patient probabilities
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/savs4-hub11-summary
+          python3 scripts/rlr_savs_hub11_DV_audit_v4.py \
+            --input downloaded --out results/savs4-hub11-summary \
+            | tee results/savs4-hub11-summary/audit.log
+          grep -qx 'SAVS4_HONEST_ONE_HUNDRED_THIRTY_TWO_METHODS_ALL_PATIENTS_REPLAYED=PASS' \
+            results/savs4-hub11-summary/audit.log
+          grep -qx 'SAVS4_S_ONLY_POOL_H_HUB_SELECTION_AND_FINAL_V_PARTITION=PASS' \
+            results/savs4-hub11-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SAVS4-honest11-summary-${{ github.run_id }}
+          path: results/savs4-hub11-summary/
+          retention-days: 21

@@ -1,0 +1,55 @@
+name: RLR Selective4 final paired 11-cohort statistical audit
+
+on:
+  push:
+    branches: [analysis/rlr-savs-global4-full470-v1]
+    paths:
+      - '.github/workflows/rlr-savs470-paired-statistics.yml'
+      - 'scripts/rlr_savs470_final_inference_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  inference:
+    name: Exact signflip 11 dataset units from archived original 470 run
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch immutable audited full470 artifact and verify input file
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/rlr_savs470_final_inference_v1.py
+          gh run download 40569991819 --repo ${{ github.repository }} \
+            -n selective4-full470-independent-all11-summary-40569991819 \
+            -D archived470
+          test -s archived470/eleven_dataset_method_means.csv
+          grep -qx 'SAVS470_ORIGINAL_470_REPETITION_PATIENT_COVERAGE=PASS' archived470/audit.log
+          grep -qx 'SAVS470_5170_METHOD_FOLDS_PATIENT_METRICS_REPLAYED=PASS' archived470/audit.log
+      - name: Compute exact 2^11 paired signflip and dataset-bootstrap CIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/selective4-final-470-inference
+          python3 scripts/rlr_savs470_final_inference_v1.py \
+            --dataset-means archived470/eleven_dataset_method_means.csv \
+            --out results/selective4-final-470-inference \
+            --source-run 40569991819 | tee results/selective4-final-470-inference/check.log
+          grep -qx 'SELECTIVE4_ORIGINAL_11_COHORTS_470_FOLDS_RECONCILED=PASS' \
+            results/selective4-final-470-inference/check.log
+          grep -qx 'SELECTIVE4_EXACT_2048_SIGNS_AND_BOOTSTRAP_30000=PASS' \
+            results/selective4-final-470-inference/check.log
+          test -s results/selective4-final-470-inference/paired_dataset_inference.csv
+          test -s results/selective4-final-470-inference/FINAL_SELECTIVE4_470_EVIDENCE_REPORT.md
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: RLR-selective4-470-evidence-inference-${{ github.run_id }}
+          path: results/selective4-final-470-inference/
+          retention-days: 21

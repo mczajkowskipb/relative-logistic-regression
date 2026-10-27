@@ -224,7 +224,7 @@ la_select <- function(T,yT){
        v_ba_delta=NA_real_,working=0L,active=0L,
        proposed=roots$n_proposed,considered=length(roots$candidates),
        greedy_root=if(is.null(greedy))NULL else greedy$node,
-       reason="no_valid_tree")
+       greedy_pairs=NULL,reason="no_valid_tree")
   cand<-lapply(roots$candidates,function(c){
      la_val_candidate(D,yd,parent$train,V,parent$test,c$node)
   })
@@ -232,6 +232,10 @@ la_select <- function(T,yT){
   greedyV<-if(!is.null(greedy))
      la_val_candidate(D,yd,parent$train,V,parent$test,greedy$node)
      else NULL
+  # Both algorithms must nominate pairs on exactly D, then refit
+  # coefficients on outer T with those pair IDs FROZEN.
+  greedy_pairs<-if(is.null(greedyV))NULL else greedyV$structure$pairs
+  fallback$greedy_pairs<-greedy_pairs
   if(length(cand)==0L)return(fallback)
   losses<-vapply(cand,function(c)rg_ll(yy,c$p_tree),numeric(1))
   best<-cand[[which.min(losses)]]
@@ -250,7 +254,7 @@ la_select <- function(T,yT){
        working=best$working,active=best$active,
        proposed=roots$n_proposed,considered=length(roots$candidates),
        greedy_root=if(is.null(greedy))NULL else greedy$node,
-       reason="V_GATE")
+       greedy_pairs=greedy_pairs,reason="V_GATE")
 }
 
 la_evaluate <- function(T,yT,E,yE) {
@@ -272,7 +276,8 @@ la_evaluate <- function(T,yT,E,yE) {
   # Greedy-root comparator uses the identical child-RLR fitter; it has an
   # independent D-only root, and new T-only local pair nominations.
   if(!is.null(sel$greedy_root)){
-    greedyfit<-la_fit_structure(T,yT,parent$train,sel$greedy_root)
+    greedyfit<-la_fit_structure(T,yT,parent$train,sel$greedy_root,
+                                pairs_fixed=sel$greedy_pairs)
     p_greedy<-la_predict_tree(E,original,greedyfit)
   }
   gated<-if(isTRUE(sel$accepted))p_tree else original

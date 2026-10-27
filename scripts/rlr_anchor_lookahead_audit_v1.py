@@ -8,6 +8,7 @@ from pathlib import Path
 OUT=Path("results/rlr_anchor_lookahead_child_rlr_v1")
 COHORT={"chowdary-2006":104,"singh-2002":102}
 ARMS=("ORIGINAL_RLR","GREEDY_ROOT_CHILD_RLR",
+      "GREEDY_SAME_PAIRS_GLOBAL","GREEDY_GATE_ONLY",
       "LOOKAHEAD_CHILD_RLR","LOOKAHEAD_SAME_PAIRS_GLOBAL",
       "LOOKAHEAD_GATE_ONLY","V_GATED_LOOKAHEAD_CHILD_RLR")
 def check(x,msg):
@@ -40,14 +41,14 @@ def main():
     split=load("split_manifest.csv")
     keys={(d,f,a) for d in COHORT for f in range(3) for a in ARMS}
     md={(r["dataset"],int(r["fold"]),r["method"]):r for r in metrics}
-    check(len(md)==len(metrics)==len(keys)==36 and set(md)==keys,
+    check(len(md)==len(metrics)==len(keys)==48 and set(md)==keys,
           "method-fold grid mismatch")
     rows=defaultdict(list)
     for r in pred:
         key=(r["dataset"],int(r["fold"]),r["method"])
         check(key in keys,"unexpected model/fold")
         rows[key].append(r)
-    check(len(pred)==1236 and set(rows)==keys,
+    check(len(pred)==1648 and set(rows)==keys,
           "incomplete E patient predictions")
     sd={(r["dataset"],int(r["fold"])):r for r in selections}
     mf={(r["dataset"],int(r["fold"])):r for r in split}
@@ -102,8 +103,8 @@ def main():
                      stored["stage"]=="EXPOSED_RLR_PAPER_DEVELOPMENT_ONLY",
                      "method/fold stage or V gate discrepancy")
         check(len(seen_E)==n,"cohort E patient union incomplete")
-    print("LOOKAHEAD_1236_E_PROBS_FULL_INDEPENDENT_REPLAY=PASS")
-    print("LOOKAHEAD_36_METHOD_FOLD_MACROF1_BA_LOGLOSS_BRIER=PASS")
+    print("LOOKAHEAD_1648_E_PROBS_FULL_INDEPENDENT_REPLAY=PASS")
+    print("LOOKAHEAD_48_METHOD_FOLD_MACROF1_BA_LOGLOSS_BRIER=PASS")
     print("LOOKAHEAD_PATIENT_SPLITS_AND_EXACT_RLR_FALLBACK=PASS")
     for arm in ARMS:
         a=[float(r["delta_logloss"]) for k,r in md.items()

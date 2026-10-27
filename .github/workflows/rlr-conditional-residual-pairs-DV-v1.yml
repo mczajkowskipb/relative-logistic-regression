@@ -1,0 +1,87 @@
+name: CRP-RLR residual-conditioned pair selection D/V 3 cohorts
+
+on:
+  push:
+    branches: [analysis/rlr-residual-conditioned-child-pairs-v1]
+    paths:
+      - '.github/workflows/rlr-conditional-residual-pairs-DV-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  residual-pairs:
+    name: 'CRP-RLR D-only candidate and V results for ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        dataset: [chen-2002, gordon-2002, singh-2002]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frozen original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Preserve original paper and check rank-only code
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_conditional_residual_pairs_v1.R");parse("R/experimental/test_rlr_conditional_residual_pairs_v1.R");parse("R/experimental/rlr_conditional_residual_pairs_DV_pilot_v1.R")' >/dev/null
+          Rscript --vanilla R/experimental/test_rlr_conditional_residual_pairs_v1.R \
+            2>&1 | tee /tmp/crp_unit.log
+          grep -qx 'CRP_ALL_MECHANICAL_TESTS=PASS' /tmp/crp_unit.log
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > \
+              "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/ORIGINAL_RLR_BLOB_SHA.txt"
+          cp /tmp/crp_unit.log "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/unit.log"
+      - name: Fetch source cohort using same Schliep manifests
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/source_manifest.json"
+      - name: Evaluate supervised versus residual-aware child pairs on inner V
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_conditional_residual_pairs_DV_pilot_v1.R 2>&1 | tee \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'CRP_DV_FROZEN_COHORT_DIAGNOSTIC_COMPLETE=PASS' \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'CRP_DV_NO_ORIGINAL_OUTER_E_LABELS_READ=PASS' \
+            "results/rlr_conditional_residual_pairs_DV_v1/$RLR_DATASET_ID/fit.log"
+      - name: Preserve actual D/V patient probabilities and source IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crp-rlr-DV-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_conditional_residual_pairs_DV_v1/
+          retention-days: 21
+          if-no-files-found: warn

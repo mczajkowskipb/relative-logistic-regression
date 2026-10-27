@@ -51,7 +51,7 @@ metric<-function(p) {
 empty<-function(reason,state)list(
    state=state,accepted=0L,reason=reason,
    n_root_proposals=0L,n_roots_evaluated=0L,
-   best_root_target="",best_root_anchors="",
+   best_root_id=NA_integer_,best_root_target="",best_root_anchors="",
    best_root_threshold=NA_integer_,
    best_D_in_sample_active=0L,best_D_crossfit_active=0L,
    V_original_LL=NA_real_,V_tree_LL=NA_real_,
@@ -110,7 +110,7 @@ if(is.null(fallback)){
       reason="FIXED_PARENT_GLOBAL_BA_MACROF1_TRAIN_ONLY_GATES",
       n_root_proposals=results$proposed,
       n_roots_evaluated=length(r),
-      best_root_target=win$root$target,
+      best_root_id=as.integer(j),best_root_target=win$root$target,
       best_root_anchors=paste(win$root$anchors,collapse="|"),
       best_root_threshold=win$root$threshold,
       best_D_in_sample_active=win$D_in_sample_parent_active,

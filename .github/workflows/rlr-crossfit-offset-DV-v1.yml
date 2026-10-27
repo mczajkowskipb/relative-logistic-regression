@@ -5,6 +5,8 @@ on:
     branches: [analysis/rlr-crossfit-offset-local-experts-v1]
     paths:
       - '.github/workflows/rlr-crossfit-offset-DV-v1.yml'
+      - 'R/experimental/rlr_crossfit_offset_ablation_v1.R'
+      - 'R/experimental/rlr_crossfit_offset_DV_pilot_v1.R'
   workflow_dispatch:
 
 permissions:

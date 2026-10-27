@@ -1,0 +1,70 @@
+name: SA-RLR D-only local coefficient path diagnosis
+
+on:
+  push:
+    branches: [analysis/rlr-selective-anchor-gated-v1]
+    paths:
+      - '.github/workflows/rlr-sa-trainonly-child-path-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  child-diagnostic:
+    name: 'SA-RLR D only local experts ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      max-parallel: 3
+      fail-fast: false
+      matrix:
+        dataset: [chen-2002, gordon-2002, singh-2002]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R original switchBox and glmnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Retrieve public cohort with original research provenance manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/rlr_sa_child_coefficient_path_trainonly_v1.R")' >/dev/null
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" \
+             2>&1 | tee /tmp/sa-source.log
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' /tmp/sa-source.log
+      - name: Distinguish D-only branch support, relation variation and lambda effects
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "results/sa_rlr_local_diagnostic_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/sa_rlr_local_diagnostic_v1/$RLR_DATASET_ID/RUN_SHA.txt"
+          Rscript --vanilla R/experimental/rlr_sa_child_coefficient_path_trainonly_v1.R \
+            2>&1 | tee "results/sa_rlr_local_diagnostic_v1/$RLR_DATASET_ID/diagnostic.log"
+          grep -qx 'SA_LOCAL_DIAG_TRAINING_ONLY_NO_V_OR_E_USED=PASS' \
+            "results/sa_rlr_local_diagnostic_v1/$RLR_DATASET_ID/diagnostic.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sa-rlr-Donly-childpath-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/sa_rlr_local_diagnostic_v1/
+          if-no-files-found: warn
+          retention-days: 21

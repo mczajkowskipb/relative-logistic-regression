@@ -1,0 +1,114 @@
+name: RLR paper-target actual kTSP LR vs RLR and model-tree V1
+
+on:
+  push:
+    branches: [analysis/rlr-paper-target-tree-vs-ktsp-v1]
+    paths:
+      - 'R/experimental/rlr_anchor_lookahead_child_rlr_v1.R'
+      - 'R/experimental/rlr_anchor_lookahead_pilot_v1.R'
+      - 'R/experimental/test_rlr_anchor_lookahead_v1.R'
+      - 'scripts/rlr_anchor_lookahead_audit_v1.py'
+      - 'R/experimental/rlr_paper_target_tree_benchmark_v1.R'
+      - 'scripts/rlr_paper_target_tree_audit_v1.py'
+      - '.github/workflows/rlr-paper-target-tree-vs-ktsp-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anchor-lookahead-rlr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install exact original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots \
+            r-cran-biocmanager
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then
+              break
+            fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sha256sum "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("glmnet","switchBox","foreign","pROC","jsonlite")) stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Parse R, Python and execute within-sample invariance tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'for(f in c(
+            "R/experimental/rlr_rank_gate_core_v1.R",
+            "R/experimental/rlr_anchor_majority_tree_v1.R",
+            "R/experimental/rlr_ordinal_anchor_score_tree_v1.R",
+            "R/experimental/rlr_anchor_lookahead_child_rlr_v1.R",
+            "R/experimental/rlr_paper_target_tree_benchmark_v1.R",
+            "R/experimental/test_rlr_anchor_lookahead_v1.R"
+          )) parse(f)'
+          python3 -m py_compile scripts/rlr_paper_target_tree_audit_v1.py
+          Rscript --vanilla R/experimental/test_rlr_anchor_lookahead_v1.R \
+            2>&1 | tee /tmp/lookahead_unit.log
+          grep -qx 'LOOKAHEAD_ALL_MECHANICAL_TESTS=PASS' /tmp/lookahead_unit.log
+      - name: Lock unmodified original RLR and isolated evidence directory
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          test -f R/new/07_world_protocol_utils.R
+          test ! -e results/rlr_paper_target_tree_v1
+          test ! -e results/rlr_pair_specific_evidence_v1
+          mkdir -p results/rlr_paper_target_tree_v1 results/rlr_pair_specific_evidence_v1
+          printf '%s\n' "$GITHUB_SHA" > results/rlr_paper_target_tree_v1/SOURCE_SHA.txt
+          git hash-object R/new/07_world_protocol_utils.R \
+            > results/rlr_paper_target_tree_v1/ORIGINAL_RLR_CORE_BLOB_SHA.txt
+          printf '%s\n' \
+            'Predeclared: 2 original manuscript cohort identities, reused source reconstructions; 3 disjoint E folds each, SAME E for genuine SWAP KTSP 10/20/50, TSP1, value LR, original RLR10/20/50, greedy root plus conditional RLR20 and RLR50. Original kTSP native labels for F1, probabilities for AUC/logloss. No E fitting, no ratios. Development diagnostic only; canonical paper 11 cohorts 470 folds not replaced.' \
+            > results/rlr_paper_target_tree_v1/PROTOCOL.txt
+      - name: Fetch reused original-paper data and run bounded lookahead
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_pair_specific_fetch.py 2>&1 | tee \
+            results/rlr_paper_target_tree_v1/source_data.log
+          grep -qx 'SPARSE_PUBLIC_REAL_COMP_CANCER_DATA_2_OF_2=PASS' \
+            results/rlr_paper_target_tree_v1/source_data.log
+          cp results/rlr_pair_specific_evidence_v1/input_manifest.json \
+            results/rlr_paper_target_tree_v1/input_manifest.json
+          Rscript --vanilla R/experimental/rlr_paper_target_tree_benchmark_v1.R 2>&1 | tee \
+            results/rlr_paper_target_tree_v1/fit.log
+          grep -qx 'PAPER_TARGET_2060_E_PATIENT_PROBABILITY_ROWS=PASS' \
+            results/rlr_paper_target_tree_v1/fit.log
+      - name: Independent all-patient E metrics and fallback audit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 scripts/rlr_paper_target_tree_audit_v1.py 2>&1 | tee \
+            results/rlr_paper_target_tree_v1/independent_audit.log
+          grep -qx 'PAPER_TARGET_ALL_PATIENTS_E_COVERAGE_DISJOINT=PASS' \
+            results/rlr_paper_target_tree_v1/independent_audit.log
+          printf 'PAPER_TARGET_PILOT_EXIT=0\n' > results/rlr_paper_target_tree_v1/status.txt
+      - name: Archive evidence even if failed
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-paper-target-kTSP-vs-tree-v1-${{ github.run_id }}
+          path: |
+            results/rlr_paper_target_tree_v1/*.csv
+            results/rlr_paper_target_tree_v1/*.json
+            results/rlr_paper_target_tree_v1/*.log
+            results/rlr_paper_target_tree_v1/*.txt
+          if-no-files-found: warn
+          retention-days: 21

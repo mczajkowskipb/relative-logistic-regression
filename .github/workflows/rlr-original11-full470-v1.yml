@@ -1,0 +1,313 @@
+name: RLR ORIGINAL full 470-fold 11-cohort real kTSP LR CFO benchmark
+
+on:
+  push:
+    branches: [analysis/rlr-original11-full470-benchmark-v1]
+    paths:
+      - '.github/workflows/rlr-original11-full470-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repeats:
+    name: 'Full CompCancer ${{ matrix.dataset }} repeat ${{ matrix.rep }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - dataset: alizadeh-2000-v1
+            rep: 0
+          - dataset: alizadeh-2000-v1
+            rep: 1
+          - dataset: alizadeh-2000-v1
+            rep: 2
+          - dataset: alizadeh-2000-v1
+            rep: 3
+          - dataset: alizadeh-2000-v1
+            rep: 4
+          - dataset: alizadeh-2000-v1
+            rep: 5
+          - dataset: alizadeh-2000-v1
+            rep: 6
+          - dataset: alizadeh-2000-v1
+            rep: 7
+          - dataset: alizadeh-2000-v1
+            rep: 8
+          - dataset: alizadeh-2000-v1
+            rep: 9
+          - dataset: armstrong-2002-v1
+            rep: 0
+          - dataset: armstrong-2002-v1
+            rep: 1
+          - dataset: armstrong-2002-v1
+            rep: 2
+          - dataset: armstrong-2002-v1
+            rep: 3
+          - dataset: armstrong-2002-v1
+            rep: 4
+          - dataset: armstrong-2002-v1
+            rep: 5
+          - dataset: armstrong-2002-v1
+            rep: 6
+          - dataset: armstrong-2002-v1
+            rep: 7
+          - dataset: armstrong-2002-v1
+            rep: 8
+          - dataset: armstrong-2002-v1
+            rep: 9
+          - dataset: bittner-2000
+            rep: 0
+          - dataset: bittner-2000
+            rep: 1
+          - dataset: bittner-2000
+            rep: 2
+          - dataset: bittner-2000
+            rep: 3
+          - dataset: bittner-2000
+            rep: 4
+          - dataset: bittner-2000
+            rep: 5
+          - dataset: bittner-2000
+            rep: 6
+          - dataset: bittner-2000
+            rep: 7
+          - dataset: bittner-2000
+            rep: 8
+          - dataset: bittner-2000
+            rep: 9
+          - dataset: chen-2002
+            rep: 0
+          - dataset: chen-2002
+            rep: 1
+          - dataset: chen-2002
+            rep: 2
+          - dataset: chen-2002
+            rep: 3
+          - dataset: chen-2002
+            rep: 4
+          - dataset: chen-2002
+            rep: 5
+          - dataset: chen-2002
+            rep: 6
+          - dataset: chen-2002
+            rep: 7
+          - dataset: chen-2002
+            rep: 8
+          - dataset: chen-2002
+            rep: 9
+          - dataset: golub-1999-v1
+            rep: 0
+          - dataset: golub-1999-v1
+            rep: 1
+          - dataset: golub-1999-v1
+            rep: 2
+          - dataset: golub-1999-v1
+            rep: 3
+          - dataset: golub-1999-v1
+            rep: 4
+          - dataset: golub-1999-v1
+            rep: 5
+          - dataset: golub-1999-v1
+            rep: 6
+          - dataset: golub-1999-v1
+            rep: 7
+          - dataset: golub-1999-v1
+            rep: 8
+          - dataset: golub-1999-v1
+            rep: 9
+          - dataset: gordon-2002
+            rep: 0
+          - dataset: gordon-2002
+            rep: 1
+          - dataset: gordon-2002
+            rep: 2
+          - dataset: gordon-2002
+            rep: 3
+          - dataset: gordon-2002
+            rep: 4
+          - dataset: gordon-2002
+            rep: 5
+          - dataset: gordon-2002
+            rep: 6
+          - dataset: gordon-2002
+            rep: 7
+          - dataset: gordon-2002
+            rep: 8
+          - dataset: gordon-2002
+            rep: 9
+          - dataset: pomeroy-2002-v1
+            rep: 0
+          - dataset: pomeroy-2002-v1
+            rep: 1
+          - dataset: pomeroy-2002-v1
+            rep: 2
+          - dataset: pomeroy-2002-v1
+            rep: 3
+          - dataset: pomeroy-2002-v1
+            rep: 4
+          - dataset: pomeroy-2002-v1
+            rep: 5
+          - dataset: pomeroy-2002-v1
+            rep: 6
+          - dataset: pomeroy-2002-v1
+            rep: 7
+          - dataset: pomeroy-2002-v1
+            rep: 8
+          - dataset: pomeroy-2002-v1
+            rep: 9
+          - dataset: shipp-2002-v1
+            rep: 0
+          - dataset: shipp-2002-v1
+            rep: 1
+          - dataset: shipp-2002-v1
+            rep: 2
+          - dataset: shipp-2002-v1
+            rep: 3
+          - dataset: shipp-2002-v1
+            rep: 4
+          - dataset: shipp-2002-v1
+            rep: 5
+          - dataset: shipp-2002-v1
+            rep: 6
+          - dataset: shipp-2002-v1
+            rep: 7
+          - dataset: shipp-2002-v1
+            rep: 8
+          - dataset: shipp-2002-v1
+            rep: 9
+          - dataset: singh-2002
+            rep: 0
+          - dataset: singh-2002
+            rep: 1
+          - dataset: singh-2002
+            rep: 2
+          - dataset: singh-2002
+            rep: 3
+          - dataset: singh-2002
+            rep: 4
+          - dataset: singh-2002
+            rep: 5
+          - dataset: singh-2002
+            rep: 6
+          - dataset: singh-2002
+            rep: 7
+          - dataset: singh-2002
+            rep: 8
+          - dataset: singh-2002
+            rep: 9
+          - dataset: west-2001
+            rep: 0
+          - dataset: west-2001
+            rep: 1
+          - dataset: yeoh-2002-v1
+            rep: 0
+          - dataset: yeoh-2002-v1
+            rep: 1
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+      RLR_REP: ${{ matrix.rep }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install original RLR actual switchBox kTSP and glmnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("glmnet","switchBox","pROC","foreign"))stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Freeze exact original RLR code and source dataset provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_original11_cfo_outer_onefold_v1.R")' >/dev/null
+          python3 -m py_compile scripts/rlr_original11_cfo_full470_audit_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_original11_outer_v1/$RLR_DATASET_ID"
+          git hash-object R/new/07_world_protocol_utils.R > /tmp/RLR_ORIGINAL_CORE_BLOB_SHA.txt
+      - name: Retrieve 11 authentic original-paper cohort names from public source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee /tmp/CFO_FULL470_SOURCE.log
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            /tmp/CFO_FULL470_SOURCE.log
+      - name: Compute all five original outer folds of one exact original repetition
+        shell: bash
+        run: |
+          set -euo pipefail
+          for F in 0 1 2 3 4; do
+            export RLR_FOLD="$F"
+            SPLIT_ID=$(printf 'rep%02d_fold%02d' "$RLR_REP" "$F")
+            OUT="results/rlr_original11_outer_v1/$RLR_DATASET_ID/$SPLIT_ID"
+            mkdir -p "$OUT"
+            git rev-parse HEAD > "$OUT/SOURCE_SHA.txt"
+            cp /tmp/RLR_ORIGINAL_CORE_BLOB_SHA.txt "$OUT/ORIGINAL_RLR_CORE_SHA.txt"
+            cp /tmp/CFO_FULL470_SOURCE.log "$OUT/source.log"
+            cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+              "$OUT/source_manifest.json"
+            printf '%s\n' 'DEVELOPMENT reconstructed-source original repeated 5fold protocol, 9 cohorts x10 reps +2 cohorts x2 reps; exact original paper processed ARFF parity UNVERIFIED. D nominations and V selection exclusively T, final full T OOF refit; E outcomes metrics ONLY. Same split and test patients original RLR10/20/50, real kTSP10/20/50 TSP1 LR and CFO local / equal-pairs global. Dataset is the inferential unit.' > "$OUT/PROTOCOL.txt"
+            Rscript --vanilla R/experimental/rlr_original11_cfo_outer_onefold_v1.R 2>&1 | tee "$OUT/fit.log"
+            grep -qx 'CFO_OUTER_11_METHODS_TRUE_MATCHED_E_EVALUATION=PASS' "$OUT/fit.log"
+            grep -qx 'CFO_OUTER_ALL_CLASSIFIER_HYPERPARAMETERS_TRAIN_ONLY=PASS' "$OUT/fit.log"
+          done
+          echo 'CFO_FULL470_ONE_COHORT_REPEAT_ALL_FIVE_REAL_E_FOLDS=PASS'
+      - name: Archive five fold patientwise scores and exact subject IDs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfo-full470-${{ matrix.dataset }}-rep-${{ matrix.rep }}-${{ github.run_id }}
+          path: results/rlr_original11_outer_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  audit:
+    name: Independent patient-level replay all 470 outer folds and 11 dataset means
+    needs: repeats
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cfo-full470-*
+          path: downloaded
+      - name: Independently verify 470 subjectwise E partitions and 5170 method-fold records
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/cfo-original11-full470-summary
+          python3 scripts/rlr_original11_cfo_full470_audit_v1.py \
+            --input downloaded --out results/cfo-original11-full470-summary \
+            --full470 | tee results/cfo-original11-full470-summary/audit.log
+          grep -qx 'CFO_OUTER_ORIGINAL_470_VALIDATION_FOLDS=PASS' \
+            results/cfo-original11-full470-summary/audit.log
+          grep -qx 'CFO_OUTER_EACH_DATASET_REP_PATIENT_COVERAGE_DISJOINT=PASS' \
+            results/cfo-original11-full470-summary/audit.log
+          grep -qx 'CFO_OUTER_5170_MODEL_FOLD_METRICS_INDEPENDENT_REPLAY=PASS' \
+            results/cfo-original11-full470-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cfo-full470-all11-dataset-means-${{ github.run_id }}
+          path: results/cfo-original11-full470-summary/
+          retention-days: 21

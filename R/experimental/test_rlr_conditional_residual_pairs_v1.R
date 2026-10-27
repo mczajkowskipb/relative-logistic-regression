@@ -1,0 +1,43 @@
+source("R/new/07_world_protocol_utils.R")
+source("R/experimental/rlr_conditional_residual_pairs_v1.R")
+set.seed(909L)
+n<-132L;p<-90L
+X<-as.data.frame(matrix(rnorm(n*p),nrow=n,ncol=p))
+names(X)<-sprintf("g%03d",seq_len(p))
+rownames(X)<-sprintf("s%03d",seq_len(n))
+U<-X
+for(i in seq_len(n)){
+  a<-unlist(X[i,,drop=FALSE],use.names=FALSE)
+  U[i,]<-exp(a/runif(1L,2,5))*runif(1L,.2,2)
+}
+stopifnot(identical(unname(aa_ranks(X)),unname(aa_ranks(U))))
+root<-os_node("g001",c("g002","g003","g004"),2L)
+g<-os_gate(aa_ranks(X),root)
+rel1<-as.integer(aa_ranks(X)[,"g005"]>aa_ranks(X)[,"g012"])
+rel2<-as.integer(aa_ranks(X)[,"g006"]>aa_ranks(X)[,"g013"])
+y<-factor(as.integer(ifelse(g==1L,rel1,rel2)),levels=0:1)
+stopifnot(all(table(y,g)>=5L))
+p0<-rep(.5,n)
+pool<-data.frame(gene_left=c("g005","g006","g010","g014","g016",
+                               "g018","g020"),
+                 gene_right=c("g012","g013","g011","g015","g017",
+                               "g019","g021"),
+                 stringsAsFactors=FALSE)
+pool$ordered_pair<-paste(pool$gene_left,pool$gene_right,sep=" > ")
+cands<-crp_candidate_pool(X,pool,max_extra=100L)
+z<-encode_pair_matrix(X,cands,m=10L)
+a<-crp_select_pairs(X,y,p0,g,1L,cands,z,K=8L)
+b<-crp_select_pairs(U,y,p0,g,1L,cands,
+       encode_pair_matrix(U,cands,m=10L),K=8L)
+stopifnot(identical(a,b),nrow(a)>0L,
+          length(unique(c(a$gene_left,a$gene_right)))==2*nrow(a),
+          all(a$residual_score>0))
+cat("CRP_D_ONLY_RESIDUAL_RELATION_SELECTION_INVARIANT=PASS\n")
+f<-crp_fit(X,y,p0,p0,root,pool,lambda=.1)
+fu<-crp_fit(U,y,p0,p0,root,pool,lambda=.1)
+stopifnot(identical(f$pairs,fu$pairs),
+  identical(f$n_active,fu$n_active),
+  isTRUE(all.equal(sa_predict(X,p0,f),
+                   sa_predict(U,p0,f),tolerance=0)))
+cat("CRP_CHILD_RLR_SCORE_AND_PATH_MONOTONE_INVARIANT=PASS\n")
+cat("CRP_ALL_MECHANICAL_TESTS=PASS\n")

@@ -1,0 +1,117 @@
+name: COT-RLR 11 cohorts firstfold real kTSP50 F1 benchmark
+
+on:
+  push:
+    branches: [analysis/rlr-conditional-threshold-stump-v1]
+    paths:
+      - '.github/workflows/rlr-conditional-threshold-11firstfold-v1.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  one-cohort:
+    name: 'Rank threshold vs real kTSP50: ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install frozen original RLR, actual switchBox kTSP dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+          Rscript --vanilla -e 'for(p in c("foreign","glmnet","switchBox","pROC"))stopifnot(requireNamespace(p,quietly=TRUE))'
+      - name: Original RLR and audited source preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_conditional_ordinal_threshold_v1.R");parse("R/experimental/rlr_conditional_threshold_11firstfold_v1.R")' >/dev/null
+          python3 -m py_compile scripts/rlr_conditional_threshold_11firstfold_audit_v1.py scripts/rlr_full11_fetch_one_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+          printf '%s\n' 'REUSED PUBLIC SOURCES, not processed original paper ARFF; first original 5fold E split only; no E label based tuning, original RLR50 continuous probability unchanged; F1 global D OOF control and conditional D OOF/V gate. Not full 470-fold confirmation.' \
+            > "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/PROTOCOL.txt"
+      - name: Fetch canonical original paper cohort names, preserve source SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+             "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+             "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+             "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/source_manifest.json"
+      - name: Evaluate real kTSP50, original RLR50, global and tree classification
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_conditional_threshold_11firstfold_v1.R 2>&1 | tee \
+              "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'COT_5_MATCHED_METHODS_ONE_ORIGINAL_OUTER_FOLD=PASS' \
+              "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'COT_SAME_RLR50_PROB_AUC_LOSS_BRIER_ALL_THRESHOLD_ARMS=PASS' \
+              "results/rlr_conditional_threshold_11first_v1/$RLR_DATASET_ID/fit.log"
+      - name: Archive patient-level E evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: COT-RLR-firstfold-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_conditional_threshold_11first_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  aggregate:
+    name: Independently audit 11 cohorts and compare F1 with real kTSP
+    needs: one-cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: COT-RLR-firstfold-*
+          path: downloaded
+      - name: Recalculate all patient scores and 55 method-fold metrics
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/COT-RLR-11-firstfold-summary
+          python3 scripts/rlr_conditional_threshold_11firstfold_audit_v1.py \
+             --input downloaded --out results/COT-RLR-11-firstfold-summary \
+             | tee results/COT-RLR-11-firstfold-summary/audit.log
+          grep -qx 'COT_55_METHOD_FOLD_METRICS_INDEPENDENTLY_REPLAYED=PASS' \
+             results/COT-RLR-11-firstfold-summary/audit.log
+          grep -qx 'COT_RLR50_PARENT_PROBABILITY_AUC_LOGLOSS_BRIER_IDENTICAL=PASS' \
+             results/COT-RLR-11-firstfold-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: COT-RLR-11-summary-${{ github.run_id }}
+          path: results/COT-RLR-11-firstfold-summary/
+          retention-days: 21

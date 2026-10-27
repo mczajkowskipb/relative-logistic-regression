@@ -236,7 +236,7 @@ jobs:
         run: |
           set -euo pipefail
           test -f manuscript_lock/RLR3_submission_final.tex
-          Rscript --vanilla -e 'parse("R/experimental/rlr_margin_aware_budget_full470_onefold_v1.R")' >/dev/null
+          Rscript --vanilla -e 'parse("R/experimental/rlr_margin_budget_full470_onefold_v1.R")' >/dev/null
           python3 -m py_compile scripts/rlr_margin_aware_budget_full470_audit_v1.py
           Rscript --vanilla R/experimental/test_rlr_margin_aware_budget_v1.R | tee /tmp/MB_RLR_unit.log
           grep -qx 'MB_RLR_UNIT_COMPLETE=PASS' /tmp/MB_RLR_unit.log
@@ -266,7 +266,7 @@ jobs:
             cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
               "$OUT/source_manifest.json"
             printf '%s\n' 'Original unpublished RLR full 470-design 9x10x5+2x2x5 train-only new margin m10 pair selector vs literal original RLR20/50; real native switchBox kTSP K10/15/20/25 plus K budgets determined from original RLR global nonzero beta and mean patientwise m10 active rank relations on T only. E receives no tuning; prior repeated exploratory cohorts, processed original ARFF SHA parity unverified.' > "$OUT/PROTOCOL.txt"
-            Rscript --vanilla R/experimental/rlr_margin_aware_budget_full470_onefold_v1.R 2>&1 | tee "$OUT/fit.log"
+            Rscript --vanilla R/experimental/rlr_margin_budget_full470_onefold_v1.R 2>&1 | tee "$OUT/fit.log"
             grep -qx 'MB_RLR_ALL_MATCHED_E_METHODS_PREDICTIONS=PASS' "$OUT/fit.log"
             grep -qx 'MB_RLR_ALL_COMPLEXITY_MATCHING_FROM_T_ONLY=PASS' "$OUT/fit.log"
           done

@@ -1,0 +1,314 @@
+name: RLR SAVS4 GLOBAL FOUR 11-cohort full ORIGINAL 470 outer folds
+
+on:
+  push:
+    branches: [analysis/rlr-savs-global4-full470-v1]
+    paths:
+      - '.github/workflows/rlr-savs-global4-full470.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  repetitions:
+    name: 'Selective4 5fold ${{ matrix.dataset }} repetition ${{ matrix.rep }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      max-parallel: 6
+      matrix:
+        include:
+          - dataset: alizadeh-2000-v1
+            rep: 0
+          - dataset: alizadeh-2000-v1
+            rep: 1
+          - dataset: alizadeh-2000-v1
+            rep: 2
+          - dataset: alizadeh-2000-v1
+            rep: 3
+          - dataset: alizadeh-2000-v1
+            rep: 4
+          - dataset: alizadeh-2000-v1
+            rep: 5
+          - dataset: alizadeh-2000-v1
+            rep: 6
+          - dataset: alizadeh-2000-v1
+            rep: 7
+          - dataset: alizadeh-2000-v1
+            rep: 8
+          - dataset: alizadeh-2000-v1
+            rep: 9
+          - dataset: armstrong-2002-v1
+            rep: 0
+          - dataset: armstrong-2002-v1
+            rep: 1
+          - dataset: armstrong-2002-v1
+            rep: 2
+          - dataset: armstrong-2002-v1
+            rep: 3
+          - dataset: armstrong-2002-v1
+            rep: 4
+          - dataset: armstrong-2002-v1
+            rep: 5
+          - dataset: armstrong-2002-v1
+            rep: 6
+          - dataset: armstrong-2002-v1
+            rep: 7
+          - dataset: armstrong-2002-v1
+            rep: 8
+          - dataset: armstrong-2002-v1
+            rep: 9
+          - dataset: bittner-2000
+            rep: 0
+          - dataset: bittner-2000
+            rep: 1
+          - dataset: bittner-2000
+            rep: 2
+          - dataset: bittner-2000
+            rep: 3
+          - dataset: bittner-2000
+            rep: 4
+          - dataset: bittner-2000
+            rep: 5
+          - dataset: bittner-2000
+            rep: 6
+          - dataset: bittner-2000
+            rep: 7
+          - dataset: bittner-2000
+            rep: 8
+          - dataset: bittner-2000
+            rep: 9
+          - dataset: chen-2002
+            rep: 0
+          - dataset: chen-2002
+            rep: 1
+          - dataset: chen-2002
+            rep: 2
+          - dataset: chen-2002
+            rep: 3
+          - dataset: chen-2002
+            rep: 4
+          - dataset: chen-2002
+            rep: 5
+          - dataset: chen-2002
+            rep: 6
+          - dataset: chen-2002
+            rep: 7
+          - dataset: chen-2002
+            rep: 8
+          - dataset: chen-2002
+            rep: 9
+          - dataset: golub-1999-v1
+            rep: 0
+          - dataset: golub-1999-v1
+            rep: 1
+          - dataset: golub-1999-v1
+            rep: 2
+          - dataset: golub-1999-v1
+            rep: 3
+          - dataset: golub-1999-v1
+            rep: 4
+          - dataset: golub-1999-v1
+            rep: 5
+          - dataset: golub-1999-v1
+            rep: 6
+          - dataset: golub-1999-v1
+            rep: 7
+          - dataset: golub-1999-v1
+            rep: 8
+          - dataset: golub-1999-v1
+            rep: 9
+          - dataset: gordon-2002
+            rep: 0
+          - dataset: gordon-2002
+            rep: 1
+          - dataset: gordon-2002
+            rep: 2
+          - dataset: gordon-2002
+            rep: 3
+          - dataset: gordon-2002
+            rep: 4
+          - dataset: gordon-2002
+            rep: 5
+          - dataset: gordon-2002
+            rep: 6
+          - dataset: gordon-2002
+            rep: 7
+          - dataset: gordon-2002
+            rep: 8
+          - dataset: gordon-2002
+            rep: 9
+          - dataset: pomeroy-2002-v1
+            rep: 0
+          - dataset: pomeroy-2002-v1
+            rep: 1
+          - dataset: pomeroy-2002-v1
+            rep: 2
+          - dataset: pomeroy-2002-v1
+            rep: 3
+          - dataset: pomeroy-2002-v1
+            rep: 4
+          - dataset: pomeroy-2002-v1
+            rep: 5
+          - dataset: pomeroy-2002-v1
+            rep: 6
+          - dataset: pomeroy-2002-v1
+            rep: 7
+          - dataset: pomeroy-2002-v1
+            rep: 8
+          - dataset: pomeroy-2002-v1
+            rep: 9
+          - dataset: shipp-2002-v1
+            rep: 0
+          - dataset: shipp-2002-v1
+            rep: 1
+          - dataset: shipp-2002-v1
+            rep: 2
+          - dataset: shipp-2002-v1
+            rep: 3
+          - dataset: shipp-2002-v1
+            rep: 4
+          - dataset: shipp-2002-v1
+            rep: 5
+          - dataset: shipp-2002-v1
+            rep: 6
+          - dataset: shipp-2002-v1
+            rep: 7
+          - dataset: shipp-2002-v1
+            rep: 8
+          - dataset: shipp-2002-v1
+            rep: 9
+          - dataset: singh-2002
+            rep: 0
+          - dataset: singh-2002
+            rep: 1
+          - dataset: singh-2002
+            rep: 2
+          - dataset: singh-2002
+            rep: 3
+          - dataset: singh-2002
+            rep: 4
+          - dataset: singh-2002
+            rep: 5
+          - dataset: singh-2002
+            rep: 6
+          - dataset: singh-2002
+            rep: 7
+          - dataset: singh-2002
+            rep: 8
+          - dataset: singh-2002
+            rep: 9
+          - dataset: west-2001
+            rep: 0
+          - dataset: west-2001
+            rep: 1
+          - dataset: yeoh-2002-v1
+            rep: 0
+          - dataset: yeoh-2002-v1
+            rep: 1
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+      RLR_REP: ${{ matrix.rep }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual kTSP switchBox and original RLR dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Frozen RLR source and original manuscript preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'parse("R/experimental/rlr_savs_global4_original470_onefold_v1.R")' >/dev/null
+          python3 -m py_compile scripts/rlr_savs_global4_outer_audit_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/savs_global4_full470_v1/$RLR_DATASET_ID"
+          git hash-object R/new/07_world_protocol_utils.R > /tmp/original_rlr_sha.txt
+      - name: Retrieve canonical original paper named public-source cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee /tmp/savs470_source.log
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            /tmp/savs470_source.log
+      - name: Evaluate all five original outer folds per repetition without E tuning
+        shell: bash
+        run: |
+          set -euo pipefail
+          for F in 0 1 2 3 4; do
+            export RLR_FOLD="$F"
+            SPLIT_ID=$(printf 'rep%02d_fold%02d' "$RLR_REP" "$F")
+            OUT="results/savs_global4_full470_v1/$RLR_DATASET_ID/$SPLIT_ID"
+            mkdir -p "$OUT"
+            git rev-parse HEAD > "$OUT/SOURCE_SHA.txt"
+            cp /tmp/original_rlr_sha.txt "$OUT/ORIGINAL_RLR_CORE_SHA.txt"
+            cp /tmp/savs470_source.log "$OUT/source.log"
+            cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+               "$OUT/source_manifest.json"
+            printf '%s\n' 'ORIGINAL 470-design 9x10x5 + 2x2x5 same-source reconstructed public CompCancer E folds, NOT original ARFF SHA matched; original RLR10/20/50 and real switchBox TSP1 kTSP4/10/20/50, value LR, selective 4 one-sided fixed rank margin m10 or max(10,ceil(.1(p-1))); all selections strictly outer T only; original E metrics exploratory; independent dataset-level inference uses 11 datasets.' \
+               > "$OUT/PROTOCOL.txt"
+            Rscript --vanilla R/experimental/rlr_savs_global4_original470_onefold_v1.R 2>&1 | tee "$OUT/fit.log"
+            grep -qx 'SAVS470_MATCHED_E_TRUE_KTSP4_KTSP50_RLR50_GLOBAL4=PASS' \
+               "$OUT/fit.log"
+            grep -qx 'SAVS470_RANK_ONLY_TRAIN_SELECTED_CLASSIFIER_NO_OUTER_LEAK=PASS' \
+               "$OUT/fit.log"
+          done
+          echo 'SAVS470_ONE_COMPLETE_ORIGINAL_FIVEFOLD_REPETITION=PASS'
+      - name: Archive actual fold by method E probabilities and local active rules
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: selective4-full470-${{ matrix.dataset }}-rep-${{ matrix.rep }}-${{ github.run_id }}
+          path: results/savs_global4_full470_v1/
+          retention-days: 21
+          if-no-files-found: warn
+  audit:
+    name: Independent replay of 5170 model-fold metrics and 11 dataset means
+    needs: repetitions
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: selective4-full470-*
+          path: downloaded
+      - name: Recompute each E patient F1 Macro-F1 BA AUC LL active votes
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/selective4-original470-summary
+          python3 scripts/rlr_savs_global4_outer_audit_v1.py \
+            --input downloaded --out results/selective4-original470-summary \
+            --full470 | tee results/selective4-original470-summary/audit.log
+          grep -qx 'SAVS470_5170_METHOD_FOLDS_PATIENT_METRICS_REPLAYED=PASS' \
+            results/selective4-original470-summary/audit.log
+          grep -qx 'SAVS470_ORIGINAL_470_REPETITION_PATIENT_COVERAGE=PASS' \
+            results/selective4-original470-summary/audit.log
+          grep -qx 'SAVS470_PERSONWISE_ABSTENTION_MATCHES_RULE_COUNTS=PASS' \
+            results/selective4-original470-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selective4-full470-independent-all11-summary-${{ github.run_id }}
+          path: results/selective4-original470-summary/
+          retention-days: 21

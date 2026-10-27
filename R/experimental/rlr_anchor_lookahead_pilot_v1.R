@@ -7,6 +7,7 @@ la_need(dir.exists(OUT)&&file.exists(file.path(OUT,"SOURCE_SHA.txt"))&&
         "expected isolated output path absent or already used")
 SETS<-c("chowdary-2006","singh-2002")
 ARMS<-c("ORIGINAL_RLR","GREEDY_ROOT_CHILD_RLR",
+        "GREEDY_SAME_PAIRS_GLOBAL","GREEDY_GATE_ONLY",
         "LOOKAHEAD_CHILD_RLR","LOOKAHEAD_SAME_PAIRS_GLOBAL",
         "LOOKAHEAD_GATE_ONLY","V_GATED_LOOKAHEAD_CHILD_RLR")
 all_met<-list();all_predictions<-list();all_selection<-list()
@@ -66,6 +67,10 @@ for(ds in SETS){
       V_gain_vs_gate=sel$v_gain_gate,
       V_gain_vs_greedy=sel$v_gain_greedy,
       V_BA_difference=sel$v_ba_delta,
+      greedy_V_gain_vs_parent=sel$greedy_v_parent,
+      greedy_V_gain_vs_global=sel$greedy_v_global,
+      greedy_V_gain_vs_gate=sel$greedy_v_gate,
+      greedy_V_BA_difference=sel$greedy_v_BA,
       reason=sel$reason,stage="EXPOSED_RLR_PAPER_DEVELOPMENT_ONLY")
     all_manifest[[fi]]<-data.frame(dataset=ds,fold=f-1L,
       n_T=length(tr),n_E=length(test),n_features=ncol(X),
@@ -105,7 +110,7 @@ metrics<-do.call(rbind,all_met)
 pred<-do.call(rbind,all_predictions)
 selected<-do.call(rbind,all_selection)
 manifest<-do.call(rbind,all_manifest)
-la_need(nrow(metrics)==36L&&nrow(pred)==1236L&&
+la_need(nrow(metrics)==48L&&nrow(pred)==1648L&&
           nrow(selected)==6L&&nrow(manifest)==6L,
         "incomplete experimental inventory")
 write.csv(metrics,file.path(OUT,"method_metrics.csv"),row.names=FALSE)
@@ -119,6 +124,6 @@ for(arm in ARMS){
    sum(s$delta_logloss<(-1e-9)),mean(s$ba)))
 }
 cat("LOOKAHEAD_6_E_PARTITIONS=PASS\n")
-cat("LOOKAHEAD_36_MODEL_FOLD_METRICS=PASS\n")
-cat("LOOKAHEAD_1236_PATIENT_METHOD_PREDICTIONS=PASS\n")
+cat("LOOKAHEAD_48_MODEL_FOLD_METRICS=PASS\n")
+cat("LOOKAHEAD_1648_PATIENT_METHOD_PREDICTIONS=PASS\n")
 cat("LOOKAHEAD_REUSED_ORIGINAL_PAPER_DEVELOPMENT_ONLY=PASS\n")

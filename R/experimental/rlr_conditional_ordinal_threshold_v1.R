@@ -33,12 +33,17 @@ ct_global<-function(y,p,grid=ct_grid) {
     list(threshold=t,F1=ct_f1(y,h),BA=ct_ba(y,h),
          M=ct_macro_f1(y,h))
   })
-  # fixed tie-breaking: maximize positive F1, then BA, then choose
-  # threshold closest to .5; no E or V used in this search.
-  o<-order(-vapply(candidates,function(t)t$F1,numeric(1)),
-           -vapply(candidates,function(t)t$BA,numeric(1)),
-           abs(grid-.5),grid)
-  candidates[[o[1L]]]
+  # Guard against an apparently high F1 obtained by predicting almost
+  # every sample positive. The ordinary .5 decision is always feasible.
+  base_BA<-ct_ba(y,as.integer(p>=.5))
+  valid<-which(vapply(candidates,function(t)t$BA>=base_BA-.02,logical(1)))
+  ct_need(length(valid)>0L,"no valid global threshold")
+  # Fixed tie-breaking: maximize positive F1 at non-inferior BA, then
+  # prefer BA and a threshold close to .5. Only D OOF evidence is used.
+  o<-order(-vapply(candidates[valid],function(t)t$F1,numeric(1)),
+           -vapply(candidates[valid],function(t)t$BA,numeric(1)),
+           abs(grid[valid]-.5),grid[valid])
+  candidates[[valid[o[1L]]]]
 }
 
 ct_confusions<-function(y,p,ids,grid) {

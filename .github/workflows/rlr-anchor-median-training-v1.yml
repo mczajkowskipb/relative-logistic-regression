@@ -1,0 +1,69 @@
+name: RLR anchor majority median training-only diagnosis
+
+on:
+  push:
+    branches: [analysis/rlr-anchor-median-identity-audit-v1]
+    paths:
+      - '.github/workflows/rlr-anchor-median-training-v1.yml'
+      - 'R/experimental/rlr_anchor_train_median_diagnostic_v1.R'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  anchor-median-training-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - name: Provision original RLR packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet \
+            r-cran-proc r-cran-jsonlite r-cran-gplots r-cran-biocmanager
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+               "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Download the two original-paper source reconstructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/rlr_anchor_train_median_diagnostic_v1.R")'
+          mkdir -p results/rlr_pair_specific_evidence_v1
+          python3 scripts/rlr_pair_specific_fetch.py
+          mkdir -p results/rlr_anchor_median_diagnostic_v1
+          printf '%s\n' "$GITHUB_SHA" > results/rlr_anchor_median_diagnostic_v1/SOURCE_SHA.txt
+          printf '%s\n' 'TRAIN-ONLY DIAGNOSIS; no outer-E labels or outcomes read. Data are reused original-paper cohorts, not independent validation.' > results/rlr_anchor_median_diagnostic_v1/PROTOCOL.txt
+      - name: Probe whether majority is just a single reference gene
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_anchor_train_median_diagnostic_v1.R 2>&1 | tee \
+            results/rlr_anchor_median_diagnostic_v1/diagnostic.log
+          grep -qx 'ANCHOR_MEDIAN_6_ORIGINAL_PAPER_TRAIN_FOLDS_DIAGNOSED=PASS' \
+            results/rlr_anchor_median_diagnostic_v1/diagnostic.log
+          grep -qx 'ANCHOR_MEDIAN_ALL_NEW_E_PATIENT_LABELS_UNREAD=PASS' \
+            results/rlr_anchor_median_diagnostic_v1/diagnostic.log
+          printf 'ANCHOR_MEDIAN_TRAIN_ONLY_EXIT=0\n' > \
+            results/rlr_anchor_median_diagnostic_v1/status.txt
+      - name: Archive training-only evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rlr-anchor-median-training-${{ github.run_id }}
+          path: |
+            results/rlr_anchor_median_diagnostic_v1/*.csv
+            results/rlr_anchor_median_diagnostic_v1/*.log
+            results/rlr_anchor_median_diagnostic_v1/*.txt
+          retention-days: 21

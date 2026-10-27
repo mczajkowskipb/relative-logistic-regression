@@ -96,6 +96,8 @@ path=Path(o.out);path.mkdir(parents=True,exist_ok=True)
 with (path/"all11_training_only_V_gate.csv").open("w",newline="",encoding="utf-8") as f:
  w=csv.DictWriter(f,fieldnames=results[0].keys());w.writeheader();w.writerows(results)
 state=collections.Counter(z["state"] for z in results)
+if state.get("ERROR_NEEDS_DIAGNOSIS",0):
+    stop("one or more cohorts failed with a model/system error; not a safe fallback")
 print("CFO_FULL11_ALL_11_ORIGINAL_NAMED_DV_COHORTS=PASS")
 print("CFO_FULL11_EXACT_DV_PATIENT_PREDICTIONS_AND_GATES_REPLAYED=PASS")
 print("CFO_FULL11_ALL_ORIGINAL_OUTER_E_OUTCOMES_UNREAD=PASS")

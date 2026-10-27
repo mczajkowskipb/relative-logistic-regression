@@ -64,7 +64,7 @@ jobs:
            "R/experimental/test_rlr_ordinal_anchor_score_tree_v1.R",
            "R/experimental/test_rlr_anchor_majority_tree_v1.R",
            "R/experimental/test_rlr_rank_gate_invariance_v1.R")) parse(f)'
-          python3 -m py_compile scripts/rlr_anchor_majority_audit_v1.py
+          python3 -m py_compile scripts/rlr_ordinal_anchor_score_audit_v1.py
           Rscript --vanilla R/experimental/test_rlr_rank_gate_invariance_v1.R \
             2>&1 | tee /tmp/rank_gate_unit.log
           grep -qx 'RANK_GATE_ALL_MECHANICAL_TESTS=PASS' /tmp/rank_gate_unit.log
@@ -105,7 +105,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 scripts/rlr_anchor_majority_audit_v1.py 2>&1 | tee \
+          python3 scripts/rlr_ordinal_anchor_score_audit_v1.py 2>&1 | tee \
             results/rlr_ordinal_anchor_score_tree_v1/independent_audit.log
           grep -qx 'OASDT_ALL_PATIENTS_COVERED_AND_FALLBACK_EXACT=PASS' \
             results/rlr_ordinal_anchor_score_tree_v1/independent_audit.log

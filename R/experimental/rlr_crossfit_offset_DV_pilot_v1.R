@@ -1,7 +1,7 @@
 source("R/new/07_world_protocol_utils.R")
 source("R/experimental/rlr_crossfit_offset_ablation_v1.R")
 DS<-Sys.getenv("RLR_DATASET_ID",unset="")
-crp_need(DS %in% c("chen-2002","gordon-2002","singh-2002"),"dataset not predeclared")
+crp_need(DS %in% c("chen-2002","gordon-2002","singh-2002","yeoh-2002-v1"),"dataset not predeclared")
 out<-file.path("results/rlr_crossfit_offset_DV_v1",DS)
 src<-file.path("results/rlr_full11_same_pairs_v1",DS,
                "source_data",paste0(DS,".csv"))

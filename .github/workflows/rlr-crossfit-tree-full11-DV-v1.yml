@@ -1,0 +1,119 @@
+name: RLR crossfit parent-offset conditional tree full11 TRAINING ONLY
+
+on:
+  push:
+    branches: [analysis/rlr-crossfit-tree-full11-inner-v-v1]
+    paths:
+      - '.github/workflows/rlr-crossfit-tree-full11-DV-v1.yml'
+      - 'R/experimental/rlr_crossfit_offset_full11_DV_gate_v1.R'
+      - 'scripts/rlr_crossfit_offset_full11_DV_audit_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cohort:
+    name: 'CFO D/V TREE ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 110
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install original RLR dependencies and switchBox
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Check original unpublished RLR source and freeze output SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'for(p in c("R/experimental/rlr_crossfit_offset_ablation_v1.R","R/experimental/rlr_crossfit_offset_full11_DV_gate_v1.R"))parse(p)' >/dev/null
+          python3 -m py_compile scripts/rlr_crossfit_offset_full11_DV_audit_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R \
+             > "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+          printf '%s\n' 'D-only nomination, inner V model choice using frozen OOF-vs-in-sample offset experts, exact samepair global control; max six original anchor roots, lambda .10. MacroF1 non-inferiority added as exploratory safety gate, not independent study. ORIGINAL OUTER E UNREAD; original processed paper ARFF parity not proven.' > \
+            "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/PROTOCOL.txt"
+      - name: Reuse original CompCancer public source fetch/checksum gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+            "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+             "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/source_manifest.json"
+      - name: Train-only root screening and OOF-offset local RLR model selection on inner V
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_crossfit_offset_full11_DV_gate_v1.R 2>&1 | tee \
+             "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'CFO_FULL11_TRAIN_ONLY_MECHANISM_COMPLETE=PASS' \
+             "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'CFO_FULL11_OUTER_E_NEVER_READ=PASS' \
+             "results/rlr_crossfit_tree_full11_DV_v1/$RLR_DATASET_ID/fit.log"
+      - name: Archive cohort train-only evidence and inner V patient scores
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: cfo-full11-DV-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_crossfit_tree_full11_DV_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  audit:
+    name: Independently verify all 11 cohort inner D/V patient scores and gates
+    needs: cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: cfo-full11-DV-*
+          path: downloaded
+      - name: Verify D/V disjointness and metric acceptance per actual patient
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/cfo-full11-DV-aggregate
+          python3 scripts/rlr_crossfit_offset_full11_DV_audit_v1.py \
+            --input downloaded --out results/cfo-full11-DV-aggregate \
+            | tee results/cfo-full11-DV-aggregate/audit.log
+          grep -qx 'CFO_FULL11_EXACT_DV_PATIENT_PREDICTIONS_AND_GATES_REPLAYED=PASS' \
+             results/cfo-full11-DV-aggregate/audit.log
+          grep -qx 'CFO_FULL11_ALL_ORIGINAL_OUTER_E_OUTCOMES_UNREAD=PASS' \
+             results/cfo-full11-DV-aggregate/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: cfo-full11-DV-summary-${{ github.run_id }}
+          path: results/cfo-full11-DV-aggregate/
+          retention-days: 21

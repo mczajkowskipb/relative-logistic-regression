@@ -1,0 +1,125 @@
+name: Frozen RLR teacher-guided tiny relational tree original 11 FIRST outer E
+
+on:
+  push:
+    branches: [analysis/rlr-guided-tree-firstE-v1]
+    paths:
+      - '.github/workflows/rlr-guided-firstE11-DV.yml'
+      - 'R/experimental/rlr_distilled_rank_tree_core_v1.R'
+      - 'R/experimental/rlr_guided_tree_first11_E_v1.R'
+      - 'R/experimental/test_rlr_distilled_rank_tree_v1.R'
+      - 'scripts/rlr_guided_tree_first11_E_audit_v1.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cohort:
+    name: 'RLR-DT original11 D V ${{ matrix.dataset }}'
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install real original RLR+switchBox and glmnet R dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+             r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+             r-cran-jsonlite r-cran-gplots
+          SWITCHBOX_NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$SWITCHBOX_NAME" -o "/tmp/$SWITCHBOX_NAME"; then break; fi
+          done
+          test -s "/tmp/$SWITCHBOX_NAME"
+          sudo R CMD INSTALL "/tmp/$SWITCHBOX_NAME"
+      - name: Original manuscript locked, R parsed and student independence tested
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'for(f in c("R/experimental/rlr_distilled_rank_tree_core_v1.R","R/experimental/rlr_guided_tree_first11_E_v1.R","R/experimental/test_rlr_distilled_rank_tree_v1.R"))parse(f)' > /dev/null
+          python3 -m py_compile scripts/rlr_guided_tree_first11_E_audit_v1.py
+          Rscript --vanilla R/experimental/test_rlr_distilled_rank_tree_v1.R 2>&1 | tee /tmp/rlrdt_unit.log
+          grep -qx 'RLRTREE_MECHANICAL_TESTS=PASS' /tmp/rlrdt_unit.log
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+          cp /tmp/rlrdt_unit.log "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/unit.log"
+      - name: Retrieve exact original paper named public reconstructed source
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/source_manifest.json"
+      - name: Frozen RLR20 OOF teacher on outer T and untouched E student evaluation
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_guided_tree_first11_E_v1.R \
+            2>&1 | tee \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRTREE3_FIRST_E_TRAIN_TEACHER_OOF=PASS' \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRTREE3_FIRST_E_INFERENCE_AUTONOMOUS_MAX_DEPTH_TWO=PASS' \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRTREE3_FIRST_E_SEVEN_METHODS_NO_TRAIN_TEST_LEAKAGE=PASS' \
+            "results/rlr_guided_tree_first11_E_v1/$RLR_DATASET_ID/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-guided-firstE11-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_guided_tree_first11_E_v1/
+          retention-days: 21
+          if-no-files-found: warn
+
+  audit:
+    name: Independently replay 77 real patient-fold distilled tree metrics and paths
+    needs: cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rlr-guided-firstE11-*
+          path: downloaded
+      - name: Independent seven-method 11-cohort patient metrics and complexity replay
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/rlr-guided-firstE11-summary
+          python3 scripts/rlr_guided_tree_first11_E_audit_v1.py \
+            --input downloaded --out results/rlr-guided-firstE11-summary \
+            | tee results/rlr-guided-firstE11-summary/audit.log
+          grep -qx 'RLRTREE3_FIRSTE_ALL11_SEVENTY_SEVEN_PATIENTWISE_V_METHODS_REPLAYED=PASS' \
+            results/rlr-guided-firstE11-summary/audit.log
+          grep -qx 'RLRTREE3_FIRSTE_STRICT_D_V_COVERAGE_AND_TREE_PATH_BUDGET_REPLAYED=PASS' \
+            results/rlr-guided-firstE11-summary/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-guided-firstE11-independent-summary-${{ github.run_id }}
+          path: results/rlr-guided-firstE11-summary/
+          retention-days: 21

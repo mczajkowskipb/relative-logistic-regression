@@ -90,7 +90,8 @@ for ds in sets:
   depth=[int(z["evaluated_pairs"]) for z in rr]
   teacher=[float(z["teacher_prob"]) for z in rr]
   need(all(yi in (0,1) and hi in (0,1) for yi,hi in zip(y,pred)) and
-       all(math.isfinite(z) and 0<z<1 for z in prob+teacher),
+       all(math.isfinite(z) and 0<=z<=1 for z in prob) and
+       all(math.isfinite(z) and 0<z<1 for z in teacher),
        "invalid scores "+ds+"/"+method)
   if method!="KTSP5_NATIVE":
    need(all(hi==int(q>=.5) for hi,q in zip(pred,prob)),

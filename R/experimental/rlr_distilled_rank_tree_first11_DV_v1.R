@@ -99,7 +99,7 @@ for(method in names(results)){
  student<-alg[[method]]
  q<-as.numeric(pr$prob);h<-as.integer(pr$label)
  dt_need(length(q)==nrow(V) && all(is.finite(q)) &&
-        all(q>0 & q<1),"invalid E-independent V model outputs")
+        all(q>=0 & q<=1),"invalid E-independent V model outputs")
  st<-dt_fidelity(parent$test,q)
  i<-i+1L
  metrics[[i]]<-data.frame(

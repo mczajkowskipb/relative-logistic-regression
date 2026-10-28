@@ -128,7 +128,7 @@ dt_leaf_probability <- function(targ,idx,prior,strength=4) {
  (sum(targ[idx])+strength*prior)/(length(idx)+strength)
 }
 dt_train <- function(D,y,pairs,p_teacher=NULL,
-                     alpha=0.55,mode="BINARY",
+                     alpha=0.55,leaf_alpha=alpha,mode="BINARY",
                      max_depth=2L,max_internal=3L,
                      min_leaf=4L,penalty=.003,
                      prior_strength=4) {
@@ -150,7 +150,7 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
  n<-nrow(mat)
  nbranch<-if(mode=="BINARY")2L else 3L
  node<-list(list(id=1L,idx=seq_len(n),depth=0L,
-     p=dt_leaf_probability(target,seq_len(n),prior,prior_strength),
+     p=dt_leaf_probability(leaf_target,seq_len(n),prior,prior_strength),
      split=NA_integer_,children=integer()))
  leaf_ids<-1L
  n_internal<-0L
@@ -161,13 +161,14 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
   for(id in leaf_ids) {
    nd<-node[[id]]
    if(nd$depth>=max_depth || length(nd$idx)<2L*min_leaf)next
-   old_cost<-dt_entropy(target[nd$idx],nd$p)
+   old_p<-dt_leaf_probability(target,nd$idx,split_prior,prior_strength)
+   old_cost<-dt_entropy(target[nd$idx],old_p)
    for(feature in seq_len(ncol(mat))) {
      child<-lapply(seq_len(nbranch),function(b)
         nd$idx[mat[nd$idx,feature]==b])
      if(any(lengths(child)<min_leaf))next
      child_cost<-sum(vapply(child,function(ix){
-       pchild<-dt_leaf_probability(target,ix,prior,prior_strength)
+       pchild<-dt_leaf_probability(target,ix,split_prior,prior_strength)
        dt_entropy(target[ix],pchild)
      },numeric(1)))
      gain<-(old_cost-child_cost)/n - penalty
@@ -187,7 +188,7 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
     ids<-sel$child[[b]]
     node[[newids[b]]]<-list(id=newids[b],idx=ids,
        depth=nd$depth+1L,
-       p=dt_leaf_probability(target,ids,prior,prior_strength),
+       p=dt_leaf_probability(leaf_target,ids,prior,prior_strength),
        split=NA_integer_,children=integer())
   }
   node[[sel$node]]$split<-sel$feature
@@ -204,7 +205,7 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
     n_unique_genes=if(length(observed))
       length(unique(c(pairs$gene_left[observed],
                       pairs$gene_right[observed]))) else 0L,
-    global_prior=prior,alpha=alpha,penalty=penalty,
+    global_prior=prior,alpha=alpha,leaf_alpha=leaf_alpha,penalty=penalty,
     min_leaf=min_leaf,n_training=nrow(D)),
     class="rlr_distilled_rank_tree")
 }

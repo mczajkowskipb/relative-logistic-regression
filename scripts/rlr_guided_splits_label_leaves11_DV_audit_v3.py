@@ -53,8 +53,9 @@ def calc(y,pr,cl,depth,teacher):
   student_teacher_agreement=sum(int(z>=.5)==int(t>=.5)
                              for z,t in zip(pr,teacher))/n,
   teacher_soft_cross_entropy=sum(
-   -t*math.log(x)-(1-t)*math.log1p(-x)
-   for t,x in zip(teacher,cp))/n,
+   -t*math.log(max(1e-8,min(1-1e-8,x)))-
+   (1-t)*math.log1p(-max(1e-8,min(1-1e-8,x)))
+   for t,x in zip(teacher,pr))/n,
   teacher_fidelity_brier=sum((t-x)**2
                             for t,x in zip(teacher,pr))/n)
 summ=[]

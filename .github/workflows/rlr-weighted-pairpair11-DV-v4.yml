@@ -1,0 +1,110 @@
+name: RLR-WT v4 11 cohort BETA SIGN OOF label tree 2-pair D V
+
+on:
+  push:
+    branches: [analysis/rlr-weighted-pairpair-tree-v4]
+    paths:
+      - '.github/workflows/rlr-weighted-pairpair11-DV-v4.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cohort:
+    name: RLRWT D V ${{ matrix.dataset }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual original switchBox and glmnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+            r-cran-jsonlite r-cran-gplots
+          NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+            https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+            https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+              "$MIRROR/$NAME" -o "/tmp/$NAME"; then break; fi
+          done
+          test -s "/tmp/$NAME"
+          sudo R CMD INSTALL "/tmp/$NAME"
+      - name: Check frozen original method and actual v4 unit test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          Rscript --vanilla -e 'for (p in c("R/experimental/rlr_weighted_pairpair_tree_core_v4.R","R/experimental/test_rlr_weighted_pairpair_tree_v4.R","R/experimental/rlr_weighted_pairpair_first11_DV_v4.R")) parse(p)' >/dev/null
+          python3 -m py_compile scripts/rlr_weighted_pairpair_first11_DV_audit_v4.py
+          Rscript --vanilla R/experimental/test_rlr_weighted_pairpair_tree_v4.R 2>&1 | tee /tmp/rlrwt_unit.log
+          grep -qx 'RLRWT_MECHANICAL_TESTS=PASS' /tmp/rlrwt_unit.log
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID"
+          mkdir -p "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+          cp /tmp/rlrwt_unit.log "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/unit.log"
+      - name: Fetch original paper named public Schliep reconstructed cohort
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py \
+            --dataset "$RLR_DATASET_ID" 2>&1 | tee "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" \
+            "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/source_manifest.json"
+      - name: Train original RLR cross-fit teacher on D and seven genuinely heldout V comparators
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_weighted_pairpair_first11_DV_v4.R 2>&1 | tee "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRWT_ALL_SEVEN_METHODS_REAL_DV=PASS' "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRWT_RLR_BETA_VS_SIGN_AND_OOF_ABLATION=PASS' "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RLRWT_ORIGINAL_OUTER_E_UNREAD=PASS' "results/rlr_weighted_pairpair11_DV_v4/$RLR_DATASET_ID/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-wt-v4-11-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_weighted_pairpair11_DV_v4/
+          retention-days: 21
+          if-no-files-found: warn
+  audit:
+    name: Independent 77 cohort method patient outcomes 0 2 4 checked comparisons
+    needs: cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rlr-wt-v4-11-*
+          path: downloaded
+      - name: Real patient replay and exact 11 dataset signed inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/rlr-weighted-pairpair-v4-audit
+          python3 scripts/rlr_weighted_pairpair_first11_DV_audit_v4.py \
+            --input downloaded --out results/rlr-weighted-pairpair-v4-audit | tee results/rlr-weighted-pairpair-v4-audit/audit.log
+          grep -qx 'RLRWT_ALL11_SEVENTY_SEVEN_PATIENT_SCORES_INDEPENDENTLY_REPLAYED=PASS' results/rlr-weighted-pairpair-v4-audit/audit.log
+          grep -qx 'RLRWT_ALL11_ACTUAL_0_2_4_PAIR_PATH_BUDGET_AND_DV=PASS' results/rlr-weighted-pairpair-v4-audit/audit.log
+          grep -qx 'RLRWT_11_COHORT_PAIRED_EXACT_SIGNFLIP=PASS' results/rlr-weighted-pairpair-v4-audit/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-wt-v4-all11-independent-science-${{ github.run_id }}
+          path: results/rlr-weighted-pairpair-v4-audit/
+          retention-days: 21

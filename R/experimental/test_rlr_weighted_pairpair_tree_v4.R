@@ -41,6 +41,23 @@ for(mode in c("BETA","SIGN")){
            identical(result$n_evaluated,pred$n_evaluated),
            identical(result$path,pred$path))
 }
+# Mechanistic ablation: RLR beta magnitudes MUST change the split if
+# two signed rank relations disagree. Equal-sign vote cannot do this.
+Xtiny<-as.data.frame(matrix(rep(seq_len(24),each=3L),nrow=3L))
+names(Xtiny)<-sprintf("g%02d",seq_len(24L))
+rownames(Xtiny)<-sprintf("case%d",seq_len(3L))
+ptiny<-data.frame(
+ gene_left=c("g01","g24"),
+ gene_right=c("g20","g03"),
+ ordered_pair=c("g01 > g20","g24 > g03"),
+ stringsAsFactors=FALSE)
+weighted<-list(pairs=ptiny,candidates=data.frame(
+ gene1=1L,gene2=2L,weight1=1,weight2=.4))
+only_sign<-list(pairs=ptiny,candidates=data.frame(
+ gene1=1L,gene2=2L,weight1=1,weight2=1))
+stopifnot(all(wt_split_matrix(Xtiny,weighted)==2L),
+          all(wt_split_matrix(Xtiny,only_sign)==1L))
+cat("RLRWT_COEFFICIENT_MAGNITUDES_CHANGE_CONFLICTING_PAIR_SPLIT=PASS\n")
 cat("RLRWT_ORIGINAL_RLR_BETA_TWO_PAIR_NODE_AND_SIGN_ABLATION=PASS\n")
 cat("RLRWT_AUTONOMOUS_MAX_FOUR_PAIR_COMPARISONS_PER_PATIENT=PASS\n")
 cat("RLRWT_STRICT_PATIENTWISE_MONOTONE_RANK_INVARIANCE=PASS\n")

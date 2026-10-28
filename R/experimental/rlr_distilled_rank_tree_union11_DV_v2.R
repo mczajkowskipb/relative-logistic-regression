@@ -167,6 +167,10 @@ write.csv(data.frame(dataset=ds,n_total=nrow(X),n_outer_T=nrow(T),
  D_ids=paste(rownames(D),collapse="|"),
  V_ids=paste(rownames(V),collapse="|"),
  teacher_K=20L,teacher_OOF_folds=3L,teacher_alpha=.55,
+ teacher_tiny_ridge_surrogate_folds=as.integer(attr(oof,"ridge_fallback_folds")),
+ teacher_oof_type=if(as.integer(attr(oof,"ridge_fallback_folds"))>0L)
+   "OOF_ORIGINAL_RLR20_WITH_MARKED_RANK_RIDGE_RARE_CLASS_FALLBACK"
+   else "OOF_EXACT_ORIGINAL_RLR20",
  candidate_union_size=nrow(combo),
  max_depth=2L,max_internal=3L,min_leaf=minleaf,
  soft_ce_node_penalty=.003,

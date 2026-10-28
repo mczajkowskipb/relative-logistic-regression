@@ -1,0 +1,50 @@
+name: RLR weighted pair pair tree v4 mechanical invariance
+
+on:
+  push:
+    branches: [analysis/rlr-weighted-pairpair-tree-v4]
+    paths:
+      - '.github/workflows/rlr-weighted-pairpair-v4-unit.yml'
+      - 'R/experimental/rlr_weighted_pairpair_tree_core_v4.R'
+      - 'R/experimental/test_rlr_weighted_pairpair_tree_v4.R'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit:
+    name: RLR-WT R syntax, original locked SHA and patientwise rank invariance
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R original switchBox and glmnet dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            r-base-core r-cran-foreign r-cran-glmnet r-cran-proc \
+            r-cran-jsonlite r-cran-gplots
+          NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in \
+             https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib \
+             https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 \
+                "$MIRROR/$NAME" -o "/tmp/$NAME"; then break; fi
+          done
+          test -s "/tmp/$NAME"
+          sudo R CMD INSTALL "/tmp/$NAME"
+      - name: Real unit-test and parse both weighted core and synthetic test
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f manuscript_lock/RLR3_submission_final.tex
+          git hash-object R/new/07_world_protocol_utils.R
+          Rscript --vanilla -e 'for (p in c("R/experimental/rlr_weighted_pairpair_tree_core_v4.R","R/experimental/test_rlr_weighted_pairpair_tree_v4.R")) parse(p)' > /dev/null
+          Rscript --vanilla R/experimental/test_rlr_weighted_pairpair_tree_v4.R 2>&1 | tee /tmp/RLRWT_unit.log
+          grep -qx 'RLRWT_MECHANICAL_TESTS=PASS' /tmp/RLRWT_unit.log
+          grep -qx 'RLRWT_AUTONOMOUS_MAX_FOUR_PAIR_COMPARISONS_PER_PATIENT=PASS' /tmp/RLRWT_unit.log
+          echo 'RLRWT_GITHUB_ACTIONS_UNIT=PASS'

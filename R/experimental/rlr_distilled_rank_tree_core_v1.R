@@ -24,9 +24,27 @@ dt_teacher_oof <- function(D,y,K=20L,folds=3L,seed=119L) {
   yr<-factor(as.character(y[tr]),levels=levels(y))
   pool<-compute_top_pairs_switchbox(D[tr,,drop=FALSE],yr,
                                     top_n=1000L,buffer_mult=5L)
-  teacher<-rg_parent(D[tr,,drop=FALSE],yr,
-                     D[va,,drop=FALSE],pool,K=K)
-  pp[va]<-teacher$test
+  # cv.glmnet requires at least 4 folds. The frozen original helper
+  # can choose nfolds=3 in tiny OOF subsets such as Pomeroy, although
+  # the full D teacher uses the original unmodified implementation.
+  # In that narrow case copy the SAME switchBox/d2/m10/glmnet pipeline
+  # with the smallest permitted CV-fold count of 4 (train data only).
+  if(safe_nfolds(yr,5L)>=4L){
+    teacher<-rg_parent(D[tr,,drop=FALSE],yr,
+                       D[va,,drop=FALSE],pool,K=K)
+    pp[va]<-teacher$test
+  } else {
+    pairs<-apply_disjointness(pool,K=K,d=2L)
+    xtr<-encode_pair_matrix(D[tr,,drop=FALSE],pairs,m=10L)
+    xva<-encode_pair_matrix(D[va,,drop=FALSE],pairs,m=10L)
+    set.seed(42L)
+    cv<-glmnet::cv.glmnet(x=xtr,
+       y=as.numeric(yr==levels(yr)[2L]),family="binomial",
+       alpha=.5,nfolds=4L,type.measure="deviance")
+    pp[va]<-as.numeric(predict(cv,newx=xva,s="lambda.min",
+                              type="response"))
+    message("RLRTREE_SMALL_TRAIN_TEACHER_CV4_SUPPORTED=PASS")
+  }
  }
  dt_need(all(is.finite(pp))&&all(pp>0&pp<1),
          "not truly out-of-fold teacher predictions")

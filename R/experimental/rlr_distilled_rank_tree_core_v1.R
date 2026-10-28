@@ -147,7 +147,10 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
     class="rlr_distilled_rank_tree")
 }
 dt_predict <- function(fit,E){
- Z<-dt_test_matrix(E,fit$pairs,fit$mode)
+ ranked<-rg_ranks(E)
+ dt_need(all(fit$pairs$gene_left %in% colnames(ranked)) &&
+         all(fit$pairs$gene_right %in% colnames(ranked)),
+         "missing trained pair gene at inference")
  n<-nrow(E);p<-numeric(n);visits<-integer(n)
  paths<-character(n);ends<-integer(n)
  for(i in seq_len(n)){
@@ -158,10 +161,17 @@ dt_predict <- function(fit,E){
      p[i]<-cur$p;ends[i]<-node_id;break
    }
    feat<-cur$split
+   gap<-ranked[i,fit$pairs$gene_right[feat]]-
+        ranked[i,fit$pairs$gene_left[feat]]
+   state<-if(fit$mode=="BINARY") {
+     if(gap>0)2L else 1L
+   } else {
+     if(gap>=10)3L else if(gap<=-10)1L else 2L
+   }
    route<-c(route,paste0(dt_pair_names(fit$pairs)[feat],
-                             ":",Z[i,feat]))
+                             ":",state))
    visits[i]<-visits[i]+1L
-   node_id<-cur$children[[Z[i,feat]]]
+   node_id<-cur$children[[state]]
   }
   paths[i]<-paste(route,collapse=" / ")
  }

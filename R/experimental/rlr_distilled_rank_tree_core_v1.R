@@ -144,8 +144,12 @@ dt_train <- function(D,y,pairs,p_teacher=NULL,
          all(p_teacher>0&p_teacher<1),
          "OOF teacher probabilities invalid")
  # The proper cross-entropy soft target: class truth and teacher OOF mix.
+ dt_need(is.finite(leaf_alpha)&&leaf_alpha>=0&&leaf_alpha<=1,
+         "invalid RLR-guided tree leaf target alpha")
  target<-(1-alpha)*yy+alpha*p_teacher
- prior<-(sum(target)+2)/(length(target)+4)
+ leaf_target<-(1-leaf_alpha)*yy+leaf_alpha*p_teacher
+ prior<-(sum(leaf_target)+2)/(length(leaf_target)+4)
+ split_prior<-(sum(target)+2)/(length(target)+4)
  mat<-dt_test_matrix(D,pairs,mode)
  n<-nrow(mat)
  nbranch<-if(mode=="BINARY")2L else 3L

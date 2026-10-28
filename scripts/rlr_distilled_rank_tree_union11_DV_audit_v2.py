@@ -53,8 +53,9 @@ def calc(y,pr,cl,depth,teacher):
   student_teacher_agreement=sum(int(z>=.5)==int(t>=.5)
                              for z,t in zip(pr,teacher))/n,
   teacher_soft_cross_entropy=sum(
-   -t*math.log(x)-(1-t)*math.log1p(-x)
-   for t,x in zip(teacher,cp))/n,
+   -t*math.log(max(1e-8,min(1-1e-8,x)))-
+   (1-t)*math.log1p(-max(1e-8,min(1-1e-8,x)))
+   for t,x in zip(teacher,pr))/n,
   teacher_fidelity_brier=sum((t-x)**2
                             for t,x in zip(teacher,pr))/n)
 summ=[]
@@ -125,13 +126,13 @@ out=Path(args.out);out.mkdir(parents=True,exist_ok=True)
 with (out/"all11_distilled_tree_union_V_metrics.csv").open("w",encoding="utf-8",newline="") as f:
  w=csv.DictWriter(f,fieldnames=summ[0].keys())
  w.writeheader();w.writerows(summ)
-print("RLRTREE_ALL11_SIXTY_SIX_PATIENTWISE_V_METHODS_REPLAYED=PASS")
-print("RLRTREE_STRICT_D_V_COVERAGE_AND_TREE_PATH_BUDGET_REPLAYED=PASS")
+print("RLRTREE2_ALL11_SIXTY_SIX_PATIENTWISE_V_METHODS_REPLAYED=PASS")
+print("RLRTREE2_STRICT_D_V_COVERAGE_AND_TREE_PATH_BUDGET_REPLAYED=PASS")
 for method in arms:
  z=[a for a in summ if a["method"]==method]
  fields=("positive_f1","macro_f1","auc","logloss",
          "mean_evaluated_pairs","student_teacher_agreement")
- print("RLRTREE_11_COHORT_MEAN",method," ".join(
+ print("RLRTREE2_11_COHORT_MEAN",method," ".join(
    field+"="+format(statistics.mean(float(x[field]) for x in z),".6f")
    for field in fields))
-print("RLRTREE_DV_PREVIOUSLY_EXPOSED_COHORTS_NOT_OUTER_E_CONFIRMATION")
+print("RLRTREE2_DV_PREVIOUSLY_EXPOSED_COHORTS_NOT_OUTER_E_CONFIRMATION")

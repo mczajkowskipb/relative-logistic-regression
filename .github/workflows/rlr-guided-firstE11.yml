@@ -4,7 +4,7 @@ on:
   push:
     branches: [analysis/rlr-guided-tree-firstE-v1]
     paths:
-      - '.github/workflows/rlr-guided-firstE11-DV.yml'
+      - '.github/workflows/rlr-guided-firstE11.yml'
       - 'R/experimental/rlr_distilled_rank_tree_core_v1.R'
       - 'R/experimental/rlr_guided_tree_first11_E_v1.R'
       - 'R/experimental/test_rlr_distilled_rank_tree_v1.R'

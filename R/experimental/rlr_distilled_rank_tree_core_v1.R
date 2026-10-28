@@ -13,11 +13,43 @@ dt_pair_names <- function(pairs){
  if("ordered_pair" %in% colnames(pairs)) as.character(pairs$ordered_pair)
  else paste(pairs$gene_left,">",pairs$gene_right)
 }
+# Deterministic FALLBACK if rare-class OOF folds break glmnet's
+# internal binomial machinery. Same original RLR gene-pair ternary m10
+# representation, but a distinct strongly ridge-regularized logistic fit.
+# This is NOT literal original RLR20 training and is reported separately.
+dt_tiny_rank_ridge_teacher <- function(Tr,yr,Va,pool,K=20L,lambda=2) {
+ pairs<-apply_disjointness(pool,K=K,d=2L)
+ xtr<-encode_pair_matrix(Tr,pairs,m=10L)
+ xva<-encode_pair_matrix(Va,pairs,m=10L)
+ z<-cbind(1,xtr)
+ y<-as.numeric(yr==levels(yr)[2L])
+ pen<-c(0,rep(1,ncol(xtr)))
+ beta<-numeric(ncol(z))
+ beta[1L]<-qlogis((sum(y)+1)/(length(y)+2))
+ for(it in seq_len(60L)){
+  eta<-drop(z%*%beta)
+  p<-plogis(pmax(-25,pmin(25,eta)))
+  weight<-pmax(1e-5,p*(1-p))
+  hessian<-crossprod(z,z*weight)/nrow(z)+
+          diag(lambda*pen+1e-8,nrow=ncol(z))
+  grad<-drop(crossprod(z,p-y))/nrow(z)+lambda*pen*beta
+  delta<-tryCatch(drop(solve(hessian,grad)),error=function(e)NULL)
+  if(is.null(delta) || any(!is.finite(delta)))break
+  # bounded Newton steps stabilize samples with one rare-class instance
+  scale<-min(1,2/max(abs(delta)))
+  beta<-beta-scale*delta
+  if(max(abs(scale*delta))<1e-7)break
+ }
+ as.numeric(plogis(pmax(-25,pmin(25,
+                      cbind(1,xva)%*%beta))))
+}
+
 dt_teacher_oof <- function(D,y,K=20L,folds=3L,seed=119L) {
  dt_need(nrow(D)==length(y) && min(table(y))>=folds,
          "insufficient class support for 3fold teacher OOF")
  parts<-make_repeated_stratified_folds(y,folds,1L,seed)
  pp<-rep(NA_real_,nrow(D))
+ n_fallback<-0L
  for(sp in parts){
   tr<-sp$train_idx
   va<-sp$test_idx
@@ -29,25 +61,37 @@ dt_teacher_oof <- function(D,y,K=20L,folds=3L,seed=119L) {
   # the full D teacher uses the original unmodified implementation.
   # In that narrow case copy the SAME switchBox/d2/m10/glmnet pipeline
   # with the smallest permitted CV-fold count of 4 (train data only).
-  if(safe_nfolds(yr,5L)>=4L){
-    teacher<-rg_parent(D[tr,,drop=FALSE],yr,
-                       D[va,,drop=FALSE],pool,K=K)
-    pp[va]<-teacher$test
-  } else {
-    pairs<-apply_disjointness(pool,K=K,d=2L)
-    xtr<-encode_pair_matrix(D[tr,,drop=FALSE],pairs,m=10L)
-    xva<-encode_pair_matrix(D[va,,drop=FALSE],pairs,m=10L)
-    set.seed(42L)
-    cv<-glmnet::cv.glmnet(x=xtr,
-       y=as.numeric(yr==levels(yr)[2L]),family="binomial",
-       alpha=.5,nfolds=4L,type.measure="deviance")
-    pp[va]<-as.numeric(predict(cv,newx=xva,s="lambda.min",
-                              type="response"))
-    message("RLRTREE_SMALL_TRAIN_TEACHER_CV4_SUPPORTED=PASS")
+  teacher_result<-tryCatch({
+    if(safe_nfolds(yr,5L)>=4L){
+      rg_parent(D[tr,,drop=FALSE],yr,D[va,,drop=FALSE],
+                pool,K=K)$test
+    } else {
+      pairs<-apply_disjointness(pool,K=K,d=2L)
+      xtr<-encode_pair_matrix(D[tr,,drop=FALSE],pairs,m=10L)
+      xva<-encode_pair_matrix(D[va,,drop=FALSE],pairs,m=10L)
+      set.seed(42L)
+      cv<-glmnet::cv.glmnet(x=xtr,
+         y=as.numeric(yr==levels(yr)[2L]),family="binomial",
+         alpha=.5,nfolds=4L,type.measure="deviance")
+      as.numeric(predict(cv,newx=xva,s="lambda.min",
+                         type="response"))
+    }
+  },error=function(e)NULL)
+  if(is.null(teacher_result) ||
+     length(teacher_result)!=length(va) ||
+     any(!is.finite(teacher_result))){
+    # The frozen original RLR model on the ENTIRE D is still evaluated
+    # normally; ONLY the tiny OOF fold teacher gets this marked fallback.
+    teacher_result<-dt_tiny_rank_ridge_teacher(
+       D[tr,,drop=FALSE],yr,D[va,,drop=FALSE],pool,K=K)
+    n_fallback<-n_fallback+1L
+    message("RLRTREE_SMALL_COHORT_RIDGE_TEACHER_SURROGATE=TRUE")
   }
+  pp[va]<-teacher_result
  }
  dt_need(all(is.finite(pp))&&all(pp>0&pp<1),
          "not truly out-of-fold teacher predictions")
+ attr(pp,"ridge_fallback_folds")<-n_fallback
  pp
 }
 dt_parent_candidates <- function(parent,max_candidates=20L) {

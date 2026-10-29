@@ -1,0 +1,30 @@
+name: RLR GLVT v5 exact small tree mathematical unit audit
+on:
+  push:
+    branches: [analysis/rlr-global-logit-variance-tree-v5]
+    paths:
+      - '.github/workflows/rlr-global-logit-variance-unit-v5.yml'
+      - 'R/experimental/rlr_global_logit_variance_tree_core_v5.R'
+      - 'R/experimental/test_rlr_global_logit_variance_tree_v5.R'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install base R only
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Parse and run independent exhaustive global optimum test
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/rlr_global_logit_variance_tree_core_v5.R"); parse("R/experimental/test_rlr_global_logit_variance_tree_v5.R")' > /dev/null
+          Rscript --vanilla R/experimental/test_rlr_global_logit_variance_tree_v5.R 2>&1 | tee /tmp/v5-unit.log
+          grep -qx 'RLR_GLVT_V5_EXHAUSTIVE_GLOBAL_OPTIMUM_BRUTE_FORCE=PASS' /tmp/v5-unit.log
+          grep -qx 'RLR_GLVT_V5_MAX_TWO_REAL_PAIRS_MONOTONE_INVARIANCE=PASS' /tmp/v5-unit.log
+          grep -qx 'RLR_GLVT_V5_TEACHER_FREE_TEST_INFERENCE=PASS' /tmp/v5-unit.log
+          grep -qx 'RLR_GLVT_V5_UNIT_TESTS=PASS' /tmp/v5-unit.log

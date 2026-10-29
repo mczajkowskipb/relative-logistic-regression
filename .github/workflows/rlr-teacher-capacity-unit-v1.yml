@@ -1,0 +1,26 @@
+name: RLR teacher compressibility frontier exact search unit
+on:
+  push:
+    branches: [analysis/rlr-teacher-compressibility-frontier-v1]
+    paths:
+      - '.github/workflows/rlr-teacher-capacity-unit-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  capacity-unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Independent brute-force exact-cap verification
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/rlr_teacher_compressibility_core_v1.R");parse("R/experimental/test_rlr_teacher_compressibility_v1.R")' >/dev/null
+          Rscript --vanilla R/experimental/test_rlr_teacher_compressibility_v1.R | tee /tmp/diag.log
+          grep -qx 'RLR_CAPACITY_UNIT_TEST=PASS' /tmp/diag.log
+          grep -qx 'RLR_CAPACITY_GLOBAL_EXHAUSTIVE_BRUTE_FORCE=PASS' /tmp/diag.log

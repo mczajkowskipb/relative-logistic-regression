@@ -1,0 +1,62 @@
+name: Actual original DeCAF vs original RLR on same independent PDAC CAF subtype labels
+on:
+  push:
+    branches: [analysis/rlr-original-purist-decaf-headtohead-v1]
+    paths:
+      - '.github/workflows/rlr-original-decaf-external-headtohead-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  authors_frozen_decaf_vs_rlr:
+    name: ORIGINAL frozen DeCAF vs RLR20 on authors' independent CAF labels
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install original RLR rank-pair dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core r-base-dev r-cran-foreign r-cran-glmnet r-cran-proc r-cran-jsonlite r-cran-gplots
+          NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 "$MIRROR/$NAME" -o "/tmp/$NAME"; then break; fi
+          done
+          test -s "/tmp/$NAME"
+          sudo R CMD INSTALL "/tmp/$NAME"
+      - name: Official DeCAF immutable classifier and published original gene expression and CC labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/official-decaf
+          D="https://raw.githubusercontent.com/jjyeh-unc/decaf/main"
+          SRC="https://raw.githubusercontent.com/jjyeh-unc/decaf_manuscript/main/data/public_PDAC_clean/combined_data"
+          curl -fSL --retry 3 "$D/decaf_functions.R" -o /tmp/official-decaf/decaf_functions.R
+          curl -fSL --retry 3 "$D/decaf_classifier.Rdata" -o /tmp/official-decaf/decaf_classifier.Rdata
+          for file in combined_classifier_gene_exp_DeCAF.csv combined_subtype_DeCAF.csv combined_classifier_calls_DeCAF.csv; do
+            curl -fSL --retry 3 "$SRC/$file" -o "/tmp/official-decaf/$file"
+          done
+          sha256sum /tmp/official-decaf/* | tee official_decaf_source_hashes.txt
+      - name: Verify experiment source compiles
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla -e 'parse("R/experimental/rlr_original_decaf_padc_external_v1.R");cat("EXPERIMENT_R_PARSE=PASS\n")' >/dev/null
+      - name: Original clinical DeCAF vs RLR original on independent CAF labels
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_original_decaf_padc_external_v1.R /tmp/official-decaf 2>&1 | tee original_decaf_headtohead.log
+          grep -qx 'ORIGINAL_DECAF_FROZEN_AUTHORS_PREDICTOR_VS_RLR_MATCHED_TARGET_COMPLETE=PASS' original_decaf_headtohead.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-decaf-rlr-headtohead-${{ github.run_id }}
+          path: |
+            results/rlr-original-decaf-pdac-headtohead-v1/
+            official_decaf_source_hashes.txt
+            original_decaf_headtohead.log
+          retention-days: 30

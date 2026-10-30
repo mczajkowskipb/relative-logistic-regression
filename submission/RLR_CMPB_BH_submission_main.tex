@@ -1,0 +1,673 @@
+\documentclass[preprint,12pt,a4paper]{elsarticle}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{url}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage[hidelinks]{hyperref}
+\biboptions{numbers,sort&compress}
+\graphicspath{{figures/}}
+\begin{document}
+\begin{frontmatter}
+\title{Relative Logistic Regression: A Probabilistic Refinement of Hard-Voting Pair-Based Omics Classification}
+\author[pb]{Marcin Czajkowski\corref{cor1}}
+\ead{m.czajkowski@pb.edu.pl}
+\author[umb]{Anna Czajkowska}
+\author[pb]{Krzysztof Jurczuk}
+\author[pb]{Marek Kretowski}
+\cortext[cor1]{Corresponding author.}
+\address[pb]{Faculty of Computer Science, Bialystok University of Technology, 15-351 Bialystok, Poland}
+\address[umb]{Department of Medical Biology, Medical University of Bialystok, Bialystok, Poland}
+\begin{abstract}
+\textbf{Background and Objective:}
+Top-scoring pair classifiers are interpretable, but classical $k$-TSP uses equal hard votes instead of jointly fitted probabilities.
+
+\textbf{Methods:}
+Relative Logistic Regression (RLR) integrates supervised pair ranking, gene-disjoint shortlisting, ternary within-sample rank-margin encoding, and elastic-net logistic fitting. We evaluated RLR on 11 transcriptomic datasets, pulmonary-tuberculosis fixed-split and leave-one-cohort-out studies, and eight historical microarray datasets.
+
+\textbf{Results:}
+RLR yielded lower mean logloss than uncalibrated $k$-TSP for matched $K=10,20,50$. At $K=50$, logloss was 0.226 versus 0.378 and Brier score 0.063 versus 0.111. $k$-TSP had slightly higher mean AUC and F1. Training-only Platt calibration narrowed the differences, particularly at $K=10$, although RLR retained lower mean logloss at $K=20$ and $K=50$. PTB models illustrated sparse fitted weights and interpretable locally inactive relations.
+
+\textbf{Conclusions:}
+RLR integrates margin-aware pair relations with sparse probabilistic weighting while preserving within-sample interpretability.
+\end{abstract}
+\begin{keyword}
+omics classification \sep pair-based classification \sep relative expression analysis \sep top-scoring pairs \sep probabilistic modeling \sep interpretable machine learning
+\end{keyword}
+\end{frontmatter}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+
+High-dimensional omics classification remains challenging because measured features typically outnumber samples, while cohort, platform, and preprocessing differences can complicate transfer across datasets. Models operating directly on absolute expression values may achieve strong within-cohort performance, but their behavior can remain sensitive to measurement scale, normalization, and cohort-specific shifts \cite{Cheng2023,Kwan2023}. This has motivated relational and rank-based representations that characterize samples through within-sample feature comparisons rather than absolute values. Such representations have long been used in expression-ratio and pair-ordering methods for cancer and other biomedical prediction tasks \cite{Gordon2002,Bo2002,Geman2004,Wu2025}. A recent taxonomic review organized this methodological landscape into supervised Relative Expression Analysis (RXA), Relative Expression Ordering (REO), and system-level rank-conservation methods such as DIRAC \cite{Czajkowski2026Review}.
+
+Pair-based classifiers are a well-established part of this relational family. TSP and $k$-TSP identify gene pairs whose within-sample ordering differs between classes and use them to build compact decision rules \cite{Geman2004,Tan2005}. Their appeal is straightforward: models can remain compact, individual relations are directly inspectable, and predictions can be traced to simple feature comparisons. Later work introduced generalized relative-expression methods, individualized analyses, alternative pair-selection strategies, and combined biomarker-pattern models \cite{Afsari2015,Wang2015,Magis2012,Moody2020,Huang2022}. Related frameworks such as DIRAC and rank-based REO methods further demonstrate the utility of within-sample ordering beyond the original TSP formulation \cite{Eddy2010,Chen2023,Yan2024,Jin2025}. Relative-expression representations have also been explored in interpretable multi-omics classification \cite{Czajkowski2025,Czajkowski2025MultiOmics} and, beyond transcriptomics, in analyses of relative protein relations in skeletal-muscle proteomics \cite{Czajkowska2024Proteomics}.
+
+Classical $k$-TSP gives each retained relation the same vote. This is transparent, but it does not learn relation-specific contributions jointly. Its vote-derived scores are discrete and are not fitted probabilities \cite{Tan2005,Magis2012,Moody2020}. Earlier extensions introduced weighted pair-based rules \cite{Czajkowski2008WeightKTSP}, and later studies used TSP-derived relations as features for multivariate classifiers. Shi et al.\ used TSP-based feature ranking to construct relational features for downstream classifiers such as support vector machines \cite{Shi2011TSPML}. PurIST used rank-derived $k$-TSP predictors in a penalized logistic classifier \cite{Rashid2020PurIST}, while DeCAF combined selected $k$-TSP relations with penalized logistic regression to estimate unequal relation weights and subtype probabilities \cite{Peng2026DeCAF}. Related contemporary gene-pair pipelines have likewise incorporated relational features into broader machine-learning frameworks \cite{Huang2022,Wu2025,Wu2026PTBD}.
+
+Relative Logistic Regression (RLR) develops this methodological line as a general-purpose, margin-aware relational modeling pipeline, rather than introducing logistic regression on gene-pair indicators for the first time. In particular, PurIST and DeCAF already establish that binary $k$-TSP-derived indicators can enter fitted penalized logistic models and yield subtype probabilities \cite{Rashid2020PurIST,Peng2026DeCAF}. The design distinction examined here is the \emph{combination} of a broad supervised relation pool, a greedily constructed gene-disjoint shortlist, within-sample \emph{ternary} rank-gap states $\{-1,0,+1\}$, and elastic-net shrinkage. Unlike binary pair indicators, the ternary encoding sets a relation to zero for a particular sample when its rank gap falls below a fixed margin; the model further distinguishes this \emph{local} inactivity from coefficients suppressed globally during fitting. We do not claim that weighting relations, sparse logistic regression, or probability estimation on pair-based predictors is new in isolation, nor that the present experiments establish superiority over PurIST or DeCAF, which address different application-specific tasks.
+
+We compare RLR with classical hard-voting k-TSP in matched 10-, 20-, and 50-relation configurations. The primary \emph{CompCancer} benchmark uses repeated cross-validation across 11 transcriptomic datasets. We report AUC, F1, logloss, Brier score, and expected calibration error (ECE), and separately calibrate $k$-TSP vote-derived scores using training data only. A PTB fixed-split case study provides detailed structural inspection, and a four-cohort PTB LOCO analysis evaluates complete cohort holdout. The legacy8 benchmark provides historical context. Supplementary analyses examine candidate-pool size, margin sensitivity, adaptive hard-voting baselines, post-hoc calibration, PTB functional interpretation, reliability diagnostics, runtime, and dataset-level historical behavior.
+
+The contributions of this work are threefold. First, we formulate RLR as an integrated probabilistic relational model that combines supervised relation ranking, candidate-pool construction, strict gene-disjoint shortlist construction, margin-aware ternary encoding, and sparse logistic fitting while retaining directly interpretable within-sample relations. Second, we evaluate RLR using complementary measures of discrimination, thresholded classification, and predictive score quality, including proper scoring rules and training-side calibration controls for hard-voting baselines. Third, we make the fitted relational structure explicit by separating the target shortlist size, realized shortlist, globally active relations, and locally active relations, and demonstrate this representation in a detailed biomedical case study.
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{figures/fig1.pdf}
+\caption{Conceptual overview of pair-based classification and the role of RLR.
+(A) Models based on absolute expression values can be affected by cohort-, platform-, or preprocessing-related changes in measurement scale.
+(B) Pair-based representations describe samples through within-sample feature orderings, reducing dependence on absolute expression values while retaining relational information.
+(C) RLR constructs its relational features through supervised relation ranking, a candidate pool, gene-disjoint shortlist construction with target size $K$, and margin-aware ternary encoding.
+(D) Classical $k$-TSP combines retained binary relations through equal hard voting, whereas RLR jointly fits margin-aware relational features within a sparse probabilistic model, allowing relations to receive unequal coefficients or to be removed from the active decision structure when their coefficients are zero. The distinction therefore concerns the complete relational modeling pipeline rather than aggregation alone.}
+\label{fig:conceptual_overview}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Materials and Methods}\label{sec:methods}
+\subsection{Study design, evaluation settings, and data sources}
+
+The study used four evaluation settings: the 11-dataset \emph{CompCancer} benchmark for the primary comparison, the PTB fixed-split case study for structural inspection, the PTB LOCO analysis for complete cohort holdout, and the eight-dataset legacy8 microarray benchmark for historical context.
+
+\emph{CompCancer} served as the primary comparative benchmark and comprised 11 binary transcriptomic classification datasets. All methods used the same repeated stratified 5-fold cross-validation schedule. Resampling results were first averaged within each dataset, and methods were then compared across the resulting 11 paired dataset-level summaries. Dataset characteristics and the complete resampling protocol are provided in the Supplementary Material.
+
+The PTB analyses used four publicly available Gene Expression Omnibus (GEO) cohorts: GSE19439, GSE19442, GSE19444, and GSE83456 \cite{Wu2025}. Following the cohort organization of Wu et al., the first three cohorts formed a pooled discovery set of 147 samples. The \emph{PTB fixed-split case study} used the predefined 103-sample training set and 44-sample test set for detailed structural inspection. The \emph{PTB LOCO analysis} used all four cohorts, with each cohort serving once as the complete test cohort and the remaining three used for model development.
+
+For both PTB analyses, exhaustive scoring of all feature pairs was computationally impractical. We therefore used median absolute deviation (MAD) within each training set to retain the 2000 most variable features before relation scoring. The MAD filter was recomputed for every training split or cohort holdout, and the resulting training-defined feature set was used to encode the corresponding test samples.
+
+The legacy8 benchmark comprised eight binary microarray datasets evaluated using 10 repetitions of stratified 5-fold cross-validation and provided historical context relative to established pair-based classification studies. Dataset identities and additional benchmark details are reported in the Supplementary Material.
+
+\subsection{Compared methods and model configurations}
+
+The primary comparison matched $k$-TSP requested sizes and RLR target shortlist sizes at 10, 20, and 50 relations; TSP$_1$ was included as an additional classical reference \cite{Geman2004,Tan2005,Afsari2015}. For $k$-TSP, the labels 10, 20, and 50 denote the requested numbers of retained voting relations; the realized number can be smaller in individual resampling splits when the requested configuration cannot be fully constructed.
+
+For RLR, $K$ denotes the target shortlist size, with $K\in\{10,20,50\}$ corresponding to RLR-10, RLR-20, and RLR-50. All primary RLR configurations used margin $m=10$, strict gene disjointness ($d=2$), and a candidate pool containing the top 1000 ranked oriented relations. Under $d=2$, each gene can appear in at most one shortlisted relation; this constraint limits repeated reuse of the same high-ranking genes within a shortlist. The fixed value $m=10$ was used uniformly across datasets rather than tuned separately. Because $m$ is an absolute within-sample rank-gap threshold, its interpretation depends on the ranked feature universe. An exploratory sensitivity analysis in Supplementary Section~S5 showed comparatively stable logloss, Brier score, and ECE for moderate values $m=1$--$20$, whereas $m=50$ reduced local relational activity more strongly.
+
+These comparisons evaluate the complete RLR pipeline---candidate-pool construction, gene-disjoint shortlist construction, margin-aware ternary encoding, and sparse probabilistic fitting---against corresponding hard-voting pipelines, rather than isolating aggregation alone.
+
+The same RLR settings were used across all datasets in the primary comparison. Supplementary analyses examined candidate-pool size, margin sensitivity, adaptive-$k$ hard voting, and post-hoc calibration of $k$-TSP vote-derived scores.
+
+RLR distinguishes the candidate pool, target shortlist size $K$, realized shortlist after gene-disjoint construction, globally active relations with non-zero fitted coefficients, and locally active relations whose ternary encoding is non-zero for an individual sample.
+
+\subsection{Relative Logistic Regression}
+
+Let $x=(x_1,\ldots,x_p)$ denote the feature vector for one sample after any training-defined feature filtering. RLR uses within-sample feature ranks rather than absolute abundance values.
+
+Within-sample ranks were computed using average ranks for ties. Let $\pi_x(i)$ denote the rank of feature $i$ in sample $x$. For an ordered relation $(i,j)$, define the signed rank gap as
+\[
+\Delta_{ij}(x)=\pi_x(j)-\pi_x(i).
+\]
+
+The order $(i,j)$ sets the sign convention. Because ranks increase with measured abundance, $\Delta_{ij}(x)>0$ means that feature $j$ ranks above feature $i$, while $\Delta_{ij}(x)<0$ means the opposite.
+
+Given rank-margin parameter $m$, RLR encodes the relation as
+\[
+r_{ij}(x)=
+\begin{cases}
++1, & \Delta_{ij}(x)\ge m,\\
+-1, & \Delta_{ij}(x)\le -m,\\
+0,  & |\Delta_{ij}(x)|<m.
+\end{cases}
+\]
+
+Thus, $+1$ and $-1$ encode sufficiently separated orderings in opposite directions, while $0$ denotes a locally inactive relation with $|\Delta_{ij}(x)|<m$.
+
+Candidate relations were scored on the training data only using \texttt{SWAP.}\allowbreak\texttt{CalculateSignedScore} from \texttt{switchBox}, without additional filtering. Relations were ranked in descending order of absolute score, and their orientation was determined from the training data; the positive class was defined as the second level of the training factor. The top 1000 ranked oriented relations formed the candidate pool.
+
+The candidate pool was traversed in ranked order. Under strict gene disjointness ($d=2$), a relation was retained only if neither gene had been used previously. Construction stopped when $K$ relations had been retained or the candidate pool was exhausted.
+
+Let
+\[
+\mathcal{P}=\{(i_1,j_1),\ldots,(i_q,j_q)\},
+\qquad q\le K,
+\]
+denote the realized shortlist. Each sample is represented by
+\[
+\mathbf{r}(x)=
+\big(r_{i_1j_1}(x),\ldots,r_{i_qj_q}(x)\big).
+\]
+
+RLR fits logistic regression to these relational features,
+\[
+\Pr(y=1\mid x)
+=
+\sigma\!\left(
+\beta_0+
+\sum_{(i,j)\in\mathcal{P}}
+\beta_{ij}r_{ij}(x)
+\right),
+\qquad
+\sigma(z)=\frac{1}{1+e^{-z}}.
+\]
+
+Here, $\beta_0$ is the intercept and $\beta_{ij}$ is the coefficient of relation $(i,j)$. Unlike hard voting, RLR can assign different coefficients to different relations, while regularization can shrink some coefficients to zero.
+
+Coefficients were estimated using elastic-net penalized logistic regression with $\alpha=0.5$ \cite{ZouHastie2005}. The regularization strength $\lambda$ was selected exclusively from the outer-training data using \texttt{cv.glmnet} \cite{Friedman2010}, with binomial deviance as the optimization criterion and \texttt{lambda.min} used for the final fit. Internal cross-validation used up to five folds, with the fold count reduced when required by the available class sizes.
+
+The fitted coefficients minimize the elastic-net penalized binomial objective
+\[
+-\frac{1}{N}\sum_{n=1}^{N}
+\left[
+y_n\log\hat p_n+
+(1-y_n)\log(1-\hat p_n)
+\right]
++
+\lambda
+\left[
+\alpha\|\boldsymbol{\beta}\|_1+
+\frac{1-\alpha}{2}\|\boldsymbol{\beta}\|_2^2
+\right],
+\]
+where $\hat p_n=\Pr(y_n=1\mid x^{(n)})$.
+
+All operations informed by the outcome or feature distribution---including feature prefiltering where applicable, pair scoring and orientation, candidate ranking, shortlist construction, selection of $\lambda$, and coefficient estimation---were confined to the corresponding outer-training data. The outer test portion was reserved for evaluation.
+\subsection{Globally and locally active relations}
+
+We distinguish the target shortlist size $K$, realized shortlist, globally active relations, and locally active relations.
+
+Let $\mathcal{P}$ denote the realized shortlist. The set of \emph{globally active relations} is
+\[
+\mathcal{P}_{\mathrm{active}}
+=
+\{(i,j)\in\mathcal{P}:\beta_{ij}\neq 0\}.
+\]
+
+For a sample $x$, the set of \emph{locally active relations} is
+\[
+\mathcal{P}_{\mathrm{local}}(x)
+=
+\{(i,j)\in\mathcal{P}_{\mathrm{active}}:
+r_{ij}(x)\neq 0\}.
+\]
+
+A globally active relation is locally active for sample $x$ when its ternary encoding is non-zero.
+
+Thus, a target size of 50 can yield substantially fewer than 50 globally active relations and still fewer locally active relations for an individual sample. The realized shortlist may contain fewer than $K$ relations, elastic-net fitting can shrink additional coefficients to zero, and ternary encoding can deactivate relations for individual samples.
+
+We therefore report the realized shortlist size, number of globally active relations, number of unique genes, and number of locally active relations per sample.
+
+\subsection{Evaluation metrics}
+
+We evaluated AUC, F1, logloss, Brier score, and expected calibration error (ECE). AUC measured discrimination \cite{Hanley1982}.
+
+For RLR, class labels used for F1 were obtained by thresholding the fitted positive-class probability at 0.5. For classical $k$-TSP, F1 was calculated from the class labels returned directly by \texttt{SWAP.KTSP.Classify}. Thus, F1 compares the native classification decisions of the two model families, while AUC, logloss, Brier score, and ECE use their corresponding predictive scores.
+
+For classical $k$-TSP, the score used for AUC, logloss, Brier score, and ECE was obtained from \texttt{SWAP.KTSP.Statistics}. If $k_{\mathrm{ret}}$ denotes the number of retained $k$-TSP relations and $s(x)$ the returned voting statistic, the score was mapped to the unit interval as
+\[
+p_{\mathrm{kTSP}}(x)
+=
+\frac{s(x)+k_{\mathrm{ret}}}{2k_{\mathrm{ret}}}.
+\]
+
+Score orientation was determined from the training data only. If the mean score was lower in the positive training class than in the negative class, the score was reversed as $1-p_{\mathrm{kTSP}}(x)$; the same orientation was then used for the corresponding test data. We refer to $p_{\mathrm{kTSP}}$ as the \emph{vote-derived score}. RLR directly produces a fitted positive-class probability.
+
+Logloss was used as the primary proper scoring rule because it strongly penalizes confident errors. Before calculation, scores were clipped to
+$[10^{-15},1-10^{-15}]$ to avoid numerical singularities. For binary outcomes $y_n\in\{0,1\}$ and predictive scores $p_n$,
+\[
+\operatorname{LogLoss}
+=
+-\frac{1}{N}\sum_{n=1}^{N}
+\left[
+y_n\log p_n+
+(1-y_n)\log(1-p_n)
+\right].
+\]
+
+Models with similar AUC or F1 can therefore differ in logloss when their prediction confidence differs.
+
+We also report Brier score and ECE \cite{VanCalster2019}. The Brier score was defined as
+\[
+\operatorname{Brier}
+=
+\frac{1}{N}\sum_{n=1}^{N}(p_n-y_n)^2.
+\]
+
+ECE was computed using 10 equal-width bins over $[0,1]$. Empty bins were omitted, and each non-empty bin contributed its sample-frequency weight multiplied by the absolute difference between its mean predictive score and observed positive-class frequency. Because ECE depends on the binning scheme, it was treated as a descriptive calibration diagnostic alongside the proper scoring rules. The same metric definitions were applied to RLR probabilities and mapped $k$-TSP vote-derived scores.
+
+For the legacy8 benchmark, accuracy was additionally reported to preserve comparability with historical pair-based studies and was summarized as mean accuracy $\pm$ standard deviation across repeated cross-validation runs.
+
+We also report realized shortlist size, globally active relations, unique genes, and locally active relations per sample.
+
+\subsection{Statistical analysis}
+
+Formal statistical comparisons were restricted to the \emph{CompCancer} benchmark. For each method and metric, resampling results were first averaged within dataset, and methods were then compared across the 11 paired dataset summaries.
+
+The three primary comparisons were RLR-10 versus $k$-TSP-10, RLR-20 versus $k$-TSP-20, and RLR-50 versus $k$-TSP-50. For each comparison and each of the five evaluation metrics, paired differences across datasets were assessed using the Wilcoxon signed-rank test \cite{Wilcoxon1945}. The analysis family additionally included a technical comparison between RLR-50 with strict gene disjointness ($d=2$) and the corresponding $d=1$ configuration.
+
+We report an \emph{exploratory} Benjamini--Hochberg (BH) false-discovery-rate analysis \cite{Benjamini1995} of the 15 matched RLR--$k$-TSP comparisons (three target sizes by five metrics), based on the original dataset-level paired Wilcoxon $p$-values. This analysis was added during manuscript development; it was not specified before examination of the data and is interpreted as supplementary evidence rather than a confirmatory test. The exact family and all raw and BH-adjusted values are documented in Supplementary Section~S3.
+
+The PTB fixed-split case study, PTB LOCO analysis, and legacy8 benchmark served structural, cross-cohort, and historical roles, respectively. Dataset-level paired comparisons were restricted to \emph{CompCancer}; Supplementary Table~S3 reports the original Wilcoxon $p$-values and exploratory BH-adjusted $q$-values.
+
+\subsection{Implementation and reproducibility}
+
+The experimental pipeline was implemented in R~4.6.0. Pair scoring and TSP-family models used \texttt{switchBox}~1.48.0, and RLR logistic regression used \texttt{glmnet}~5.0. Candidate-pool processing, gene-disjoint shortlist construction, margin-aware ternary encoding, structural summaries, calibration analyses, and evaluation procedures were implemented in the accompanying analysis code.
+
+The public repository contains the RLR implementation, experiment configurations, split definitions, analysis scripts, reproducibility documentation, checksums, and selected reference outputs:
+\href{https://github.com/mczajkowskipb/relative-logistic-regression}{Public RLR code and data-manifest repository}.
+The exact repository version corresponding to the finalized analyses, together with detailed computational-environment and runtime information, is documented in Supplementary Sections S12--S13.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Results}\label{sec:results}
+
+\subsection{Predictive performance and score quality across evaluation settings}
+
+Table~\ref{tab:world_performance} and Fig.~\ref{fig:score_quality} summarize predictive performance across the primary \emph{CompCancer} benchmark and the two PTB analyses. The most consistent numerical difference between RLR and the corresponding hard-voting $k$-TSP configurations concerned predictive score quality, particularly logloss, whereas differences in AUC and F1 were smaller.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig2.pdf}
+\caption{Predictive score quality across the primary \emph{CompCancer} benchmark and the PTB analyses. RLR generally produced lower logloss than the corresponding hard-voting $k$-TSP configurations, whereas Brier score and expected calibration error showed less uniform differences across settings. The figure shows uncalibrated model outputs; post-hoc calibration of $k$-TSP vote-derived scores is reported separately in the Supplementary Material.}
+\label{fig:score_quality}
+\end{figure}
+
+\begin{table}[t]
+\centering
+\caption{Aggregate predictive performance across the primary \emph{CompCancer} benchmark and the two PTB evaluation settings. $k$-TSP requested sizes and RLR target shortlist sizes are matched at 10, 20, and 50 relations. Bold values indicate the best aggregate result within each evaluation setting and metric; ties are bolded jointly.}
+\label{tab:world_performance}
+\small
+\setlength{\tabcolsep}{4pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccc|ccc|ccc}
+\toprule
+& \multicolumn{3}{c|}{\textbf{CompCancer}}
+& \multicolumn{3}{c|}{\textbf{PTB fixed-split}}
+& \multicolumn{3}{c}{\textbf{PTB LOCO}} \\
+\cmidrule(lr){2-4} \cmidrule(lr){5-7} \cmidrule(l){8-10}
+\textbf{Method} & \textbf{AUC} & \textbf{F1} & \textbf{Logloss}
+                & \textbf{AUC} & \textbf{F1} & \textbf{Logloss}
+                & \textbf{AUC} & \textbf{F1} & \textbf{Logloss} \\
+\midrule
+$k$-TSP-10 & 0.956 & 0.860 & 0.378
+           & 0.934 & \textbf{0.900} & 1.677
+           & 0.959 & 0.899 & 0.730 \\
+
+RLR-10     & 0.951 & 0.853 & 0.305
+           & 0.930 & \textbf{0.900} & 0.294
+           & \textbf{0.962} & 0.886 & \textbf{0.245} \\
+\midrule
+$k$-TSP-20 & 0.960 & 0.872 & 0.347
+           & 0.935 & \textbf{0.900} & 0.991
+           & 0.958 & 0.884 & 0.529 \\
+
+RLR-20     & 0.955 & 0.867 & 0.267
+           & 0.918 & \textbf{0.900} & 0.306
+           & 0.957 & \textbf{0.909} & 0.254 \\
+\midrule
+$k$-TSP-50 & \textbf{0.963} & \textbf{0.884} & 0.378
+           & \textbf{0.950} & 0.895 & \textbf{0.286}
+           & 0.958 & 0.887 & 0.539 \\
+
+RLR-50     & 0.957 & 0.869 & \textbf{0.226}
+           & 0.944 & 0.895 & 0.292
+           & 0.961 & 0.889 & 0.263 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+In the \emph{CompCancer} benchmark, RLR achieved lower mean logloss in all three matched comparisons: 0.305 versus 0.378 for RLR-10 versus $k$-TSP-10, 0.267 versus 0.347 for RLR-20 versus $k$-TSP-20, and 0.226 versus 0.378 for RLR-50 versus $k$-TSP-50. The largest difference was observed for the RLR-50 versus $k$-TSP-50 comparison. Mean Brier score and ECE were also lower for RLR at all three sizes, whereas the corresponding $k$-TSP configurations showed slightly higher mean AUC and F1.
+
+In an exploratory BH-FDR analysis of the 15 matched RLR--$k$-TSP comparisons across the 11 dataset-level summaries, six probability-quality outcomes had $q_{\mathrm{BH}}<0.05$. At $K=50$, RLR had lower mean logloss ($q=0.0153$) and Brier score ($q=0.0145$). The other exploratory discoveries were ECE at $K=10,20,50$ ($q=0.0145$ each) and Brier score at $K=20$ ($q=0.0462$). Neither AUC nor F1 passed this exploratory threshold. These exploratory findings concern uncalibrated vote-derived $k$-TSP scores and do not establish confirmatory superiority. All original raw $p$-values and their BH adjustment are reported in Supplementary Section~S3.
+
+Post-hoc calibration clarified how much of the logloss difference was attributable to the mapping of hard-vote scores onto the probability scale. Platt scaling nearly eliminated the RLR-10 versus $k$-TSP-10 difference, with mean logloss of 0.308 for calibrated $k$-TSP and 0.305 for RLR. For the RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50 comparisons, RLR retained lower numerical logloss: 0.267 versus 0.333 and 0.226 versus 0.326, respectively. Brier score and ECE were similar after Platt scaling. Isotonic calibration produced lower ECE in several settings but substantially higher logloss. Detailed calibration results are provided in the Supplementary Material.
+
+The PTB fixed-split case study showed a similar score-quality pattern for the compact and intermediate configurations. RLR-10 reduced logloss from 1.677 to 0.294 while matching the $k$-TSP-10 F1 of 0.900, and RLR-20 reduced logloss from 0.991 to 0.306 with the same F1 of 0.900. RLR-50 and $k$-TSP-50 were closely matched in logloss, AUC, and F1. This setting is examined in greater structural detail below.
+
+In the four-cohort PTB LOCO analysis, RLR achieved lower aggregate logloss in all three matched comparisons: 0.245 versus 0.730 for RLR-10 versus $k$-TSP-10, 0.254 versus 0.529 for RLR-20 versus $k$-TSP-20, and 0.263 versus 0.539 for RLR-50 versus $k$-TSP-50. AUC and F1 remained closely matched overall, with RLR-10 showing the highest aggregate AUC and RLR-20 the highest aggregate F1 among the reported LOCO configurations.
+
+Across the primary benchmark and PTB analyses, the main empirical effect of RLR was therefore observed in predictive score quality rather than in large changes in discrimination or thresholded classification performance.
+
+\subsection{Historical positioning in the legacy8 benchmark}
+
+RLR-50 was additionally evaluated in the eight-dataset legacy8 microarray benchmark used in earlier TSP-family studies. Its mean accuracy was 82.96\%, placing the method within the historical performance range of established pair-based and conventional classifiers.
+
+Because published historical comparator values and the present RLR estimates were generated in different experimental pipelines, this comparison is used only for historical positioning. Within the internally generated legacy8 pipeline, results were mixed: RLR-10 achieved lower aggregate logloss than $k$-TSP-10, whereas $k$-TSP-20 and $k$-TSP-50 achieved lower aggregate logloss than the corresponding RLR configurations. Full historical and dataset-level results are reported in Supplementary Section~S10.
+
+\subsection{Globally and locally active relations}
+
+\begin{table}[t]
+\centering
+\caption{Relational-structure summaries across the primary \emph{CompCancer} benchmark and PTB analyses. For RLR, globally active relations have non-zero fitted coefficients, and local activity denotes the number of these relations with non-zero encoding for an individual sample. For $k$-TSP, the corresponding values denote retained voting relations; because each retained rule contributes to every prediction, its local count equals the number of retained relations.}
+\label{tab:world_structure}
+\small
+\setlength{\tabcolsep}{6pt}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llcccc}
+\toprule
+\textbf{Setting} & \textbf{Method} &
+\textbf{Retained / globally active relations} &
+\textbf{Unique genes} &
+\textbf{Local active mean} &
+\textbf{Local active median} \\
+\midrule
+\multirow{6}{*}{CompCancer}
+& $k$-TSP-10 & 10.00 & 20.00 & 10.00 & 10.00 \\
+& RLR-10     & 9.31  & 18.62 & 8.41  & 8.63 \\
+& $k$-TSP-20 & 20.00 & 40.00 & 20.00 & 20.00 \\
+& RLR-20     & 16.63 & 33.26 & 15.10 & 15.34 \\
+& $k$-TSP-50 & 49.27 & 98.55 & 49.27 & 49.27 \\
+& RLR-50     & 28.09 & 56.19 & 25.55 & 25.92 \\
+\midrule
+\multirow{6}{*}{PTB fixed-split}
+& $k$-TSP-10 & 10.00 & 20.00 & 10.00 & 10.00 \\
+& RLR-10     & 8.00  & 16.00 & 7.93  & 8.00 \\
+& $k$-TSP-20 & 20.00 & 40.00 & 20.00 & 20.00 \\
+& RLR-20     & 13.00 & 26.00 & 12.77 & 13.00 \\
+& $k$-TSP-50 & 50.00 & 100.00 & 50.00 & 50.00 \\
+& RLR-50     & 21.00 & 42.00 & 20.52 & 21.00 \\
+\midrule
+\multirow{6}{*}{PTB LOCO}
+& $k$-TSP-10 & 10.00 & 20.00 & 10.00 & 10.00 \\
+& RLR-10     & 9.25  & 18.50 & 9.14  & 9.25 \\
+& $k$-TSP-20 & 20.00 & 40.00 & 20.00 & 20.00 \\
+& RLR-20     & 15.25 & 30.50 & 14.98 & 15.25 \\
+& $k$-TSP-50 & 50.00 & 100.00 & 50.00 & 50.00 \\
+& RLR-50     & 18.25 & 36.50 & 17.87 & 18.25 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+\end{table}
+
+Table~\ref{tab:world_structure} shows how the RLR target shortlist size translates into globally and locally active relations. The difference becomes more pronounced at larger target sizes. In \emph{CompCancer}, RLR-50 retained on average 28.1 globally active relations and 25.6 locally active relations per sample, compared with 49.3 retained voting relations for $k$-TSP-50. In the PTB analyses, RLR-50 contained 21 globally active relations in the fixed-split case study and an average of 18.3 in LOCO, compared with approximately 50 retained relations for $k$-TSP.
+
+This reduction occurs at successive stages of the RLR pipeline. Gene-disjoint shortlist construction can yield fewer than $K$ relations, elastic-net fitting can shrink additional coefficients to zero, and margin-aware encoding can make globally active relations locally inactive for individual samples. The reported counts therefore summarize globally and locally active relations.
+
+\subsection{Structural inspection in the PTB fixed-split case study}
+
+The PTB fixed-split analysis provides a concrete example of the fitted relational structure. We focus first on the compact $k$-TSP-10 and RLR-10 configurations.
+
+Both models achieved F1=0.900, while RLR-10 produced lower logloss (0.294 versus 1.677) and closely similar AUC (0.930 versus 0.934). The principal difference therefore concerned predictive score quality rather than thresholded classification.
+
+The $k$-TSP-10 model retained ten equally weighted voting relations. RLR-10 used the same ten underlying gene-pair contrasts in its shortlist, but penalized fitting retained eight with non-zero coefficients and assigned them unequal contributions. Margin-aware encoding reduced the active structure only slightly further, to a mean of 7.9 locally active relations per sample (median 8; range 7--8).
+
+Figure~\ref{fig:ptb_case_study} shows the resulting difference in fitted structure. Detailed relation identities, orientations, coefficients, and sample-level activity summaries are reported in the Supplementary Material.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\textwidth]{figures/fig3.pdf}
+\caption{Compact PTB fixed-split structural comparison. The $k$-TSP-10 model retains ten equally weighted voting relations, whereas RLR-10 fits unequal coefficients to the corresponding ten underlying gene-pair contrasts. Two RLR coefficients are zero and the remaining eight are positive with unequal magnitudes. RLR additionally applies margin-aware relational encoding, resulting in a different fitted relational structure.}
+\label{fig:ptb_case_study}
+\end{figure}
+
+
+The compact signatures included several genes associated with immune and host-response processes, including ANKRD22, PSTPIP2, IL27RA, BATF2, FCGR1-related signals, WARS1, and members of the GBP family. Functional enrichment provided a complementary view of this structure.
+
+Over-representation analysis used the training-only MAD-prefiltered 2000-gene universe as background. For the RLR-20 versus $k$-TSP-20 comparison, the $k$-TSP gene set yielded 20 FDR-significant terms across GO Biological Process, Hallmark, and Reactome, whereas the smaller RLR active set yielded three significant Hallmark terms: allograft rejection, interferon-gamma response, and interferon-alpha response. Both representations therefore highlighted immune- and interferon-related themes despite the difference in fitted gene-set size. Complete enrichment results are provided in the Supplementary Material.
+
+The intermediate configuration showed the same structural trend: RLR-20 contained 13 globally active relations compared with 20 retained $k$-TSP voting relations. Together, the compact and intermediate PTB analyses show that RLR can yield a smaller fitted relational structure while preserving direct inspection at the level of gene pairs.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Discussion}\label{sec:discussion}
+
+Relative Logistic Regression (RLR) extends pair-based omics classification from equal hard voting to joint probabilistic modeling of relational evidence while preserving within-sample feature orderings and directly inspectable gene-pair structure. Across the primary \emph{CompCancer} benchmark, the clearest empirical effect concerned predictive score quality: RLR achieved lower mean logloss than the corresponding $k$-TSP configurations across all three matched configurations, while AUC and F1 remained closely matched. The main difference therefore concerned predictive score quality rather than discrimination or thresholded classification.
+
+RLR also provides a more explicit view of model structure by distinguishing the target shortlist size, realized shortlist, globally active relations, and locally active relations. For the larger configurations, the number of globally active relations was substantially smaller than the target shortlist size in both the multi-dataset benchmark and PTB analyses. This hierarchy links the global fitted model directly to the relational evidence contributing to individual predictions.
+
+\subsection{From hard voting to probabilistic relational integration}
+
+Classical TSP-family classifiers combine compact within-sample relations through equal voting. RLR retains the same relational perspective but replaces fixed aggregation with supervised relation ranking, strict gene-disjoint shortlist construction, margin-aware ternary encoding, and sparse elastic-net logistic fitting. The resulting model learns relation weights jointly and can shrink coefficients to zero.
+
+Joint fitting is important because shortlisted relations need not contribute independent predictive information. Their effects are estimated simultaneously, so the contribution of a given relation is evaluated in the context of the other retained relations. RLR therefore preserves the transparency of pair-based features while replacing a fixed voting rule with a fitted multivariate relational decision function.
+
+Previous work had already extended TSP-derived relations beyond equal hard voting. Shi et al. used pair ranking for multivariate learning \cite{Shi2011TSPML}; PurIST and DeCAF already combine binary TSP-derived predictors with a fitted logistic model and obtain subtype probabilities \cite{Rashid2020PurIST,Peng2026DeCAF}. Therefore, unequal logistic weights and single-sample probability predictions should not be treated as unique RLR inventions. RLR's specific formulation adds a candidate-pool and gene-disjoint shortlist policy, ternary within-sample rank-gap encoding with a locally inactive state, and sparse joint coefficient fitting, with separate reporting of realized, globally active, and locally active relations. These are \emph{design distinctions}; the present matched experiments test RLR primarily against classical hard voting and its nested calibration controls, not as a direct head-to-head performance benchmark against PurIST or DeCAF. A factorial ablation separating the contributions of these components remains future work.
+
+\subsection{Why the clearest difference appears in predictive score quality}
+
+The empirical pattern across \emph{CompCancer} is consistent with the modeling change introduced by RLR. The matched RLR and $k$-TSP configurations showed similar AUC and F1 values but larger differences in logloss. Classical $k$-TSP derives its predictive score from the balance of equal votes, whereas RLR estimates positive-class probabilities from a jointly fitted regularized model. The two approaches can therefore preserve similar ranking information while assigning different confidence to individual predictions.
+
+The post-hoc calibration analysis helps separate these effects. Platt scaling substantially improved the $k$-TSP vote-derived scores and nearly eliminated the RLR-10 versus $k$-TSP-10 logloss difference, indicating that score mapping explains an important part of the uncalibrated separation. In the RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50 comparisons, however, RLR retained lower numerical logloss after Platt scaling (0.267 versus 0.333 and 0.226 versus 0.326, respectively), while Brier score and ECE became similar between the methods.
+
+Platt scaling therefore removed most of the compact logloss difference but not the larger numerical differences in the RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50 comparisons. This remaining separation is consistent with RLR modifying the relational representation and fitting the shortlisted relations jointly, rather than only remapping an aggregate vote score.
+
+The PTB analyses showed a similar descriptive pattern. In the fixed-split case study, RLR-10 and RLR-20 matched the F1 of their $k$-TSP counterparts while producing lower logloss. In the four-cohort LOCO analysis, RLR also showed lower aggregate logloss at all three matched sizes, while AUC and F1 remained similar overall. Thus, the distinction between score quality and discrimination was observed across evaluation settings with different analytical roles.
+
+\subsection{Interpretability through fitted relational structure}
+
+RLR distinguishes the target shortlist size $K$ from the realized shortlist, globally active relations after regularized fitting, and locally active relations for an individual sample. Gene-disjoint shortlist construction determines the realized shortlist, while margin-aware encoding determines local activity.
+
+This distinction becomes particularly visible for larger configurations. In \emph{CompCancer}, RLR-50 retained approximately 28 globally active relations on average and approximately 26 locally active relations per sample despite a target size of 50. The corresponding PTB fixed-split model contained 21 globally active relations, while the LOCO analysis yielded an average of approximately 18. The reduction therefore reflects successive stages of the RLR pipeline: shortlist construction, coefficient shrinkage, and sample-specific margin activity.
+
+Globally active relations define the fitted relational component, while locally active relations identify which of them contribute to an individual sample. Their fitted coefficients provide the corresponding relation weights, preserving a direct connection between prediction and within-sample feature ordering.
+
+Strict gene disjointness further prevents repeated gene membership within the shortlist. The candidate-pool sensitivity analysis showed that a broader candidate pool becomes increasingly useful under this constraint as the target size grows, because it provides more admissible gene-disjoint relations. Candidate-pool size is therefore a structural component of RLR rather than only a computational setting.
+
+\subsection{Biological context of the PTB relational structure}
+
+The PTB case study also illustrates how the fitted relational structure can be examined biologically at the level of its constituent genes. In RLR-10, eight of the ten shortlisted relations retained non-zero coefficients, producing a compact set of unequally weighted gene-pair terms.
+
+Functional enrichment provided a complementary view of this structure. For RLR-20, the globally active gene set yielded significant Hallmark terms related to interferon-gamma response, interferon-alpha response, and allograft rejection, while the corresponding $k$-TSP signature also highlighted immune- and interferon-related processes across the examined collections. Thus, despite the smaller fitted RLR structure, both representations retained prominent immune-response themes in the PTB setting.
+
+These results show that regularization can reduce the number of globally active relations while preserving direct links to individual gene-pair relations and the biological processes represented by the selected genes.
+
+\subsection{Scope and future directions}
+
+The present study evaluates RLR as an integrated relational pipeline across multiple transcriptomic benchmarks and complementary PTB analyses. Several extensions follow naturally from these results. Component-wise ablation could quantify the individual contributions of candidate-pool size, gene-disjoint shortlist construction, margin-aware ternary encoding, and regularization. Larger multi-center datasets would allow the cross-cohort behavior observed in the PTB LOCO analysis to be examined across broader platform and population heterogeneity.
+
+The same relational formulation can also be evaluated in other high-dimensional molecular settings in which within-sample ordering may reduce dependence on absolute measurement scales, including RNA-seq, proteomic, metabolomic, and multi-omics data. Future work could additionally consider adaptive variants in which the margin, shortlist constraints, regularization mixture, or candidate-pool size are selected from the training data while maintaining strict separation between model development and external evaluation.
+
+The present evidence should be interpreted within the intended methodological scope. RLR had numerically lower mean logloss and Brier scores than uncalibrated hard-voting $k$-TSP, with exploratory BH-FDR findings for several probability-quality comparisons, including logloss and Brier at $K=50$. This BH analysis and its 15-test comparison family were adopted during manuscript development, after the original results had been examined; the resulting $q$-values are exploratory, not preregistered confirmatory evidence. Dependence among metrics and matched model configurations also warrants caution in interpreting nominal FDR control. After nested training-only Platt scaling, Brier and ECE differences were small, and the exploratory findings for uncalibrated $k$-TSP do not establish significant superiority over calibrated $k$-TSP. Formal inference used 11 \emph{CompCancer} datasets rather than folds as independent units; PTB LOCO provides descriptive cohort holdout, not clinical validation. The study compares relational probabilistic and hard-voting pipelines, rather than RLR against every non-relational classifier.
+
+Computationally, relation ranking dominated the current implementation. On one representative outer split per \emph{CompCancer} dataset, mean total runtime was 2.22~s for RLR-10 and 2.26~s for RLR-50, compared with 1.33~s and 1.35~s for the corresponding $k$-TSP configurations when the shared ranking stage was attributed to each model. Once the ranked candidate pool was available, downstream RLR processing required only 0.13--0.16~s on average. Further optimization can therefore focus primarily on relation ranking and its parallelization.
+
+\section{Conclusion}\label{sec:conclusion}
+
+Relative Logistic Regression extends pair-based omics classification from equal hard-vote aggregation to sparse probabilistic relational modeling while preserving directly interpretable within-sample gene-pair comparisons. Its integrated formulation combines supervised relation ranking, candidate-pool construction, gene-disjoint shortlist construction, margin-aware ternary encoding, and elastic-net logistic fitting.
+
+Across the 11-dataset primary benchmark, RLR achieved lower mean logloss than classical $k$-TSP in all three matched configurations, while AUC and F1 remained closely comparable. Training-side calibration showed that part of this difference reflected the probability mapping of classical vote-derived scores, whereas the intermediate and larger RLR configurations retained lower numerical logloss after Platt scaling.
+
+RLR also makes the fitted relational structure explicit by separating the target shortlist size, realized shortlist, globally active relations, and locally active relations. The resulting models remain directly inspectable at the level of gene pairs and fitted coefficients while allowing relational contributions to be learned jointly and sparsely. These properties provide a basis for further development of interpretable probabilistic relational models across cross-cohort and other high-dimensional omics settings.
+
+\section*{Data and Code Availability}
+
+All datasets analyzed in this study originate from publicly available sources described in the manuscript and Supplementary Material. The public repository contains the RLR implementation, experiment configurations, split definitions, analysis scripts, reproducibility documentation, checksums, and selected reference outputs:
+\href{https://github.com/mczajkowskipb/relative-logistic-regression}{Public RLR code and data-manifest repository}.
+Data-acquisition and preprocessing instructions, including the documented provenance boundary for the historical legacy8 inputs, are provided in the repository. The release includes expected SHA256 fingerprints of the original processed ARFF inputs, but the complete processed ARFF collection is not redistributed in the public repository; a checksum manifest alone does not verify a reconstructed input. Reproduction therefore requires retrieving the source data, following the documented preprocessing, and checking processed-file hashes and schema before rerunning the fixed configurations. The exact repository version corresponding to the reported analyses is documented in the Supplementary Material.
+
+\begin{thebibliography}{99}
+
+\bibitem{Cheng2023}
+L.~Cheng, H.~Wu, X.~Zheng, N.~Zhang, P.~Zhao, R.~Wang,
+Q.~Wu, T.~Liu, X.~Yang, and Q.~Geng.
+\newblock GPGPS: a robust prognostic gene pair signature of glioma ensembling
+IDH mutation and 1p/19q co-deletion.
+\newblock \emph{Bioinformatics}, 39(1):btac850, 2023.
+\newblock doi: 10.1093/bioinformatics/btac850.
+
+\bibitem{Kwan2023}
+B.~Kwan, T.~Fuhrer, D.~Montemayor, J.~C. Fink, J.~He,
+C.-Y.~Hsu, K.~Messer, R.~G. Nelson, M.~Pu, A.~C. Ricardo,
+H.~Rincon-Choles, V.~O. Shah, H.~Ye, J.~Zhang, K.~Sharma,
+and L.~Natarajan.
+\newblock A generalized covariate-adjusted top-scoring pair algorithm with
+applications to diabetic kidney disease stage classification in the Chronic
+Renal Insufficiency Cohort (CRIC) Study.
+\newblock \emph{BMC Bioinformatics}, 24(1):57, 2023.
+\newblock doi: 10.1186/s12859-023-05171-w.
+
+\bibitem{Gordon2002}
+G.~J. Gordon, R.~V. Jensen, L.-L. Hsiao, S.~R. Gullans, J.~Blumenstock, R.~M. Ramaswamy, W.~G. Richards, D.~J. Sugarbaker, and R.~Bueno.
+\newblock Translation of microarray data into clinically relevant cancer diagnostic tests using gene expression ratios in lung cancer and mesothelioma.
+\newblock \emph{Cancer Research}, 62(17):4963--4967, 2002.
+
+\bibitem{Bo2002}
+T.-H. B{\o} and I.~Jonassen.
+\newblock New feature subset selection procedures for classification of expression profiles.
+\newblock \emph{Genome Biology}, 3(4):research0017, 2002.
+
+\bibitem{Geman2004}
+D.~Geman, C.~d'Avignon, D.~Q. Naiman, and R.~L. Winslow.
+\newblock Classifying gene expression profiles from pairwise mRNA comparisons.
+\newblock \emph{Statistical Applications in Genetics and Molecular Biology}, 3(1):Article 19, 2004.
+
+\bibitem{Wu2025}
+C.~Wu, X.~Xie, X.~Yang, M.~Du, H.~Lin, and J.~Huang.
+\newblock Applications of gene pair methods in clinical research: advancing precision medicine.
+\newblock \emph{Molecular Biomedicine}, 6(1):22, 2025.
+
+\bibitem{Czajkowski2026Review}
+M.~Czajkowski, K.~Jurczuk, and M.~Kretowski.
+\newblock Rank-based relational methods for interpretable biomedical modeling: a taxonomic review.
+\newblock \emph{Artificial Intelligence Review}, 2026.
+\newblock doi: 10.1007/s10462-026-11679-3.
+
+\bibitem{Tan2005}
+A.~C. Tan, D.~Q. Naiman, L.~Xu, R.~L. Winslow, and D.~Geman.
+\newblock Simple decision rules for classifying human cancers from gene expression profiles.
+\newblock \emph{Bioinformatics}, 21(20):3896--3904, 2005.
+
+\bibitem{Afsari2015}
+B.~Afsari, E.~J. Fertig, D.~Geman, and L.~Marchionni.
+\newblock switchBox: an R package for k-Top Scoring Pairs classifier development.
+\newblock \emph{Bioinformatics}, 31(2):273--274, 2015.
+
+\bibitem{Wang2015}
+H.~Wang, Q.~Sun, W.~Zhao, L.~Qi, Y.~Gu, P.~Li, M.~Zhang, Y.~Li, S.-L. Liu, and Z.~Guo.
+\newblock Individual-level analysis of differential expression of genes and pathways for personalized medicine.
+\newblock \emph{Bioinformatics}, 31(1):62--68, 2015.
+
+\bibitem{Magis2012}
+A.~T. Magis and N.~D. Price.
+\newblock The top-scoring `N' algorithm: a generalized relative expression classification method from small numbers of biomolecules.
+\newblock \emph{BMC Bioinformatics}, 13:227, 2012.
+
+\bibitem{Moody2020}
+L.~Moody, H.~Chen, and Y.-X. Pan.
+\newblock Considerations for feature selection using gene pairs and applications in large-scale dataset integration.
+\newblock \emph{BMC Medical Genomics}, 13(Suppl 10):148, 2020.
+
+
+\bibitem{Huang2022}
+X.~Huang, Z.~Liao, B.~Liu, F.~Tao, B.~Su, and X.~Lin.
+\newblock A novel method for constructing classification models by combining different biomarker patterns.
+\newblock \emph{IEEE/ACM Trans. Comput. Biol. Bioinform.}, 19(2):786--794, Mar./Apr. 2022.
+\newblock doi: 10.1109/TCBB.2020.3022076.
+
+\bibitem{Eddy2010}
+J.~A. Eddy, L.~Hood, N.~D. Price, and D.~Geman.
+\newblock Identifying tightly regulated and variably expressed networks by Differential Rank Conservation (DIRAC).
+\newblock \emph{PLoS Computational Biology}, 6(5):e1000792, 2010.
+
+\bibitem{Chen2023}
+Y.~Chen, H.~Zhang, and X.~Sun.
+\newblock Improving the performance of single-cell RNA-seq data mining based on relative expression orderings.
+\newblock \emph{Briefings in Bioinformatics}, 24(1):bbac556, 2023.
+
+\bibitem{Yan2024}
+J.~Yan, Q.~Zeng, and X.~Wang.
+\newblock RankCompV3: a differential expression analysis algorithm based on relative expression orderings.
+\newblock \emph{BMC Bioinformatics}, 25:259, 2024.
+
+\bibitem{Jin2025}
+N.~Jin, Y.~He, X.~Sun, J.~Xie, Y.~Zhu, C.~Wu, and J.~Huang.
+\newblock PAGE-based transfer learning from single-cell to bulk sequencing enhances model generalization for sepsis diagnosis.
+\newblock \emph{Briefings in Bioinformatics}, 26(1):bbae661, 2025.
+
+\bibitem{Czajkowski2025}
+M.~Czajkowski, K.~Jurczuk, and M.~Kretowski.
+\newblock Enhancing transparency of omics data analysis with the evolutionary multi-test tree and relative expression.
+\newblock \emph{Expert Systems with Applications}, 276:127131, 2025.
+
+\bibitem{Czajkowski2025MultiOmics}
+M.~Czajkowski, K.~Jurczuk, and M.~Kretowski.
+\newblock Enhancing multi-omics data classification with relative expression analysis and decision trees.
+\newblock \emph{Journal of Computational Science}, 84:102460, 2025.
+\newblock doi: 10.1016/j.jocs.2024.102460.
+
+\bibitem{Czajkowska2024Proteomics}
+A.~Czajkowska, M.~Czajkowski, L.~Szczerbinski, K.~Jurczuk,
+D.~Reska, W.~Kwedlo, M.~Kretowski, P.~Zabielski, and A.~Kretowski,
+``Exploring protein relative relations in skeletal muscle proteomic analysis for insights into insulin resistance and type 2 diabetes,''
+\emph{Scientific Reports}, vol.~14, Art.~no.~17631, 2024,
+doi: 10.1038/s41598-024-68568-4.
+
+\bibitem{Czajkowski2008WeightKTSP}
+M.~Czajkowski and M.~Kretowski.
+\newblock Novel extension of $k$-TSP algorithm for microarray classification.
+\newblock In \emph{New Frontiers in Applied Artificial Intelligence},
+Lecture Notes in Artificial Intelligence, vol.~5027, pp.~456--465, 2008.
+\newblock doi: 10.1007/978-3-540-69052-8\_48.
+
+\bibitem{Shi2011TSPML}
+P.~Shi, S.~Ray, Q.~Zhu, and M.~A. Kon.
+\newblock Top scoring pairs for feature selection in machine learning and applications to cancer outcome prediction.
+\newblock \emph{BMC Bioinformatics}, 12:375, 2011.
+\newblock doi: 10.1186/1471-2105-12-375.
+
+\bibitem{Rashid2020PurIST}
+N.~U. Rashid, X.~L. Peng, C.~Jin, R.~A. Moffitt, K.~E. Volmar,
+B.~A. Belt, R.~Z. Panni, T.~M. Nywening, S.~G. Herrera,
+K.~J. Moore, S.~G. Hennessey, A.~B. Morrison, R.~Kawalerski,
+A.~Nayyar, A.~E. Chang, B.~Schmidt, H.~J. Kim, D.~C. Linehan,
+and J.~J. Yeh.
+\newblock Purity Independent Subtyping of Tumors (PurIST), a clinically robust,
+single-sample classifier for tumor subtyping in pancreatic cancer.
+\newblock \emph{Clinical Cancer Research}, 26(1):82--92, 2020.
+\newblock doi: 10.1158/1078-0432.CCR-19-1467.
+
+\bibitem{Peng2026DeCAF}
+X.~L. Peng \emph{et al.}
+\newblock DeCAF defines clinical fibroblast subtypes and multidimensional
+tumor-stroma crosstalk shaping prognosis and immunotherapy response.
+\newblock \emph{Cell Reports Medicine}, 7(2):102611, 2026.
+\newblock doi: 10.1016/j.xcrm.2026.102611.
+
+
+\bibitem{Wu2026PTBD}
+C.~Wu, X.~Xie, Z.~Huang, Y.~Zhou, Y.~Gou, M.~Du, H.~Lin, and J.~Huang.
+\newblock PTBD: a machine learning-based non-invasive diagnostic model for pulmonary tuberculosis using large-scale blood transcriptomes.
+\newblock \emph{BMC Biology}, 24:110, 2026.
+\newblock doi: 10.1186/s12915-026-02585-9.
+
+\bibitem{ZouHastie2005}
+H.~Zou and T.~Hastie.
+\newblock Regularization and variable selection via the elastic net.
+\newblock \emph{Journal of the Royal Statistical Society: Series B (Statistical Methodology)}, 67(2):301--320, 2005.
+
+\bibitem{Friedman2010}
+J.~Friedman, T.~Hastie, and R.~Tibshirani.
+\newblock Regularization paths for generalized linear models via coordinate descent.
+\newblock \emph{Journal of Statistical Software}, 33(1):1--22, 2010.
+
+\bibitem{Hanley1982}
+J.~A. Hanley and B.~J. McNeil.
+\newblock The meaning and use of the area under a receiver operating characteristic (ROC) curve.
+\newblock \emph{Radiology}, 143(1):29--36, 1982.
+
+\bibitem{VanCalster2019}
+B.~van Calster, D.~J. McLernon, M.~van Smeden, L.~Wynants, and E.~W. Steyerberg.
+\newblock Calibration: the Achilles heel of predictive analytics.
+\newblock \emph{BMC Medicine}, 17:230, 2019.
+
+\bibitem{Wilcoxon1945}
+F.~Wilcoxon.
+\newblock Individual comparisons by ranking methods.
+\newblock \emph{Biometrics Bulletin}, 1(6):80--83, 1945.
+
+\bibitem{Benjamini1995}
+Y.~Benjamini and Y.~Hochberg.
+\newblock Controlling the false discovery rate: A practical and powerful approach to multiple testing.
+\newblock \emph{Journal of the Royal Statistical Society, Series B}, 57(1):289--300, 1995.
+
+\bibitem{Lin2009}
+X.~Lin, B.~Afsari, L.~Marchionni, L.~Cope, G.~Parmigiani, D.~Naiman, and D.~Geman.
+\newblock The ordering of expression among a few genes can provide simple cancer biomarkers and signal BRCA1 mutations.
+\newblock \emph{BMC Bioinformatics}, 10:256, 2009.
+
+\bibitem{Marchionni2013}
+L.~Marchionni, B.~Afsari, D.~Geman, and J.~T. Leek.
+\newblock A simple and reproducible breast cancer prognostic test.
+\newblock \emph{BMC Genomics}, 14:336, 2013.
+
+\bibitem{Zheng2025}
+X.~Zheng, X.~Zhang, J.~Wang, Y.~Lin, X.~Sun, and Y.~Chen.
+\newblock Less is more: relative rank is more informative than absolute abundance for compositional NGS data.
+\newblock \emph{Briefings in Functional Genomics}, 24:elae045, 2025.
+
+\bibitem{Aitchison1986}
+J.~Aitchison.
+\newblock \emph{The Statistical Analysis of Compositional Data}.
+\newblock Chapman and Hall, London, 1986.
+
+\end{thebibliography}
+\end{document}

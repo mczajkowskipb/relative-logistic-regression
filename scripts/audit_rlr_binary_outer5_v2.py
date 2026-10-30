@@ -1,10 +1,27 @@
 #!/usr/bin/env python3
 """Independent replay for 11 cohorts × 5 folds × 3 arms; dataset-level exact sign flips."""
-import argparse,collections,csv,glob,itertools,math,pathlib,statistics
+import argparse,collections,csv,glob,hashlib,itertools,math,pathlib,statistics
 arg=argparse.ArgumentParser()
 arg.add_argument("--input",required=True)
 arg.add_argument("--out",required=True)
+arg.add_argument("--original-data-root",default=None,
+ help="Optional independent SHA256 attestation of the original publication ARFF files and shards")
 args=arg.parse_args();out=pathlib.Path(args.out);out.mkdir(parents=True,exist_ok=True)
+data_root=pathlib.Path(args.original_data_root).resolve() if args.original_data_root else None
+expected={}
+if data_root is not None:
+ assert data_root.is_dir(),("original data root absent",data_root)
+ manifest=pathlib.Path("checksums/DATA_SHA256_EXPECTED.txt")
+ assert manifest.is_file(),"run in RLR repository with frozen checksum manifest"
+ for line in manifest.read_text().splitlines():
+  toks=line.split(maxsplit=1)
+  if len(toks)==2:expected[toks[1].strip()]=toks[0].lower()
+def sha256(path):
+ h=hashlib.sha256()
+ with path.open("rb") as f:
+  for block in iter(lambda:f.read(1024*1024),b""):h.update(block)
+ return h.hexdigest()
+verified_datasets=set()
 methods=("RLR20_ORIGINAL","BINARY_ENET20_PURIST_INSPIRED","BINARY_MCP20_DECAF_INSPIRED")
 def read(f):
  with open(f,newline="") as h:return list(csv.DictReader(h))
@@ -42,6 +59,19 @@ for metricsfile in files:
  assert len(ds)==1
  ds=next(iter(ds))
  assert set(z["method"] for z in m)==set(methods)
+ if data_root is not None:
+  shard="CompCancer_truth_2x2" if ds in ("west-2001","yeoh-2002-v1") else "CompCancer_truth_9x10"
+  canonical_key=f"data/CompCancer/{ds}.arff"
+  assert canonical_key in expected,("missing original ARFF expected hash",canonical_key)
+  expected_hash=expected[canonical_key]
+  src=data_root/"CompCancer"/f"{ds}.arff"
+  shard_src=data_root/shard/f"{ds}.arff"
+  assert src.is_file() and shard_src.is_file(),("original ARFF file missing",ds)
+  assert sha256(src)==sha256(shard_src)==expected_hash,("original source SHA mismatch",ds)
+  assert all(z.get("source")=="ORIGINAL_PAPER_ARFF_SHA256_CONFIRMED"
+   and z.get("original_arff_sha256")==expected_hash
+   and z.get("original_shard_sha256")==expected_hash for z in s),("source manifest mismatch",ds)
+  verified_datasets.add(ds)
  assert len(p)==sum(int(z["n_test"]) for z in m)
  # All five folds provide disjoint test patients covering each dataset once per model.
  for name in methods:
@@ -75,6 +105,8 @@ for metricsfile in files:
    for k in ("logloss","brier","auc","positive_f1","ece","active_coefficients")}))
  allmetrics+=m;allpatients+=p
 assert len(allmetrics)==165 and len(dsrows)==33
+assert data_root is None or len(verified_datasets)==11
+source_parity="PASS" if len(verified_datasets)==11 else "NOT_VERIFIED"
 dump("all11_165_outer_fold_metrics.csv",allmetrics)
 dump("all11_outer_patient_predictions.csv",allpatients)
 dump("all11_dataset_equal_metrics.csv",dsrows)
@@ -97,7 +129,7 @@ for target in methods[1:]:
   comparisons.append(dict(comparator=target,metric=metric,
       mean_RLR_minus_binary=delta,exact_two_sided_signflip_p=p,
       n_independent_dataset_units=11,n_outer_folds_per_dataset=5,
-      trained_clinical_purist_or_decaf="NO",original_paper_ARFF_SHA256_parity="NOT_VERIFIED"))
+      trained_clinical_purist_or_decaf="NO",original_paper_ARFF_SHA256_parity=source_parity))
 # exploratory BH adjustment across all eight tests
 order=sorted(range(len(comparisons)),key=lambda i:comparisons[i]["exact_two_sided_signflip_p"])
 qraw=[min(1,comparisons[ix]["exact_two_sided_signflip_p"]*len(comparisons)/(i+1))
@@ -107,8 +139,14 @@ for pos in reversed(range(len(order))):
  minq=min(minq,qraw[pos]);comparisons[order[pos]]["exploratory_BH_q"]=minq
 dump("all11_summary.csv",summaries)
 dump("all11_paired_exact_inference.csv",comparisons)
+with (out/"original_arff_provenance_attestation.txt").open("w") as f:
+ f.write("ORIGINAL_PAPER_ARFF_SHA256_PARITY="+source_parity+"\n")
+ f.write("DATASETS_INDEPENDENTLY_SHA256_VERIFIED="+str(len(verified_datasets))+"/11\n")
+ f.write("SOURCE_BASE="+(str(data_root) if data_root else "NOT_PROVIDED")+"\n")
 for z in summaries:print("OUTER5_SUMMARY",z)
 for z in comparisons:print("OUTER5_PAIRED",z)
 print("RLR_BINARY_OUTER5_165_FOLD_METRICS_INDEPENDENT_REPLAY=PASS")
 print("RLR_BINARY_OUTER5_EVERY_PATIENT_EXACTLY_ONCE_PER_METHOD=PASS")
 print("RLR_BINARY_OUTER5_EXACT_2048_SIGNFLIPS_AND_BH8=PASS")
+print("ORIGINAL_PAPER_ARFF_SHA256_PARITY="+source_parity)
+if data_root is not None:print("RLR_ORIGINAL_ARFF_11_SOURCE_AND_SHARD_SHA256_RECHECK=PASS")

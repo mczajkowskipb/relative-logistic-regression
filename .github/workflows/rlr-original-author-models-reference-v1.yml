@@ -1,0 +1,52 @@
+name: Original PurIST and DeCAF official frozen inference integrity
+on:
+  push:
+    branches: [analysis/rlr-original-purist-decaf-headtohead-v1]
+    paths:
+      - '.github/workflows/rlr-original-author-models-reference-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  original_author_inference:
+    name: Author PurIST + DeCAF frozen classifiers (NO matched performance claim)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install R
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core
+      - name: Download exactly the original authors' source and pretrained classifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/official/PurIST /tmp/official/DeCAF
+          P="https://raw.githubusercontent.com/naimurashid/PurIST/master"
+          D="https://raw.githubusercontent.com/jjyeh-unc/decaf/main"
+          for file in functions.R fitteds_public_2019-02-12.Rdata example.Rdata; do
+            curl -fSL --retry 3 --connect-timeout 15 "$P/$file" -o "/tmp/official/PurIST/$file"
+          done
+          for file in decaf_functions.R decaf_classifier.Rdata example.rds; do
+            curl -fSL --retry 3 --connect-timeout 15 "$D/$file" -o "/tmp/official/DeCAF/$file"
+          done
+          sha256sum /tmp/official/{PurIST,DeCAF}/* | tee original_author_sha256.txt
+      - name: Run original code on original authors' example datasets
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_original_author_classifiers_smoke_v1.R /tmp/official 2>&1 | tee original_author_inference.log
+          grep -q '^ORIGINAL_PurIST_FROZEN_AUTHOR_CODE_EXAMPLE=PASS' original_author_inference.log
+          grep -q '^ORIGINAL_DeCAF_FROZEN_AUTHOR_CODE_EXAMPLE=PASS' original_author_inference.log
+          grep -qx 'ORIGINAL_PurIST_DeCAF_REFERENCE_SMOKE_NOT_A_HEADTOHEAD=PASS' original_author_inference.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: original-purist-decaf-author-inference-${{ github.run_id }}
+          path: |
+            results/rlr-original-author-classifier-smoke-v1/
+            original_author_sha256.txt
+            original_author_inference.log
+          retention-days: 30

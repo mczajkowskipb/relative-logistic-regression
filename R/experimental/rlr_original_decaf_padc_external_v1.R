@@ -44,6 +44,13 @@ require_that(duplicate_original_ids==length(duplicate_by_assay),
              "unrecognized repeated biological specimen outside PACA_AU platforms")
 cat(sprintf("ORIGINAL_DECAF_REPEATED_BIOLOGICAL_SPECIMENS=%d (PACA_AU_seq/array)\n",
        duplicate_original_ids))
+# Official apply_decaf() returns a data.frame indexed by sample names and
+# cannot accept duplicate colnames for PACA_AU's same specimen on two platforms.
+# Disambiguate names ONLY AFTER verifying exact original author CSV row alignment;
+# no sample order, expression value or label is changed.
+source_ids<-colnames(exp)
+colnames(exp)<-make.unique(source_ids,sep=".platform_repeat_")
+require_that(!anyDuplicated(colnames(exp)),"could not disambiguate assay columns")
 de<-new.env(parent=globalenv())
 load(model_file,envir=de)
 sys.source(functions_file,envir=de)

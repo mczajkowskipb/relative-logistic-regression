@@ -25,16 +25,25 @@ require_that(nrow(exp)>=18&&ncol(exp)>=100&&
              all(is.finite(as.matrix(exp))),"unexpected classifier gene matrix")
 require_that(all(c("ID","dataSet","SCISSORS_CAF","CAF_whitelist") %in% names(meta)),
              "unsupported original subtype metadata schema")
-# Sample harmonization only; a collision is fatal rather than silently deduplicated.
+# Author's combined expression and subtype CSV are strictly position-aligned.
+# They contain 52 intentionally repeated PACA_AU biological specimen IDs
+# (two independent assay platforms), so matching using bare IDs is unsafe.
+# Require EXACT column-by-column author IDs rather than deduplicate silently.
 norm_id<-function(x)make.names(as.character(x),unique=FALSE)
-require_that(!anyDuplicated(norm_id(colnames(exp)))&&
-             !anyDuplicated(norm_id(meta$ID))&&
-             !anyDuplicated(norm_id(rownames(calls))),"ambiguous specimen identifiers")
-mi<-match(norm_id(colnames(exp)),norm_id(meta$ID))
-require_that(all(!is.na(mi)),"expression sample missing from subtype table")
-meta<-meta[mi,,drop=FALSE]
-require_that(identical(norm_id(colnames(exp)),norm_id(meta$ID)),
-             "sample/label order mismatch")
+require_that(ncol(exp)==nrow(meta)&&
+             identical(as.character(colnames(exp)),as.character(meta$ID)),
+             "source combined expression/subtype CSV row order differs")
+require_that(nrow(calls)==nrow(meta),"reference prediction row count mismatch")
+aligned_reference_ids<-sum(norm_id(rownames(calls))==norm_id(meta$ID))
+require_that(aligned_reference_ids>=0.90*nrow(meta),
+             "author reference call and annotated sample order incompatible")
+duplicate_original_ids<-sum(duplicated(as.character(meta$ID)))
+duplicate_by_assay<-which(meta$dataSet=="PACA_AU_seq"&
+            meta$ID %in% meta$ID[meta$dataSet=="PACA_AU_array"])
+require_that(duplicate_original_ids==length(duplicate_by_assay),
+             "unrecognized repeated biological specimen outside PACA_AU platforms")
+cat(sprintf("ORIGINAL_DECAF_REPEATED_BIOLOGICAL_SPECIMENS=%d (PACA_AU_seq/array)\n",
+       duplicate_original_ids))
 de<-new.env(parent=globalenv())
 load(model_file,envir=de)
 sys.source(functions_file,envir=de)
@@ -50,12 +59,11 @@ require_that(is.data.frame(pred)&&"DeCAF_prob"%in%names(pred)&&
              "official classifier produced invalid predictions")
 official<-as.numeric(pred$DeCAF_prob)
 # Authors' published per-sample predictions provide a model-version integrity check.
-ci<-match(norm_id(colnames(exp)),norm_id(rownames(calls)))
-overlap<-which(!is.na(ci))
-difference<-rep(NA_real_,length(official))
-if(length(overlap)){
- difference[overlap]<-abs(official[overlap]-as.numeric(calls$DeCAF_prob[ci[overlap]]))
-}
+# Author reference calls align by original combined table ROW POSITION.
+# The duplicated PACA_AU IDs are disambiguated differently in call rownames,
+# so never match references with just specimen IDs.
+overlap<-seq_len(ncol(exp))
+difference<-abs(official-as.numeric(calls$DeCAF_prob))
 replay<-data.frame(n_samples=ncol(exp),published_probability_overlap=length(overlap),
  mean_abs_prediction_difference=if(length(overlap))mean(difference[overlap],na.rm=TRUE) else NA_real_,
  max_abs_prediction_difference=if(length(overlap))max(difference[overlap],na.rm=TRUE) else NA_real_,
@@ -77,8 +85,11 @@ rownames(train_X)<-colnames(exp)[train_idx]
 train_y<-factor(label[train_idx],levels=c("restCAF","proCAF"))
 # Training-fold-only supervised switchBox ranking; same 18 author markers.
 pool<-compute_top_pairs_switchbox(train_X,train_y,top_n=1000L,buffer_mult=5L)
-test_idx<-which(!(meta$dataSet%in%training_studies)&eligible)
-require_that(length(test_idx)>30L,"no independent author-heldout cohorts")
+test_idx<-setdiff(which(!(meta$dataSet%in%training_studies)&eligible),
+                    duplicate_by_assay)
+require_that(length(test_idx)>30L&&
+             !anyDuplicated(as.character(meta$ID[test_idx])),
+             "heldout biological specimen identity overlap after deduplication")
 test_X<-as.data.frame(t(as.matrix(exp[,test_idx,drop=FALSE])),check.names=FALSE)
 rownames(test_X)<-colnames(exp)[test_idx]
 test_y<-factor(label[test_idx],levels=c("restCAF","proCAF"))
@@ -87,12 +98,26 @@ pR<-as.numeric(rlr$test);pD<-official[test_idx]
 require_that(all(is.finite(pR))&&all(pR>=0&pR<=1)&&
              length(pR)==length(test_idx),"RLR test probability invalid")
 predictions<-data.frame(sample_id=colnames(exp)[test_idx],
-  study=meta$dataSet[test_idx],true_caf_label=as.character(test_y),
+  study=meta$dataSet[test_idx],
+  validation_unit=ifelse(meta$dataSet[test_idx]%in%
+                       c("PACA_AU_seq","PACA_AU_array"),
+                       "PACA_AU",meta$dataSet[test_idx]),
+  true_caf_label=as.character(test_y),
   truth=as.integer(test_y=="proCAF"),
   rlr_probability=pR,original_decaf_probability=pD,
   model="ORIGINAL_DECAF_VS_ORIGINAL_RLR20_FIXED_18_AUTHOR_GENES",
   stringsAsFactors=FALSE)
 write.csv(predictions,file.path(out,"external_patient_predictions.csv"),row.names=FALSE)
+write.csv(data.frame(training_sample_id=colnames(exp)[train_idx],
+              training_study=meta$dataSet[train_idx],
+              training_truth=label[train_idx]),
+     file.path(out,"original_author_training_cohort_manifest.csv"),row.names=FALSE)
+write.csv(data.frame(original_combined_rows=nrow(meta),
+         repeated_biological_specimen_ids=duplicate_original_ids,
+         repeated_PACA_AU_seq_excluded=length(duplicate_by_assay),
+         reference_position_aligned_ids=aligned_reference_ids,
+         holdout_biological_specimen_unique=!anyDuplicated(meta$ID[test_idx])),
+    file.path(out,"source_identity_audit.csv"),row.names=FALSE)
 score<-function(y,p){
  q<-pmin(1-1e-15,pmax(1e-15,p))
  h<-as.integer(p>=.5)
@@ -104,10 +129,10 @@ score<-function(y,p){
    auc=auc,
    positive_f1=if(2*tp+fp+fn>0)2*tp/(2*tp+fp+fn) else 0)
 }
-studies<-sort(unique(predictions$study))
+studies<-sort(unique(predictions$validation_unit))
 S<-list();exclusion<-list()
 for(ds in studies){
- q<-predictions[predictions$study==ds,,drop=FALSE]
+ q<-predictions[predictions$validation_unit==ds,,drop=FALSE]
  yy<-q$truth
  if(length(yy)<6L || length(unique(yy))!=2L){
    exclusion[[length(exclusion)+1L]]<-data.frame(study=ds,n=nrow(q),why="NO_BOTH_CLASSES_OR_TOO_FEW_SAMPLES")

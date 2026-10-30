@@ -4,6 +4,7 @@ on:
     branches: [analysis/rlr-original-purist-decaf-headtohead-v1]
     paths:
       - '.github/workflows/rlr-original-decaf-external-headtohead-v1.yml'
+      - 'R/experimental/rlr_original_decaf_padc_external_v1.R'
   workflow_dispatch:
 permissions:
   contents: read

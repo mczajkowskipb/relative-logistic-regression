@@ -1,0 +1,1102 @@
+\documentclass[11pt, a4paper]{article}
+
+% --- 1. Encoding and fonts ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- 2. Page and paragraph layout ---
+\usepackage[margin=1in]{geometry}
+\setlength{\parskip}{0.4em}
+\setlength{\parindent}{0pt}
+
+% --- 3. Mathematics and figures ---
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage[section]{placeins}
+
+% --- 4. Tables ---
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{adjustbox}
+\usepackage{tabularx}
+\usepackage{longtable}
+\usepackage{cite}
+
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+\newcommand{\stdtablefont}{\small}
+\newcommand{\stdtablelayout}{%
+  \stdtablefont
+  \setlength{\tabcolsep}{4pt}
+  \renewcommand{\arraystretch}{1.2}
+}
+
+% --- 5. Links and table of contents ---
+\usepackage[colorlinks=true, linkcolor=blue, citecolor=blue, urlcolor=blue]{hyperref}
+\usepackage[titles]{tocloft}
+\addtolength{\cftsecnumwidth}{1.5em}
+\addtolength{\cftsubsecnumwidth}{1.5em}
+% --- 6. Supplementary numbering ---
+\renewcommand{\thetable}{S\arabic{table}}
+\renewcommand{\thefigure}{S\arabic{figure}}
+\renewcommand{\thesection}{S\arabic{section}}
+
+% --- 7. Title and authors ---
+\title{%
+  \vspace{-1.5cm}
+  \LARGE \textbf{Supplementary Material} \\[1.5em]
+  \normalsize for the manuscript: \\[0.5em]
+  \Large \textit{Relative Logistic Regression: A Probabilistic Refinement \\ of Hard-Voting Pair-Based Omics Classification} \\[1.5em]
+  \small prepared for submission to \textit{Computer Methods and Programs in Biomedicine}
+}
+
+\author{Marcin Czajkowski, Anna Czajkowska, Krzysztof Jurczuk, and Marek Kretowski}
+\date{}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section*{Overview}
+
+This Supplementary Material expands the methodological, statistical, structural, and reproducibility details supporting the main manuscript. It includes the primary \emph{CompCancer} statistical summaries, sensitivity analyses, adaptive and calibrated hard-voting comparisons, PTB structural and functional analyses, cross-cohort evaluation, historical benchmarking, reliability diagnostics, runtime profiling, and implementation details. All supplementary analyses are organized around the same primary RLR formulation used in the main manuscript.
+
+\section{Evaluation settings and analytical roles}
+
+Table~\ref{tab:setting_roles} summarizes the role of each evaluation setting. The four settings were designed to answer complementary questions: multi-dataset comparative performance, direct inspection of fitted relational structure, behavior under complete cohort holdout, and historical positioning.
+
+\begin{table}[!htbp]
+\centering
+\caption{Analytical roles of the evaluation settings used in the study.}
+\label{tab:setting_roles}
+{\stdtablelayout
+\begin{tabularx}{\textwidth}{
+L{0.18\textwidth}
+L{0.23\textwidth}
+L{0.23\textwidth}
+L{0.24\textwidth}}
+\toprule
+\textbf{Setting} &
+\textbf{Protocol} &
+\textbf{Role in the manuscript} &
+\textbf{Primary interpretation} \\
+\midrule
+\emph{CompCancer} &
+Repeated cross-validation across 11 datasets &
+Primary comparative benchmark &
+Dataset-level comparison of discrimination and predictive score quality \\
+
+\emph{PTB fixed-split} &
+Predefined 103/44 split of pooled discovery data &
+Structural case study &
+Pair-level coefficients, globally active relations, and locally active relations \\
+
+\emph{PTB LOCO} &
+Leave-one-cohort-out over four cohorts &
+Cross-cohort evaluation &
+Predictive behavior under complete cohort holdout \\
+
+\emph{legacy8} &
+10 repetitions of 5-fold cross-validation &
+Historical benchmark &
+Context relative to classical pair-based and conventional microarray classifiers \\
+\bottomrule
+\end{tabularx}
+}
+\end{table}
+
+\section{Dataset inventory for the primary \emph{CompCancer} benchmark}
+
+The primary benchmark used 11 binary datasets from the filtered CompCancer collection distributed through the Schliep Lab supplementary resource for de Souto et al. \cite{deSouto2008}. The public repository records expected SHA256 checksums for the processed ARFF inputs used in the reported analysis; the complete original processed files are not included in the public GitHub release. The checksum manifest records their identity but does not by itself prove that a newly downloaded or reconstructed file is identical. Reproduction requires comparing the actual local ARFF files with the recorded hashes and inspecting sample/probe counts and factor-level order before running the frozen benchmark. Table~\ref{tab:compcancer_repetitions} provides the corresponding source-level dataset characteristics together with the fixed resampling schedule.
+
+The implementation reads the class variable as a two-level factor and defines the positive class as its second stored factor level. This factor ordering is fixed by the locked ARFF inputs and is used consistently for orientation, probability coding, AUC, F1, logloss, Brier score, and ECE. The class labels shown below describe the source benchmark task; the archived inputs and checksum manifest define the exact analysis representation.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Dataset inventory and fixed resampling schedule for the 11 \emph{CompCancer} datasets. The feature count $p$ is the ``remaining probes'' count reported for the filtered CompCancer representation. Class counts and labels are from the source benchmark inventory. Each repetition used stratified 5-fold cross-validation.}
+\label{tab:compcancer_repetitions}
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\resizebox{\textwidth}{!}{
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lllrllrr}
+\toprule
+\textbf{Dataset} &
+\textbf{Platform} &
+\textbf{Tissue} &
+\textbf{$n$} &
+\textbf{Class counts} &
+\textbf{Source class labels} &
+\textbf{$p$} &
+\textbf{Repetitions} \\
+\midrule
+alizadeh-2000-v1  & Double channel & Blood       & 42  & 21 / 21  & DLBCL1 / DLBCL2 & 1095 & 10 \\
+armstrong-2002-v1 & Affymetrix     & Blood       & 72  & 24 / 48  & ALL / MLL       & 1081 & 10 \\
+bittner-2000      & Double channel & Skin        & 38  & 19 / 19  & ML1 / ML2       & 2201 & 10 \\
+chen-2002         & Double channel & Liver       & 179 & 104 / 75 & HCC / liver     & 85   & 10 \\
+golub-1999-v1     & Affymetrix     & Bone marrow & 72  & 47 / 25  & ALL / AML       & 1877 & 10 \\
+gordon-2002       & Affymetrix     & Lung        & 181 & 31 / 150 & MPM / AD        & 1626 & 10 \\
+pomeroy-2002-v1   & Affymetrix     & Brain       & 34  & 25 / 9   & CMD / DMD       & 857  & 10 \\
+shipp-2002-v1     & Affymetrix     & Blood       & 77  & 58 / 19  & DLBCL / FL      & 798  & 10 \\
+singh-2002        & Affymetrix     & Prostate    & 102 & 50 / 52  & N / PR          & 339  & 10 \\
+west-2001         & Affymetrix     & Breast      & 49  & 25 / 24  & ER+ / ER-       & 1198 & 2 \\
+yeoh-2002-v1      & Affymetrix     & Bone marrow & 248 & 43 / 205 & T-ALL / B-ALL   & 2526 & 2 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+}
+\end{table*}
+
+The fixed benchmark schedule used 10 repetitions for the first nine datasets and 2 repetitions for \emph{west-2001} and \emph{yeoh-2002-v1}, yielding 470 outer test folds per model. The same schedule was applied to every compared method. Outer-fold results were first aggregated within dataset, and formal method comparisons were then performed across the resulting 11 dataset-level summaries; folds and repetitions from the same dataset were not treated as independent inferential observations. The two execution shards used to generate these results are preserved separately in the repository.
+
+\section{Primary \emph{CompCancer} paired statistical summaries}
+
+Formal inference in the primary benchmark used datasets, rather than individual outer resampling folds, as the paired units. For each model and metric, outer-fold results were first averaged within dataset. The three primary RLR--$k$-TSP comparisons were RLR-10 versus $k$-TSP-10, RLR-20 versus $k$-TSP-20, and RLR-50 versus $k$-TSP-50. Paired Wilcoxon signed-rank tests were then applied across the 11 dataset-level values.
+
+The exploratory BH false-discovery-rate analysis uses the 15 matched RLR--$k$-TSP method--metric comparisons (three shortlist sizes by five outcomes). The same original paired Wilcoxon $p$-values are adjusted using the Benjamini--Hochberg step-up procedure; this choice of adjustment and family was made during manuscript development rather than specified \emph{a priori}. Table~\ref{tab:compcancer_stats} reports both the raw $p$-values and the BH $q$-values.
+
+Earlier in the analysis, a Holm correction was applied to a broader family of 20 comparisons, comprising the 15 matched RLR--$k$-TSP tests and five technical RLR-50 $d=2$ versus $d=1$ tests. That earlier analysis found no adjusted $p<0.05$ (smallest adjusted $p=0.0771$); the BH analysis reported here was conducted subsequently and is therefore exploratory, not a replacement for a prespecified confirmatory analysis.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Dataset-level paired statistical summaries for the 15 RLR--$k$-TSP comparisons in the \emph{CompCancer} benchmark (11 datasets as paired units). Adjusted $q$-values are from the exploratory post-hoc BH-FDR analysis of the 15 method--metric tests. Differences are calculated as RLR minus $k$-TSP.}
+\label{tab:compcancer_stats}
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{llrrrrrr}
+\toprule
+\textbf{Comparison} &
+\textbf{Metric} &
+\textbf{Mean RLR} &
+\textbf{Mean $k$-TSP} &
+\textbf{Median diff.} &
+\textbf{Mean diff.} &
+\textbf{Raw $p$} &
+\textbf{BH $q$} \\
+\midrule
+
+RLR-10 vs. $k$-TSP-10
+& Logloss & 0.3051 & 0.3782 & -0.0464 & -0.0731 & 0.1000 & 0.1875 \\
+& Brier   & 0.0727 & 0.0920 & -0.0122 & -0.0193 & 0.0830 & 0.1778 \\
+& ECE     & 0.1055 & 0.1907 & -0.0802 & -0.0852 & 0.0039 & 0.0145 \\
+& AUC     & 0.9510 & 0.9556 &  0.0001 & -0.0046 & 0.3983 & 0.4979 \\
+& F1      & 0.8529 & 0.8603 &  0.0057 & -0.0074 & 0.6248 & 0.7210 \\
+
+\midrule
+
+RLR-20 vs. $k$-TSP-20
+& Logloss & 0.2672 & 0.3465 & -0.0778 & -0.0793 & 0.1197 & 0.1995 \\
+& Brier   & 0.0687 & 0.0959 & -0.0216 & -0.0272 & 0.0185 & 0.0462 \\
+& ECE     & 0.0987 & 0.2127 & -0.1084 & -0.1140 & 0.0039 & 0.0145 \\
+& AUC     & 0.9552 & 0.9597 & -0.0043 & -0.0045 & 0.2622 & 0.3933 \\
+& F1      & 0.8669 & 0.8717 &  0.0011 & -0.0047 & 1.0000 & 1.0000 \\
+
+\midrule
+
+RLR-50 vs. $k$-TSP-50
+& Logloss & 0.2260 & 0.3776 & -0.1400 & -0.1516 & 0.0051 & 0.0153 \\
+& Brier   & 0.0633 & 0.1109 & -0.0428 & -0.0476 & 0.0039 & 0.0145 \\
+& ECE     & 0.1031 & 0.2435 & -0.1447 & -0.1404 & 0.0039 & 0.0145 \\
+& AUC     & 0.9574 & 0.9628 & -0.0031 & -0.0053 & 0.3590 & 0.4895 \\
+& F1      & 0.8686 & 0.8836 &  0.0067 & -0.0150 & 1.0000 & 1.0000 \\
+
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+Across the 15 matched tests, six comparisons had exploratory BH-FDR $q<0.05$: ECE at $K=10,20,50$ (each $q=0.0145$), Brier score at $K=20$ ($q=0.0462$) and $K=50$ ($q=0.0145$), and logloss at $K=50$ ($q=0.0153$). RLR-50 showed the greatest mean paired logloss reduction ($-0.1516$). None of the AUC or F1 comparisons crossed the exploratory threshold. BH was calculated from unrounded source $p$-values, not the four-decimal values displayed in Table~\ref{tab:compcancer_stats}.
+
+These BH findings are exploratory and concern uncalibrated $k$-TSP vote-derived scores. The nested training-only Platt and isotonic analyses in Section~\ref{sec:calibration_supp} remain essential controls: BH significance here does not establish superiority over calibrated $k$-TSP or clinical utility. Because the comparisons and metrics are dependent, a nominal BH threshold should also be interpreted cautiously.
+
+\FloatBarrier
+\section{Exploratory candidate-pool sensitivity under strict gene disjointness}
+
+The primary RLR configuration uses a candidate pool of 1000 ranked relations before strict gene-disjoint shortlist construction. To examine the sensitivity of this design choice, we performed a separate exploratory screen in which all 11 \emph{CompCancer} datasets used 10 repetitions of stratified 5-fold cross-validation. The screen used $m=10$, $d=2$, $\alpha=0.5$, \texttt{lambda.min}, and the same deterministic seed convention as the primary pipeline. Because this exploratory resampling schedule differs from the primary benchmark for \emph{west-2001} and \emph{yeoh-2002-v1}, the numerical values reported here should not be interchanged with the corresponding main-text estimates.
+
+For $K=10$, the candidate-pool screen evaluated pool sizes 10, 100, and 1000. For $K=50$, pool sizes 50, 100, and 1000 were evaluated. The intermediate $K=20$ configuration is shown only at pool size 1000 as a reference between the compact and larger regimes. All pool=1000 values in Table~\ref{tab:pool_ablation} come from the same 10-repetition exploratory screening state as the other entries in this section.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Exploratory candidate-pool sensitivity under strict gene-disjoint shortlist construction ($m=10$, $d=2$), using 10 repetitions of stratified 5-fold cross-validation for all 11 \emph{CompCancer} datasets. These exploratory-screen values are not numerically interchangeable with the primary-benchmark summaries, in which two datasets use only 2 repetitions.}
+\label{tab:pool_ablation}
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccccccc}
+\toprule
+\textbf{Model} &
+\textbf{$K$} &
+\textbf{Pool} &
+\textbf{AUC} &
+\textbf{F1} &
+\textbf{Logloss} &
+\textbf{Brier} &
+\textbf{ECE} &
+\textbf{Retained / globally active relations} &
+\textbf{Unique genes} &
+\textbf{Local active mean} \\
+\midrule
+RLR-10 & 10 & 10   & 0.931 & 0.814 & 0.392 & 0.092 & 0.120 & 3.85  & 7.71  & 3.56 \\
+RLR-10 & 10 & 100  & 0.950 & 0.846 & 0.307 & 0.075 & 0.108 & 8.58  & 17.15 & 7.88 \\
+RLR-10 & 10 & 1000 & 0.950 & 0.849 & 0.304 & 0.074 & 0.107 & 9.35  & 18.69 & 8.45 \\
+\midrule
+RLR-20 & 20 & 1000 & 0.956 & 0.867 & 0.264 & 0.067 & 0.098 & 16.69 & 33.38 & 15.14 \\
+\midrule
+RLR-50 & 50 & 50   & 0.946 & 0.844 & 0.311 & 0.077 & 0.108 & 8.06  & 16.11 & 7.46 \\
+RLR-50 & 50 & 100  & 0.953 & 0.850 & 0.285 & 0.072 & 0.103 & 11.23 & 22.46 & 10.37 \\
+RLR-50 & 50 & 1000 & 0.958 & 0.867 & 0.227 & 0.062 & 0.103 & 27.97 & 55.94 & 25.44 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The screen shows why a larger candidate pool is useful under strict gene disjointness. For $K=50$, increasing the pool from 50 to 1000 increased the mean number of globally active relations from 8.06 to 27.97 and reduced mean logloss from 0.311 to 0.227. For $K=10$, the difference between pool sizes 100 and 1000 was comparatively small. A larger candidate pool therefore mainly benefits larger target shortlist sizes by providing more high-ranking, gene-disjoint relations for downstream fitting. This sensitivity analysis characterizes the primary design choice and was not used to tune pool size separately for individual datasets.
+%%%%%
+\section{Exploratory rank-margin sensitivity screen}
+
+Because the ternary RLR encoding depends on the rank-margin parameter $m$, we examined $m\in\{1,5,10,20,50\}$ in an exploratory \emph{CompCancer} screen. This analysis used 2 repetitions of stratified 5-fold cross-validation for each of the 11 datasets, with $K\in\{10,20,50\}$, strict gene disjointness ($d=2$), a candidate pool of 1000 ranked relations, $\alpha=0.5$, and \texttt{lambda.min}. The resampling schedule therefore differs from the primary benchmark, in which nine datasets use 10 repetitions and two datasets use 2 repetitions. The values reported here characterize sensitivity to $m$ and are not numerically interchangeable with the primary-benchmark estimates.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Exploratory rank-margin sensitivity in \emph{CompCancer}, based on 2 repetitions of stratified 5-fold cross-validation for each of the 11 datasets. Moderate margin values produced similar logloss, Brier score, and ECE, whereas the largest margin reduced local relational activity and was generally accompanied by higher logloss and Brier score.}
+\label{tab:m_sensitivity_world}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{cccccc}
+\toprule
+\textbf{$K$} & \textbf{$m$} & \textbf{Logloss} & \textbf{Brier} & \textbf{ECE} & \textbf{Local active mean} \\
+\midrule
+10 & 1  & 0.275 & 0.066 & 0.097 & 8.81 \\
+10 & 5  & 0.277 & 0.067 & 0.098 & 8.62 \\
+10 & 10 & 0.269 & 0.065 & 0.098 & 8.49 \\
+10 & 20 & 0.276 & 0.067 & 0.099 & 8.17 \\
+10 & 50 & 0.293 & 0.071 & 0.102 & 7.28 \\
+\midrule
+20 & 1  & 0.250 & 0.064 & 0.094 & 15.71 \\
+20 & 5  & 0.249 & 0.063 & 0.092 & 15.38 \\
+20 & 10 & 0.247 & 0.063 & 0.091 & 15.16 \\
+20 & 20 & 0.259 & 0.064 & 0.094 & 14.57 \\
+20 & 50 & 0.268 & 0.068 & 0.100 & 13.01 \\
+\midrule
+50 & 1  & 0.223 & 0.060 & 0.098 & 26.66 \\
+50 & 5  & 0.222 & 0.060 & 0.097 & 25.93 \\
+50 & 10 & 0.219 & 0.060 & 0.098 & 25.35 \\
+50 & 20 & 0.228 & 0.061 & 0.098 & 24.35 \\
+50 & 50 & 0.239 & 0.066 & 0.105 & 21.55 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The clearest pattern is structural. Increasing $m$ progressively widens the zero-valued region of the ternary encoding and correspondingly reduces the mean number of locally active relations. Across $m=1$ to $m=20$, the probability-oriented summaries remain comparatively stable, whereas $m=50$ reduces local activity more strongly and is accompanied by less favorable logloss and Brier values across all three target shortlist sizes. The primary benchmark used $m=10$ without dataset-specific margin tuning; this exploratory screen was not used to alter that choice.
+
+Because $m$ is an absolute within-sample rank-gap threshold, its relative meaning depends on the dimensionality and composition of the ranked feature universe. The screen therefore suggests relative stability over a broad moderate range while also showing the expected loss of local activity at the largest tested margin.
+
+
+\section{Exploratory adaptive-$k$ hard-voting baseline in the primary benchmark}
+
+The main manuscript compares matched RLR and predefined $k$-TSP configurations labeled 10, 20, and 50; for RLR, these labels denote target shortlist size, whereas for $k$-TSP they denote the requested number of voting relations. Because a classical $k$-TSP workflow may instead select the final number of retained pairs adaptively, we additionally evaluated an exploratory adaptive-$k$ hard-voting variant in the primary \emph{CompCancer} benchmark, using upper limits $k_{\max}=10$, 20, and 50. This analysis was treated as a supplementary robustness check and was not included in the primary inferential comparison family.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Exploratory adaptive-$k$ hard-voting results in the primary \emph{CompCancer} benchmark. Values are aggregate summaries across the 11 datasets. The adaptive procedure selected relatively compact signatures even when substantially larger upper limits were permitted.}
+\label{tab:adaptive_ktsp_world}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccccc}
+\toprule
+\textbf{Model} &
+\textbf{$k_{\max}$} &
+\textbf{Selected $k$ mean} &
+\textbf{AUC} &
+\textbf{F1} &
+\textbf{Logloss} &
+\textbf{Brier} &
+\textbf{ECE} \\
+\midrule
+Adaptive $k$-TSP & 10 & 6.61  & 0.948 & 0.849 & 0.526 & 0.095 & 0.174 \\
+Adaptive $k$-TSP & 20 & 8.81  & 0.952 & 0.856 & 0.495 & 0.095 & 0.180 \\
+Adaptive $k$-TSP & 50 & 11.68 & 0.953 & 0.858 & 0.494 & 0.096 & 0.183 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The adaptive procedure selected substantially fewer pairs than the permitted upper limits. The mean number of selected relations increased from 6.61 at $k_{\max}=10$ to 8.81 at $k_{\max}=20$ and 11.68 at $k_{\max}=50$. Even with $k_{\max}=50$, the resulting hard-voting models therefore remained relatively compact.
+
+The adaptive models achieved AUC values of 0.948--0.953 and F1 values of 0.849--0.858, while aggregate logloss remained between 0.494 and 0.526 and Brier score between 0.095 and 0.096. For comparison, the primary RLR-10, RLR-20, and RLR-50 configurations had aggregate logloss values of 0.305, 0.267, and 0.226, respectively. The adaptive hard-voting analysis therefore did not remove the numerical difference in logloss observed in the primary comparison.
+
+Expected calibration error for the adaptive models was lower than for some of the larger fixed-$k$ hard-voting configurations, illustrating that adaptive selection can modify the predictive score quality of the classical baseline. Nevertheless, the aggregate score summaries remained distinct from those of the corresponding RLR configurations. Because this analysis was exploratory and was not part of the primary inferential family, these differences are interpreted descriptively.
+
+Overall, adaptive selection produced compact hard-voting signatures but did not reproduce the RLR logloss values. Differences in AUC and F1 remained comparatively small, while logloss remained the clearest numerical separation between the adaptive hard-voting models and RLR.
+
+
+\section{Post-hoc calibration of vote-derived $k$-TSP scores in the primary benchmark}
+\label{sec:calibration_supp}
+
+The primary comparison uses the native vote-derived $k$-TSP score defined in the main manuscript. To determine how much of the observed score-quality separation reflects probability mapping rather than the underlying pair-based classifier, we performed a nested post-hoc calibration analysis using Platt scaling and isotonic calibration.
+
+For each outer \emph{CompCancer} split, the calibration data were generated entirely inside the outer training portion. The outer training set was divided into one 5-fold inner cross-validation cycle. In every inner fold, the $k$-TSP model---including supervised pair selection and score orientation---was refitted from the inner-training subset and evaluated on the corresponding inner validation subset. The pooled inner out-of-fold raw vote scores were then used to fit the calibrator. Finally, $k$-TSP was refitted on the complete outer training set, raw scores were produced for the untouched outer test set, and the previously fitted calibration mapping was applied. Thus, no outer-test outcome information entered either pair selection, orientation, or calibration.
+
+Platt scaling was implemented as a binomial logistic regression of the binary outcome on the raw oriented $k$-TSP score. Isotonic calibration used a monotone isotonic fit followed by interpolation over the observed score levels. The calibration analysis is summarized using logloss, Brier score, and ECE because these are the quantities directly targeted by probability remapping; ranking metrics are omitted from this table.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Post-hoc calibration of vote-derived $k$-TSP scores in the primary \emph{CompCancer} benchmark. Calibration was learned strictly within each outer training split using inner out-of-fold scores from fully refitted $k$-TSP models. Platt scaling nearly removed the RLR-10 versus $k$-TSP-10 logloss difference, whereas RLR retained lower numerical logloss in the RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50 comparisons. Brier score and ECE were similar after Platt scaling. Isotonic calibration yielded lower ECE in several settings but substantially higher logloss.}
+\label{tab:calibrated_ktsp_world}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} &
+\textbf{Calibrator} &
+\textbf{Logloss} &
+\textbf{Brier} &
+\textbf{ECE} \\
+\midrule
+$k$-TSP-10 & Platt    & 0.308 & 0.070 & 0.110 \\
+$k$-TSP-10 & Isotonic & 1.017 & 0.077 & 0.093 \\
+\midrule
+$k$-TSP-20 & Platt    & 0.333 & 0.065 & 0.104 \\
+$k$-TSP-20 & Isotonic & 1.056 & 0.071 & 0.090 \\
+\midrule
+$k$-TSP-50 & Platt    & 0.326 & 0.063 & 0.102 \\
+$k$-TSP-50 & Isotonic & 0.912 & 0.067 & 0.085 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+Platt scaling changed the compact comparison substantially. Calibrated $k$-TSP-10 reached a mean logloss of 0.308, compared with 0.305 for RLR-10, so the initial compact difference was almost completely removed. Larger numerical differences remained for RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50: Platt-calibrated $k$-TSP reached 0.333 and 0.326, compared with 0.267 and 0.226 for RLR-20 and RLR-50, respectively.
+
+Brier score after Platt scaling was 0.070, 0.065, and 0.063 for $k$-TSP-10, $k$-TSP-20, and $k$-TSP-50, compared with 0.073, 0.069, and 0.063 for the corresponding RLR configurations. ECE was likewise similar. The remaining calibrated separation is therefore concentrated in logloss at the intermediate and larger configurations.
+
+Isotonic calibration produced lower ECE in several settings but markedly higher logloss. This illustrates the distinction between a binned calibration diagnostic and a proper scoring rule: a mapping can improve agreement within calibration bins while assigning probabilities that are penalized more strongly by logloss.
+
+The calibration experiment provides a useful decomposition of the main result. A substantial part of the uncalibrated gap, especially for RLR-10 versus $k$-TSP-10, is explained by how hard-vote totals are mapped onto the probability scale. For RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50, post-hoc remapping improves $k$-TSP substantially but does not reproduce the RLR logloss values. This is consistent with the fact that RLR fits a joint probabilistic model directly on margin-aware relational states rather than calibrating a single aggregate vote score after model construction.
+
+\section{PTB fixed-split case study}
+
+The \emph{pulmonary tuberculosis (PTB) fixed-split} setting provides the main structural case study. The underlying source benchmark defines PTB as the positive group and latent tuberculosis infection (LTBI) or healthy control (HC) as the negative group \cite{Wu2025}. The three discovery cohorts contain 147 samples in total: GSE19439 (13 PTB, 17 LTBI, 12 HC), GSE19442 (20 PTB, 31 non-PTB controls), and GSE19444 (21 PTB, 21 LTBI, 12 HC). The predefined discovery split used here contains 103 training and 44 test samples. GSE83456 contains 45 PTB and 61 healthy-control samples ($n=106$) and enters the separate four-cohort LOCO analysis.
+
+The purpose of this setting is to provide a concrete public-cohort example in which the fitted pair-based decision structure can be inspected directly. In the compact comparison, $k$-TSP-10 and RLR-10 involve the same underlying gene-pair contrasts, while RLR applies its own orientation convention, assigns unequal fitted coefficients, and sets two shortlisted relations to zero.
+
+
+\subsection{Compact and intermediate case-study summaries}
+
+Table~\ref{tab:ptb_case_summary} summarizes the compact and intermediate PTB comparisons. In both cases, RLR and $k$-TSP achieved the same F1. RLR showed substantially lower logloss and ECE, whereas Brier score was similar and slightly lower for $k$-TSP. AUC was slightly lower for RLR in the compact comparison and more clearly lower in the intermediate comparison. The principal differences in this case study therefore concern logloss, ECE, and the fitted relational structure rather than uniform improvement across predictive metrics.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Compact and intermediate comparisons in the \emph{PTB fixed-split} case study. RLR preserved the same thresholded F1 as the corresponding $k$-TSP configurations while showing substantially lower logloss and ECE. Brier scores were similar and slightly lower for $k$-TSP. RLR additionally produced fewer globally and locally active relations.}
+\label{tab:ptb_case_summary}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccccc}
+\toprule
+\textbf{Model} &
+\textbf{AUC} &
+\textbf{F1} &
+\textbf{Logloss} &
+\textbf{Brier} &
+\textbf{ECE} &
+\textbf{Globally active relations} &
+\textbf{Unique genes} &
+\textbf{Local active mean} \\
+\midrule
+$k$-TSP-10 & 0.934 & 0.900 & 1.677 & 0.078 & 0.082 & 10 & 20 & 10.00 \\
+RLR-10     & 0.930 & 0.900 & 0.294 & 0.081 & 0.036 & 8  & 16 & 7.93 \\
+\midrule
+$k$-TSP-20 & 0.935 & 0.900 & 0.991 & 0.081 & 0.084 & 20 & 40 & 20.00 \\
+RLR-20     & 0.918 & 0.900 & 0.306 & 0.083 & 0.040 & 13 & 26 & 12.77 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+For the compact comparison, RLR-10 and $k$-TSP-10 both achieved F1=0.900, while AUC differed only slightly (0.930 versus 0.934). RLR-10 reduced logloss from 1.677 to 0.294 and ECE from 0.082 to 0.036, whereas Brier score was similar (0.081 versus 0.078). RLR-10 contained eight globally active relations and a mean of 7.93 locally active relations per sample, compared with ten retained voting rules for $k$-TSP-10.
+
+The intermediate comparison showed the same structural pattern. RLR-20 retained 13 globally active relations and a mean of 12.77 locally active relations per sample, compared with 20 retained voting rules for $k$-TSP-20. F1 again remained 0.900, logloss decreased from 0.991 to 0.306, and ECE from 0.084 to 0.040. AUC was lower for RLR-20 (0.918 versus 0.935), while Brier score remained similar (0.083 versus 0.081). Together, the compact and intermediate comparisons show that substantial changes in predictive score quality can coexist with essentially unchanged thresholded classification while the fitted relational structure becomes smaller and unequally weighted.
+
+
+\subsection{Compact pair-level comparison: $k$-TSP-10 versus RLR-10}
+
+The compact PTB comparison is reported in detail in Table~\ref{tab:ptb_compact_pairs}. The $k$-TSP-10 signature consists of ten retained pairwise rules. The RLR-10 shortlist contains the corresponding ten underlying gene-pair contrasts; after penalized fitting, eight have non-zero coefficients and two are assigned coefficients of zero. The RLR fit therefore preserves the same underlying pair contrasts while replacing equal voting with a sparse fitted decision function in which relational contributions are estimated jointly.
+
+RLR relations are reported as ordered tuples $(i,j)$ because orientation defines the sign convention of the encoded feature. For an ordered relation $(i,j)$, $r_{ij}(x)=+1$ when gene $j$ ranks at least $m$ positions above gene $i$, and $r_{ij}(x)=-1$ in the opposite direction. A positive coefficient therefore increases the positive-class log-odds for the former state and decreases them for the latter. The corresponding $k$-TSP column retains its voting-rule notation.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Pair-level comparison for the compact \emph{PTB fixed-split} case study. The table contrasts the ten retained $k$-TSP-10 voting relations with the corresponding ordered RLR-10 relations. Two RLR coefficients are zero; the remaining eight are positive and have unequal magnitudes. For an ordered RLR tuple $(i,j)$, orientation defines the sign convention used by the ternary encoding.}
+\label{tab:ptb_compact_pairs}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{L{0.38\textwidth}L{0.30\textwidth}C{0.14\textwidth}}
+\toprule
+\textbf{$k$-TSP-10 selected pair} &
+\textbf{Corresponding RLR-10 relation} &
+\textbf{$\beta$} \\
+\midrule
+ANKRD22 $>$ KLF12   & $(\mathrm{KLF12},\mathrm{ANKRD22})$   & 0.193 \\
+PSTPIP2 $>$ IL27RA  & $(\mathrm{IL27RA},\mathrm{PSTPIP2})$  & 0.665 \\
+VAMP5 $>$ ITGAL     & $(\mathrm{ITGAL},\mathrm{VAMP5})$     & 0.396 \\
+GBP4 $>$ MAP4K1     & $(\mathrm{MAP4K1},\mathrm{GBP4})$     & 0.482 \\
+FCGR1A $>$ ST6GAL1  & $(\mathrm{ST6GAL1},\mathrm{FCGR1A})$  & 0.000 \\
+BATF2 $>$ IL1RAP    & $(\mathrm{IL1RAP},\mathrm{BATF2})$    & 0.212 \\
+FCGR1BP $>$ HNRNPR  & $(\mathrm{HNRNPR},\mathrm{FCGR1BP})$  & 0.476 \\
+GBP5 $>$ LIMS1      & $(\mathrm{LIMS1},\mathrm{GBP5})$      & 0.295 \\
+WARS1 $>$ FCMR      & $(\mathrm{FCMR},\mathrm{WARS1})$      & 0.174 \\
+GBP6 $>$ ADAM7      & $(\mathrm{ADAM7},\mathrm{GBP6})$      & 0.000 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The compact PTB signature contains \emph{ANKRD22}, \emph{BATF2}, \emph{IL27RA}, and \emph{PSTPIP2}. Other selected genes include \emph{WARS1}, \emph{FCGR1A}/\emph{FCGR1BP}, and members of the \emph{GBP} family. To examine the biological context of these selected relations systematically, we performed the functional enrichment analysis reported below. Structurally, joint fitting concentrated the final RLR-10 decision function into eight non-zero weighted relations while preserving direct inspection at the level of the underlying gene pairs.
+
+
+\subsection{Functional enrichment analysis for the PTB case study}
+
+To provide functional context for the PTB fixed-split case study, we performed over-representation analysis (ORA) using gene sets extracted from the compact and intermediate pair-based models. The enrichment background was reconstructed exclusively from the same 103-sample training split used for model development and consisted of the 2000 genes retained by the training-side MAD prefilter. Functional gene sets were obtained from the official MSigDB 2026.1.Hs symbol GMT files for Hallmark, GO Biological Process, and Reactome.
+
+Hypergeometric ORA was performed separately for each model and gene-set collection. Gene sets containing fewer than 5 or more than 500 genes after restriction to the 2000-gene training universe were excluded, and Benjamini--Hochberg false-discovery-rate correction \cite{BenjaminiHochberg1995} was applied separately within each model--collection analysis.
+
+Table~\ref{tab:ptb_ora_gene_lists} summarizes the analyzed gene lists. Every extracted gene was present in the training-only enrichment universe: 20/20 genes for $k$-TSP-10, 16/16 for RLR-10, 40/40 for $k$-TSP-20, and 26/26 for RLR-20. For RLR, these lists contain genes represented by globally active relations rather than all genes in the realized shortlist; the RLR enrichment sets are therefore smaller than the corresponding $k$-TSP sets.
+
+\begin{table}[!htbp]
+\centering
+\caption{Gene-list summary for the PTB fixed-split enrichment analysis. The background was the 2000-gene training-only MAD-prefiltered universe reconstructed from the 103-sample training split. All extracted genes were present in this universe.}
+\label{tab:ptb_ora_gene_lists}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model} &
+\textbf{Extracted genes} &
+\textbf{Genes mapped to universe} \\
+\midrule
+$k$-TSP-10 & 20 & 20 \\
+RLR-10     & 16 & 16 \\
+$k$-TSP-20 & 40 & 40 \\
+RLR-20     & 26 & 26 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table}
+
+Across the four analyzed lists, the training-only ORA yielded 40 FDR-significant model--term results in total. The $k$-TSP-10 list yielded 12 significant terms (2 GO Biological Process, 3 Hallmark, and 7 Reactome), while the $k$-TSP-20 list yielded 20 (8 GO Biological Process, 3 Hallmark, and 9 Reactome). The smaller RLR active-gene sets yielded fewer significant terms: 5 for RLR-10 (3 Hallmark and 2 Reactome) and 3 for RLR-20 (all Hallmark).
+
+Despite the difference in enrichment breadth, the four lists highlighted a common high-level immune and host-response theme. Recurrent significant terms included interferon-gamma response or signaling, while the RLR sets also included interferon-alpha response and allograft rejection among their significant Hallmark terms. Because enrichment power depends strongly on gene-list size, term counts are interpreted together with the identities of the recovered pathways. Both representations therefore highlighted interferon- and host-response processes despite the smaller active RLR gene sets.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Selected FDR-significant terms from the training-only PTB fixed-split ORA analysis. Three representative leading terms are shown for each model. The enrichment results provide biological context for the structural case study; differences in the number of significant terms are descriptive because the compared gene lists differ in size.}
+\label{tab:ptb_ora_top_terms}
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{
+L{0.11\textwidth}
+L{0.08\textwidth}
+L{0.21\textwidth}
+C{0.095\textwidth}
+C{0.07\textwidth}
+L{0.28\textwidth}}
+\toprule
+\textbf{Model} &
+\textbf{Source} &
+\textbf{Term} &
+\textbf{FDR} &
+\textbf{Gene ratio} &
+\textbf{Contributing genes} \\
+\midrule
+
+$k$-TSP-10
+& Reactome
+& Interferon gamma signaling
+& $4.55\times10^{-4}$
+& 0.250
+& FCGR1A, FCGR1BP, GBP4, GBP5, GBP6 \\
+
+$k$-TSP-10
+& Hallmark
+& Interferon gamma response
+& $1.31\times10^{-3}$
+& 0.300
+& BATF2, FCGR1A, GBP4, GBP6, VAMP5, WARS1 \\
+
+$k$-TSP-10
+& Hallmark
+& Allograft rejection
+& $4.27\times10^{-3}$
+& 0.200
+& IL27RA, ITGAL, MAP4K1, WARS1 \\
+
+\midrule
+
+RLR-10
+& Hallmark
+& Allograft rejection
+& $3.44\times10^{-3}$
+& 0.250
+& IL27RA, ITGAL, MAP4K1, WARS1 \\
+
+RLR-10
+& Hallmark
+& Interferon gamma response
+& $1.84\times10^{-2}$
+& 0.250
+& BATF2, GBP4, VAMP5, WARS1 \\
+
+RLR-10
+& Hallmark
+& Interferon alpha response
+& $2.40\times10^{-2}$
+& 0.188
+& BATF2, GBP4, WARS1 \\
+
+\midrule
+
+$k$-TSP-20
+& Hallmark
+& Interferon gamma response
+& $1.03\times10^{-4}$
+& 0.250
+& BATF2, FCGR1A, GBP4, GBP6, IL15, P2RY14, PSMB9, SERPING1, VAMP5, WARS1 \\
+
+$k$-TSP-20
+& Reactome
+& Interferon gamma signaling
+& $1.87\times10^{-3}$
+& 0.150
+& FCGR1A, FCGR1BP, GBP1, GBP4, GBP5, GBP6 \\
+
+$k$-TSP-20
+& Reactome
+& GBP-mediated host defense
+& $2.48\times10^{-3}$
+& 0.075
+& GBP1, GBP4, GBP5 \\
+
+\midrule
+
+RLR-20
+& Hallmark
+& Allograft rejection
+& $4.06\times10^{-3}$
+& 0.192
+& IL15, IL27RA, ITGAL, MAP4K1, WARS1 \\
+
+RLR-20
+& Hallmark
+& Interferon gamma response
+& $5.47\times10^{-3}$
+& 0.231
+& BATF2, GBP4, IL15, P2RY14, VAMP5, WARS1 \\
+
+RLR-20
+& Hallmark
+& Interferon alpha response
+& $2.43\times10^{-2}$
+& 0.154
+& BATF2, GBP4, IL15, WARS1 \\
+
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+Figures~\ref{fig:ptb_ora_k10_supp} and~\ref{fig:ptb_ora_k20_supp} show the compact and intermediate enrichment comparisons, respectively. For readability, each model panel displays at most ten FDR-significant terms, ordered by adjusted $p$-value; the term counts reported in the text refer to the complete enrichment result set.
+
+\begin{figure*}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/sup1.pdf}
+\caption{Functional-enrichment comparison for the RLR-10 versus $k$-TSP-10 PTB fixed-split comparison. ORA used the 2000-gene training-only MAD-prefiltered universe reconstructed from the 103-sample training split. The complete result set contained 12 FDR-significant terms for $k$-TSP-10 and 5 for the smaller RLR-10 active-gene set. For readability, at most ten terms per model are displayed, ordered by adjusted $p$-value. Both signatures highlight immune/host-response and interferon-related enrichment. Point size indicates overlap size and the horizontal axis shows $-\log_{10}(\mathrm{adjusted}\ p\mathrm{-value})$.}
+\label{fig:ptb_ora_k10_supp}
+\end{figure*}
+
+\begin{figure*}[!htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig4.pdf}
+\caption{Functional-enrichment comparison for the RLR-20 versus $k$-TSP-20 PTB fixed-split comparison. ORA used the same 2000-gene training-only MAD-prefiltered universe. The complete result set contained 20 FDR-significant terms for $k$-TSP-20 and three significant Hallmark terms for the smaller RLR-20 active-gene set. For readability, at most ten terms per model are displayed, ordered by adjusted $p$-value. Both signatures highlight immune- and interferon-related host-response processes.}
+\label{fig:ptb_ora_k20_supp}
+\end{figure*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Cross-cohort evaluation in PTB LOCO}
+
+The \emph{PTB LOCO} analysis evaluates the same model families when an entire cohort is withheld from model development. Each of GSE19439, GSE19442, GSE19444, and GSE83456 served once as the test cohort while the remaining three cohorts were used for training-side feature restriction, pair selection, model fitting, and tuning.
+
+At the aggregate level, the clearest difference again concerned logloss. RLR-10 achieved AUC $=0.962$, F1 $=0.886$, and logloss $=0.245$; RLR-20 achieved AUC $=0.957$, F1 $=0.909$, and logloss $=0.254$; and RLR-50 achieved AUC $=0.961$, F1 $=0.889$, and logloss $=0.263$. The corresponding $k$-TSP logloss values were 0.730, 0.529, and 0.539.
+
+Discrimination and thresholded classification remained closely matched. RLR-10 had the highest aggregate AUC among the reported LOCO configurations, and RLR-20 had the highest aggregate F1. The principal recurring pattern was therefore the lower RLR logloss in all three matched comparisons rather than a uniform shift in every metric.
+
+With four complete cohort holdouts, the LOCO analysis provides a cross-cohort stress test under complete cohort exclusion. Lower aggregate RLR logloss was observed in all three matched comparisons when test samples came from a cohort excluded entirely from model development.
+
+\section{Historical positioning under the \emph{legacy8} benchmark}
+
+The \emph{legacy8} benchmark is included for historical positioning rather than as a primary source of inference. It serves two complementary purposes. First, it allows the RLR accuracy results obtained in the present study to be placed alongside values reported for methods evaluated previously on the same classical benchmark family. Second, results generated within the present pipeline provide additional AUC, F1, and logloss summaries for RLR and classical TSP-family configurations.
+
+The literature accuracy table and the internally generated results serve different purposes. Published accuracy values provide historical context, whereas the internally generated \emph{legacy8} analysis enables a direct within-pipeline comparison of RLR and classical TSP-family configurations.
+
+
+\subsection{Historical accuracy context}
+
+Table~\ref{tab:legacy8_historical_accuracy} places the RLR-50 accuracy results obtained in the present study alongside previously published results reported by Huang et al. \cite{Huang2022} for established pair-based and conventional classifiers.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Historical accuracy comparison in the eight-dataset \emph{legacy8} microarray benchmark. Results are mean accuracy $\pm$ standard deviation (\%). Values for CDBP, $k$-TSP, M-$k$-TSP, Weight-$k$-TSP, VH-$k$-TSP, SVM-RFE, RS-SVM, RF, and $k$-NN are reproduced from Huang et al.; the RLR column reports RLR-50 results obtained in the present study. Because the published comparator values and the present RLR estimates were not generated within one unified experimental pipeline, this table is intended for historical positioning rather than controlled head-to-head inference.}
+\label{tab:legacy8_historical_accuracy}
+{\scriptsize
+\setlength{\tabcolsep}{2.5pt}
+\renewcommand{\arraystretch}{1.12}
+\resizebox{\textwidth}{!}{
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccccccccc}
+\toprule
+\textbf{Dataset} &
+\textbf{CDBP} &
+\textbf{$k$-TSP} &
+\textbf{M-$k$-TSP} &
+\textbf{Weight-$k$-TSP} &
+\textbf{VH-$k$-TSP} &
+\textbf{SVM-RFE} &
+\textbf{RS-SVM} &
+\textbf{RF} &
+\textbf{$k$-NN} &
+\textbf{RLR-50} \\
+\midrule
+Adenocarcinoma
+& $82.66 \pm 3.77$
+& $73.79 \pm 4.39$
+& $78.47 \pm 3.38$
+& $85.32 \pm 2.61$
+& $82.50 \pm 2.63$
+& $76.24 \pm 3.05$
+& $77.98 \pm 4.82$
+& $84.47 \pm 0.92$
+& $82.95 \pm 0.92$
+& $85.78 \pm 4.90$ \\
+
+CNS
+& $57.17 \pm 5.24$
+& $52.73 \pm 6.40$
+& $52.57 \pm 6.16$
+& $52.87 \pm 6.17$
+& $58.13 \pm 4.92$
+& $60.33 \pm 4.56$
+& $62.10 \pm 5.07$
+& $62.60 \pm 3.07$
+& $56.77 \pm 5.26$
+& $59.78 \pm 9.95$ \\
+
+Colon
+& $95.97 \pm 1.50$
+& $95.87 \pm 1.04$
+& $95.55 \pm 1.24$
+& $93.23 \pm 2.61$
+& $95.42 \pm 1.40$
+& $86.61 \pm 3.06$
+& $89.43 \pm 3.71$
+& $85.65 \pm 3.31$
+& $81.26 \pm 3.24$
+& $82.31 \pm 8.90$ \\
+
+DLBCL
+& $94.68 \pm 1.71$
+& $95.61 \pm 0.98$
+& $95.19 \pm 1.09$
+& $94.23 \pm 1.91$
+& $95.74 \pm 1.58$
+& $89.92 \pm 2.97$
+& $94.18 \pm 2.13$
+& $88.31 \pm 1.91$
+& $85.06 \pm 2.91$
+& $96.62 \pm 4.23$ \\
+
+Leukemia
+& $96.25 \pm 1.64$
+& $96.47 \pm 1.09$
+& $96.14 \pm 1.35$
+& $92.25 \pm 1.90$
+& $95.31 \pm 1.25$
+& $92.97 \pm 2.47$
+& $97.52 \pm 1.14$
+& $95.81 \pm 1.87$
+& $91.97 \pm 1.89$
+& $96.70 \pm 3.72$ \\
+
+Ovarian
+& $87.96 \pm 3.11$
+& $84.67 \pm 3.45$
+& $85.11 \pm 2.72$
+& $67.89 \pm 4.51$
+& $86.22 \pm 2.93$
+& $87.78 \pm 3.74$
+& $94.21 \pm 2.37$
+& $89.85 \pm 1.72$
+& $85.78 \pm 2.79$
+& $88.15 \pm 8.77$ \\
+
+Breast2
+& $61.35 \pm 4.38$
+& $62.13 \pm 3.28$
+& $62.16 \pm 3.20$
+& $56.26 \pm 5.44$
+& $60.99 \pm 3.30$
+& $59.97 \pm 4.63$
+& $66.16 \pm 3.70$
+& $63.32 \pm 3.81$
+& $60.62 \pm 3.01$
+& $63.12 \pm 11.39$ \\
+
+Prostate
+& $92.29 \pm 1.03$
+& $92.18 \pm 1.16$
+& $91.78 \pm 1.20$
+& $86.57 \pm 2.95$
+& $92.75 \pm 0.79$
+& $91.78 \pm 2.36$
+& $91.32 \pm 1.74$
+& $89.53 \pm 1.80$
+& $84.02 \pm 1.76$
+& $91.22 \pm 5.65$ \\
+
+\midrule
+Average
+& 83.54
+& 81.68
+& 82.12
+& 78.58
+& 83.38
+& 80.70
+& 84.11
+& 82.44
+& 78.55
+& 82.96 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+}
+\end{table*}
+
+RLR-50 achieved a mean accuracy of 82.96\% across the eight datasets, placing it within the historical performance range of the methods reported in Table~\ref{tab:legacy8_historical_accuracy}. Results varied substantially across datasets, with relatively high RLR-50 accuracy on Adenocarcinoma, DLBCL, and Leukemia and a less favorable result on Colon. The benchmark therefore provides historical context while illustrating dataset dependence.
+
+
+\subsection{Aggregate results generated within the present pipeline}
+
+Table~\ref{tab:legacy_world} summarizes AUC, F1, and logloss obtained for the TSP-family and RLR configurations evaluated within the present \emph{legacy8} pipeline.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Aggregate results generated within the present \emph{legacy8} evaluation pipeline. This historical benchmark does not reproduce the primary \emph{CompCancer} pattern uniformly. The compact RLR-10 configuration has lower aggregate logloss than $k$-TSP-10, whereas the larger comparisons are more favorable to classical $k$-TSP.}
+\label{tab:legacy_world}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccc}
+\toprule
+\textbf{Model} & \textbf{AUC} & \textbf{F1} & \textbf{Logloss} \\
+\midrule
+TSP-1       & 0.767 & 0.692 & 7.655 \\
+$k$-TSP-10 & 0.844 & 0.709 & 0.831 \\
+$k$-TSP-20 & 0.852 & 0.726 & 0.583 \\
+$k$-TSP-50 & 0.850 & 0.732 & 0.418 \\
+RLR-10      & 0.839 & 0.699 & 0.711 \\
+RLR-20      & 0.845 & 0.708 & 0.670 \\
+RLR-50      & 0.846 & 0.697 & 0.530 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The within-pipeline historical results vary across configurations. RLR-10 showed lower logloss than $k$-TSP-10 (0.711 vs.\ 0.831), while AUC and F1 were slightly lower. In the RLR-20 versus $k$-TSP-20 and RLR-50 versus $k$-TSP-50 comparisons, classical $k$-TSP had lower aggregate logloss and slightly higher AUC and F1. Thus, the strong probability-oriented pattern observed in \emph{CompCancer} is not universal across the older benchmark and is most evident in its compact legacy comparison.
+
+
+\subsection{Dataset-level heterogeneity in historical results}
+
+Table~\ref{tab:legacy_dataset_logloss} illustrates the dataset-level heterogeneity of the historical benchmark using the compact and larger-capacity comparisons.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Dataset-level \emph{legacy8} logloss for selected compact and larger-capacity comparisons. Lower values are better. RLR-10 has lower logloss on six of eight datasets, whereas the RLR-50 versus $k$-TSP-50 comparison is evenly split across datasets.}
+\label{tab:legacy_dataset_logloss}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Dataset} &
+\textbf{$k$-TSP-10} &
+\textbf{RLR-10} &
+\textbf{$k$-TSP-50} &
+\textbf{RLR-50} \\
+\midrule
+adenocarcinoma & 1.052 & 1.075 & 0.499 & 0.612 \\
+breast2        & 1.237 & 1.004 & 0.668 & 1.208 \\
+cns            & 1.156 & 2.171 & 0.711 & 1.061 \\
+colon          & 1.829 & 0.515 & 0.388 & 0.513 \\
+dlbcl          & 0.168 & 0.130 & 0.203 & 0.104 \\
+leukemia       & 0.144 & 0.134 & 0.190 & 0.112 \\
+ovarian        & 0.606 & 0.381 & 0.388 & 0.341 \\
+prostate       & 0.457 & 0.278 & 0.296 & 0.287 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+RLR-10 achieved lower logloss on six of the eight datasets (\emph{breast2}, \emph{colon}, \emph{dlbcl}, \emph{leukemia}, \emph{ovarian}, and \emph{prostate}) and higher logloss on \emph{adenocarcinoma} and \emph{cns}. In the RLR-50 versus $k$-TSP-50 comparison, RLR-50 had lower logloss on four datasets (\emph{dlbcl}, \emph{leukemia}, \emph{ovarian}, and \emph{prostate}) and higher logloss on the remaining four.
+
+The dataset-level results underline the heterogeneity of the historical benchmark: both the direction and magnitude of the logloss difference change with dataset and configuration.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Reliability and score-quality diagnostics}
+
+To complement the scalar probability-oriented metrics, we examined reliability-oriented summaries of the uncalibrated model outputs in the primary \emph{CompCancer} benchmark. Because these plots pool predictions across datasets with different sample sizes and prevalences, they are used to visualize score distributions rather than to replace the dataset-level primary comparisons.
+
+Figure~\ref{fig:reliability_compcancer} shows pooled reliability curves for selected compact and larger-capacity configurations.
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.95\textwidth]{figures/sup2.pdf}
+\caption{Descriptive reliability plots for uncalibrated predictions in the primary \emph{CompCancer} benchmark. Points summarize pooled out-of-fold predictions within score bins, and the dashed diagonal denotes perfect agreement between mean score and observed event frequency. Classical $k$-TSP produces predictions on relatively coarse vote-derived score levels, whereas RLR yields finer-grained logistic probabilities. Because predictions are pooled across heterogeneous datasets and prevalences, the figure is intended only as a descriptive visualization of reliability patterns and not as formal evidence of population-level calibration.}
+\label{fig:reliability_compcancer}
+\end{figure}
+
+The pooled curves illustrate a qualitative difference between the score distributions generated by the two model families. The classical hard-voting models occupy coarser score levels, whereas RLR distributes predictions more continuously across the unit interval. Before post-hoc calibration, the RLR curves are generally closer to the diagonal in several intermediate-score regions. This pattern is consistent with the lower uncalibrated aggregate Brier and ECE values reported in the primary analysis, but it should be interpreted together with the calibration analysis in Section~\ref{sec:calibration_supp}, where Platt scaling substantially reduced these differences.
+
+
+To characterize the pooled Brier scores further, Table~\ref{tab:brier_decomposition_compcancer} reports the reliability--resolution--uncertainty decomposition for selected compact and larger-capacity comparisons.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Descriptive Brier-score decomposition for selected models using pooled out-of-fold \emph{CompCancer} predictions. The values follow the reliability--resolution--uncertainty decomposition of the Brier score. Because predictions are pooled across datasets with heterogeneous class prevalences and sample sizes, these summaries do not replace the dataset-aggregated primary benchmark results. Small differences between the raw Brier score and the value reconstructed from the decomposition reflect binning and numerical approximation.}
+\label{tab:brier_decomposition_compcancer}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Model} &
+\textbf{Raw Brier} &
+\textbf{Reliability} &
+\textbf{Resolution} &
+\textbf{Uncertainty} &
+\textbf{Brier from decomposition} \\
+\midrule
+$k$-TSP-10 & 0.076 & 0.018  & 0.174 & 0.232 & 0.076 \\
+RLR-10     & 0.053 & 0.0004 & 0.178 & 0.232 & 0.054 \\
+\midrule
+$k$-TSP-50 & 0.097 & 0.039  & 0.174 & 0.232 & 0.097 \\
+RLR-50     & 0.046 & 0.0002 & 0.186 & 0.232 & 0.046 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+Within these pooled uncalibrated summaries, the lower RLR Brier scores are associated primarily with substantially smaller reliability terms, while the resolution component is slightly higher for RLR in both comparisons. The nested Platt analysis then shows that Brier and ECE become similar after calibration of $k$-TSP, whereas the remaining numerical separation is concentrated mainly in logloss for the intermediate and larger configurations.
+
+Together, the reliability curves, Brier decomposition, and nested calibration experiment provide complementary views of how equal-vote and jointly fitted relational models map pair-based evidence onto predictive scores.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\section{Approximate runtime characterization in the primary benchmark}
+
+Approximate wall-clock times were measured on one representative outer split (\texttt{rep00\_fold00}) from each \emph{CompCancer} dataset. Computations were performed on Ubuntu 22.04.4 LTS with 95~GiB RAM and 30 logical CPUs exposed to the operating system, using R~4.6.0, ATLAS BLAS, LAPACK 3.10.0, \texttt{glmnet}~5.0, and \texttt{switchBox}~1.48.0. The reported CPU count describes the available environment and does not imply that every stage used 30 execution threads.
+
+For RLR, timing was decomposed into supervised relation ranking, shortlist construction, training-set encoding, test-set encoding, \texttt{cv.glmnet} fitting including internal selection of $\lambda$, and prediction on the complete outer test fold. Because a ranked candidate pool can be reused by several downstream RLR configurations, two model-level quantities are reported: \emph{model-specific time}, which excludes shared relation ranking, and \emph{total time with ranking}, which attributes the complete ranking cost to that individual RLR model.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Approximate model-level runtime summary in the primary \emph{CompCancer} benchmark. Timings use one representative outer split per dataset. For RLR, the relation-count column reports the mean number of globally active relations; for $k$-TSP it reports the mean number of retained voting relations.}
+\label{tab:runtime_model_summary}
+{\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.15}
+\resizebox{\textwidth}{!}{
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} &
+\textbf{Mean retained / globally active relations} &
+\textbf{Mean model-specific time (s)} &
+\textbf{Mean total with ranking (s)} &
+\textbf{Median total with ranking (s)} \\
+\midrule
+$k$-TSP-10 & 10.00 & 1.33 & 1.33 & 0.42 \\
+RLR-10     & 9.27  & 0.13 & 2.22 & 0.94 \\
+\midrule
+$k$-TSP-50 & 49.27 & 1.35 & 1.35 & 0.47 \\
+RLR-50     & 29.18 & 0.16 & 2.26 & 0.99 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+}
+\end{table*}
+
+When the full ranking stage is attributed to each standalone model, mean total time was 2.22~s for RLR-10 and 2.26~s for RLR-50, compared with 1.33~s and 1.35~s for the corresponding $k$-TSP configurations. Once the ranked candidate pool was available, the additional RLR pipeline required only 0.13--0.16~s on average.
+
+\begin{table*}[!htbp]
+\centering
+\caption{Approximate stage-level runtime summary in the primary \emph{CompCancer} benchmark. The RLR fitting stage includes \texttt{cv.glmnet} and internal $\lambda$ selection. Inference time corresponds to prediction and metric generation for the complete outer test fold.}
+\label{tab:runtime_stage_summary}
+{\stdtablelayout
+\begin{adjustbox}{max width=\linewidth}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Model / stage} &
+\textbf{Mean time (s)} &
+\textbf{Median time (s)} \\
+\midrule
+RLR-10: relation ranking (shared)   & 2.10 & 0.86 \\
+RLR-10: shortlist construction    & 0.01 & 0.00 \\
+RLR-10: encoding train          & 0.03 & 0.03 \\
+RLR-10: encoding test           & 0.02 & 0.02 \\
+RLR-10: \texttt{cv.glmnet} fit & 0.05 & 0.06 \\
+RLR-10: inference               & 0.01 & 0.00 \\
+\midrule
+RLR-50: relation ranking (shared)   & 2.10 & 0.86 \\
+RLR-50: shortlist construction    & 0.03 & 0.03 \\
+RLR-50: encoding train          & 0.04 & 0.02 \\
+RLR-50: encoding test           & 0.02 & 0.02 \\
+RLR-50: \texttt{cv.glmnet} fit & 0.07 & 0.06 \\
+RLR-50: inference               & 0.01 & 0.00 \\
+\midrule
+$k$-TSP-10: train               & 1.30 & 0.40 \\
+$k$-TSP-10: inference           & 0.02 & 0.02 \\
+$k$-TSP-50: train               & 1.33 & 0.44 \\
+$k$-TSP-50: inference           & 0.02 & 0.02 \\
+\bottomrule
+\end{tabular}
+\end{adjustbox}
+}
+\end{table*}
+
+The stage-level profile identifies supervised relation ranking as the dominant computational component of RLR. Shortlist construction, ternary encoding, penalized fitting, and the profiled inference/evaluation stage contribute comparatively little once the candidate pool has been produced. The ranking cost can therefore be reused when several RLR configurations share the same candidate pool.
+
+Runtime varied with dataset dimensionality. Across the representative splits, the largest shared RLR relation-ranking time was 11.64~s and the largest classical $k$-TSP training time was 8.96~s. These measurements provide an engineering profile of the present implementation rather than a hardware-independent complexity benchmark.
+
+\section{Reproducibility details}
+
+The reported results are tied to fixed analysis configurations for the primary \emph{CompCancer} benchmark, PTB fixed-split case study, four-cohort PTB LOCO analysis, and historical \emph{legacy8} benchmark. Exploratory candidate-pool and rank-margin screens, adaptive-$k$ analyses, post-hoc calibration, functional enrichment, reliability diagnostics, and runtime profiling were executed as separate supplementary workflows.
+
+\subsection*{Training/test separation and ranking universe}
+
+All outcome-informed operations were confined to the relevant training portion. These include feature prefiltering where applicable, pair scoring and orientation, candidate ranking, shortlist construction, regularization-parameter selection, calibration, and final model fitting.
+
+RLR ranks the complete feature vector supplied to the relational encoder for each sample using average ranks for ties. In \emph{CompCancer}, this ranking universe is the full set of numeric features in the corresponding locked filtered ARFF dataset. In PTB, the ranking universe is the training-defined MAD top-2000 feature set after feature alignment. The same training-defined PTB feature set is used to encode the associated test samples. Consequently, the ternary state depends on the declared ranking universe, as expected for an absolute rank-gap threshold.
+
+\subsection*{RLR fitting}
+
+The primary RLR settings were $K\in\{10,20,50\}$, candidate-pool size 1000, margin $m=10$, strict gene disjointness $d=2$, elastic-net mixing parameter $\alpha=0.5$, and \texttt{lambda.min}. Candidate ranking and shortlist construction are performed once on the complete outer-training set. The resulting relational design matrix is then passed to \texttt{cv.glmnet}; the inner cross-validation used by \texttt{cv.glmnet} therefore selects $\lambda$ conditional on this outer-training-defined representation rather than rebuilding the pair shortlist inside each $\lambda$-selection fold.
+
+The implementation calls \texttt{cv.glmnet} with binomial deviance, $\alpha=0.5$, and up to five folds. The helper fold rule is
+\[
+n_{\mathrm{folds}}=\max\{2,\min(5,n_{\min})\},
+\]
+where $n_{\min}$ is the minority-class count in the training set. In the reported benchmark splits, class sizes were sufficient for the standard five-fold setting. The \texttt{standardize} argument is not overridden, so the \texttt{glmnet} default \texttt{standardize=TRUE} is used during penalized fitting. RLR class labels for F1 are obtained by thresholding the fitted positive-class probability at 0.5.
+
+Strict disjointness $d=2$ allows each gene to appear in at most one shortlisted relation. The technical $d=1$ configuration included in the complete 20-test family allows each gene to appear in at most two shortlisted relations. This technical comparison is separate from the three primary RLR--$k$-TSP comparisons.
+
+\subsection*{$k$-TSP scores and metrics}
+
+For classical $k$-TSP, F1 is calculated from the labels returned by \texttt{SWAP.KTSP.Classify}. The score used for AUC, logloss, Brier score, and ECE is obtained from \texttt{SWAP.KTSP.Statistics} and mapped to the unit interval as
+\[
+p_{\mathrm{kTSP}}(x)
+=
+\frac{s(x)+k_{\mathrm{ret}}}{2k_{\mathrm{ret}}},
+\]
+where $s(x)$ is the returned voting statistic and $k_{\mathrm{ret}}$ is the number of retained $k$-TSP relations. Score orientation is determined from the training data only. Scores are clipped to $[10^{-15},1-10^{-15}]$ before logloss calculation. ECE uses 10 equal-width bins over $[0,1]$, omits empty bins, and weights each non-empty bin by its sample frequency. ECE is treated as a bin-dependent calibration diagnostic alongside the proper scoring rules.
+
+\subsection*{Nested calibration}
+
+The post-hoc $k$-TSP calibration workflow uses a single 5-fold inner cross-validation cycle within every outer-training split. Each inner fold refits the complete $k$-TSP model, including pair selection and training-side orientation, before producing validation scores. The pooled inner out-of-fold scores fit either the Platt or isotonic mapping. The base $k$-TSP model is then refitted on the complete outer-training set and the learned calibration mapping is applied to its untouched outer-test scores.
+
+\subsection*{PTB enrichment}
+
+For the PTB fixed-split ORA, the background is reconstructed exclusively from the 103-sample training set using the same MAD top-2000 restriction applied before pair scoring. Hallmark, GO Biological Process, and Reactome gene sets were taken from the official MSigDB 2026.1.Hs symbol collections. Gene sets were restricted to 5--500 members after intersection with the training universe, hypergeometric over-representation tests were applied, and Benjamini--Hochberg correction was performed separately within each model--collection analysis. Neither the 44-sample fixed test set nor GSE83456 contributes to the enrichment universe.
+
+\subsection*{Structural quantities}
+
+Five relational quantities are distinguished throughout the manuscript and Supplement:
+(i) candidate-pool size,
+(ii) target shortlist size $K$,
+(iii) realized shortlist size $q\leq K$,
+(iv) number of globally active relations, and
+(v) number of locally active relations for an individual sample.
+For the runtime profile, the relation-count column labeled ``retained / globally active'' reports retained voting pairs for $k$-TSP and non-zero fitted RLR relations, matching the quantities produced by the profiling script.
+
+\subsection*{Software environment and versioned release}
+
+The runtime environment used Ubuntu 22.04.4 LTS with 95~GiB RAM and 30 logical CPUs exposed to the operating system, R~4.6.0 on \texttt{x86\_64-pc-linux-gnu}, ATLAS BLAS, LAPACK 3.10.0, \texttt{glmnet}~5.0, and \texttt{switchBox}~1.48.0. Runtime summaries use one representative split (\texttt{rep00\_fold00}) per \emph{CompCancer} dataset.
+
+The public repository contains the implementation, fixed experiment configurations, split definitions, analysis scripts, data-acquisition documentation, checksum manifests, and selected reference outputs:
+\href{https://github.com/mczajkowskipb/relative-logistic-regression}{Public RLR code and data-manifest repository}.
+For \emph{CompCancer}, the recorded processed-file SHA256 manifest documents the data-analysis identity; numerical equality to fresh public source reconstructions requires a successful comparison of the retrieved files against that manifest. For \emph{legacy8}, the release similarly records expected processed-file checksums and preserves a historical provenance boundary. Original processed inputs for these settings are not publicly redistributed by this repository. The reproducibility verification script supplied with the editorial package can generate a local PASS/MISMATCH/MISSING report without copying patient-level files.
+
+\subsection*{Original ARFF integrity preflight}
+
+For each reported processed dataset, the repository file \path{checksums/DATA_SHA256_EXPECTED.txt} contains its expected SHA256 digest. This manuscript package includes \path{verify_original_arff_preflight.py}; run it against the original, authorized research data directory and that manifest. The checker records the file location, checksum status, and observed ARFF row/attribute counts for the eleven \emph{CompCancer} inputs. It does not upload or export the expression matrix. An expected hash found in a manifest must not be conflated with a verified hash of a retrieved original input. Until the actual files are present and checked, the proper state is \texttt{NOT\_VERIFIED}, not \texttt{PASS}. This provenance check does not modify the data, experiment configuration, or numerical results.
+
+\section*{Supplementary references}
+
+\begin{thebibliography}{9}
+
+\bibitem{deSouto2008}
+M.~C.~P. de Souto, I.~G. Costa, D.~S.~A. de Araujo, T.~B. Ludermir, and A.~Schliep.
+\newblock Clustering cancer gene expression data: a comparative study.
+\newblock \emph{BMC Bioinformatics}, 9:497, 2008.
+\newblock doi: 10.1186/1471-2105-9-497.
+
+\bibitem{Wu2025}
+C.~Wu, X.~Xie, X.~Yang, M.~Du, H.~Lin, and J.~Huang.
+\newblock Applications of gene pair methods in clinical research: advancing precision medicine.
+\newblock \emph{Molecular Biomedicine}, 6(1):22, 2025.
+
+\bibitem{BenjaminiHochberg1995}
+Y.~Benjamini and Y.~Hochberg.
+\newblock Controlling the false discovery rate: a practical and powerful approach to multiple testing.
+\newblock \emph{Journal of the Royal Statistical Society: Series B}, 57(1):289--300, 1995.
+
+
+\bibitem{Huang2022}
+X.~Huang, Z.~Liao, B.~Liu, F.~Tao, B.~Su, and X.~Lin.
+\newblock A novel method for constructing classification models by combining different biomarker patterns.
+\newblock \emph{IEEE/ACM Transactions on Computational Biology and Bioinformatics}, 19(2):786--794, 2022.
+\newblock doi: 10.1109/TCBB.2020.3022076.
+
+\end{thebibliography}
+
+\end{document}

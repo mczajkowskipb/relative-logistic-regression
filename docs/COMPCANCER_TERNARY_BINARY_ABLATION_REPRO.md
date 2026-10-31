@@ -13,7 +13,7 @@ The binary controls are **NOT** the clinical pretrained PurIST or DeCAF classifi
 
 ## Exact data identity, reproducible invocation
 
-Data are **not** stored in GitHub. The author-owned source tree has 45 frozen file SHA256 entries, including eleven CompCancer main ARFF files and their original 9×10 / 2×2 execution-shard counterparts. Execute from the repository root with an authorized copy of this data directory:
+Data are **not** stored in GitHub. The frozen SHA256 manifest contains **45 original processed-file entries**, including eleven CompCancer main ARFF files. The **eleven 9×10 / 2×2 execution-shard mirrors are not separately listed in the manifest**; instead, the preflight verifies each mirror directly against its corresponding original CompCancer ARFF checksum. Execute from the repository root with an authorized copy of this data directory:
 
 ```bash
 python3 scripts/verify_original_arff_preflight.py --data-root /path/to/processed/RLR/data

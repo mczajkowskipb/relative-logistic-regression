@@ -1,0 +1,48 @@
+name: CMPB reproducibility release source checks
+on:
+  push:
+    branches:
+      - release/cmpb-repro-20261031
+    paths:
+      - ".github/workflows/cmpb-repro-source-check.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "R/new/**"
+      - "scripts/**"
+      - "configs/**"
+      - "docs/**"
+      - "README.md"
+permissions:
+  contents: read
+jobs:
+  source_static_checks:
+    name: Static syntax and publication-release contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python, shell, and repository quick status
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -m py_compile scripts/verify_original_arff_preflight.py scripts/audit_compcancer_ternary_binary_ablation.py
+          python3 scripts/verify_original_arff_preflight.py --help > /dev/null
+          bash -n scripts/reproduce_compcancer_ternary_binary_ablation.sh
+          python3 scripts/check_release.py --quick
+          test -f R/new/28_compcancer_ternary_vs_binary_ablation.R
+          test ! -d manuscript_lock
+          test ! -e docs/FINAL_PDF_SHA256.txt
+          ! grep -q 'source("R/experimental/' R/new/28_compcancer_ternary_vs_binary_ablation.R
+          echo "CMPB_PUBLIC_SOURCE_CONTRACT=PASS"
+      - name: R syntax check (no input data, no model fitting)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v Rscript >/dev/null; then
+            sudo apt-get update -qq
+            sudo apt-get install -y --no-install-recommends r-base-core
+          fi
+          Rscript --vanilla -e 'parse("R/new/28_compcancer_ternary_vs_binary_ablation.R");cat("CMPB_S7_1_R_PARSE=PASS\n")' > /tmp/rlr-r-parse.log
+          grep -qx "CMPB_S7_1_R_PARSE=PASS" /tmp/rlr-r-parse.log

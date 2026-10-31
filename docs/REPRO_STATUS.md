@@ -29,3 +29,17 @@ The public repository does not mirror every split-level frozen output. Those fil
 ## Final external verification
 
 Fresh-clone quick verification of the public repository passed on 2026-09-10 (`python3 scripts/check_release.py --quick`; `scripts/smoke_test.sh` is the equivalent wrapper). No additional benchmark reruns are required for the numerical lock.
+
+## Original ARFF verification (owner-performed, 2026-10-30)
+
+The authors ran SHA256 against the frozen `checksums/DATA_SHA256_EXPECTED.txt` manifest on the original local processed data directory: **45/45 matching files**. The full eleven original CompCancer ARFFs and their 9x10/2x2 execution-shard counterparts also passed a source/shard preflight (**11/11**). The exact byte identity preserves original sample, probe and class-factor ordering; it does **not** license redistribution of the ARFF matrices.
+
+The repository now includes the public, read-only `scripts/verify_original_arff_preflight.py` to independently redo the checksum verification on any authorized local copy. This is a provenance confirmation for the original **processed input files**. Do not retroactively label historical public-Schliep-reconstructed exploratory GitHub Actions fits as having run against those exact original local ARFFs; the original-paper CompCancer algorithm and 470-fold numerical lock have not been changed.
+
+## Supplement S7.1 separate matched encoding ablation
+
+The 11 original ARFF datasets (one five-fold outer repeat = 55 held-out folds) were processed on the author's server with original RLR20 and two controlled binary-pair penalized logistic refits (ENET and MCP), totaling 165 method-fold fits. The output was independently replayed from per-patient predictions, and a second SHA256 check across original and sharded ARFF was **PASS**. This experiment is separate from the primary full-470 protocol and is explicitly **exploratory**. The binary models are methodological controls, **not** complete published PurIST or DeCAF clinical models. The author-run audit verified dataset-equal RLR logloss 0.237943894 versus binary ENET 0.290442282 and binary MCP 0.291233444. For the reproducible code and detailed conditions, see `docs/COMPCANCER_TERNARY_BINARY_ABLATION_REPRO.md`. Warnings of MCP model saturation were seen in some fits; no claim of superiority over original DeCAF/PurIST is warranted.
+
+## Manuscript handling
+
+The old `manuscript_lock/RLR3_submission_final.*` PDFs/TeX were an **obsolete manuscript snapshot** and have been removed from the current public branch together with their stale PDF hash list. Current submission PDFs and source are exchanged via the journal's editorial system, not published in this source-code release. Historical repository commits still preserve provenance of the obsolete snapshot.

@@ -36,6 +36,46 @@ jobs:
           test ! -e docs/FINAL_PDF_SHA256.txt
           ! grep -q 'source("R/experimental/' R/new/28_compcancer_ternary_vs_binary_ablation.R
           echo "CMPB_PUBLIC_SOURCE_CONTRACT=PASS"
+      - name: Verify SHA preflight against a temporary synthetic source and tampered shard
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib
+          import pathlib
+          import subprocess
+          import sys
+          import tempfile
+
+          names = ("alizadeh-2000-v1","armstrong-2002-v1","bittner-2000",
+                   "chen-2002","golub-1999-v1","gordon-2002","pomeroy-2002-v1",
+                   "shipp-2002-v1","singh-2002","west-2001","yeoh-2002-v1")
+          with tempfile.TemporaryDirectory() as tmp:
+              root = pathlib.Path(tmp)/"data"
+              manifest = pathlib.Path(tmp)/"expected.txt"
+              lines = []
+              for ds in names:
+                  original = root/"CompCancer"/f"{ds}.arff"
+                  shard = ("CompCancer_truth_2x2" if ds in ("west-2001","yeoh-2002-v1")
+                           else "CompCancer_truth_9x10")
+                  mirrored = root/shard/f"{ds}.arff"
+                  original.parent.mkdir(parents=True, exist_ok=True)
+                  mirrored.parent.mkdir(parents=True, exist_ok=True)
+                  b = (f"@RELATION {ds}\n@ATTRIBUTE x NUMERIC\n@ATTRIBUTE class {{a,b}}\n@DATA\n0,a\n").encode()
+                  original.write_bytes(b)
+                  mirrored.write_bytes(b)
+                  lines.append(f"{hashlib.sha256(b).hexdigest()}  data/CompCancer/{ds}.arff")
+              manifest.write_text("\n".join(lines)+"\n")
+              cmd = [sys.executable, "scripts/verify_original_arff_preflight.py",
+                     "--data-root", str(root), "--manifest", str(manifest)]
+              ok = subprocess.run(cmd,capture_output=True,text=True)
+              assert ok.returncode == 0, ok.stdout+ok.stderr
+              assert "ORIGINAL_COMPCANCER_ARFF_SOURCE_AND_SHARD=PASS 11/11" in ok.stdout
+              (root/"CompCancer_truth_2x2"/"west-2001.arff").write_text("TAMPERED\n")
+              bad = subprocess.run(cmd,capture_output=True,text=True)
+              assert bad.returncode != 0 and "MISMATCH_SHARD" in bad.stdout
+          print("CMPB_SHA256_PREFLIGHT_SYNTHETIC_PASS_AND_TAMPER_REJECTED=PASS")
+          PY
       - name: R syntax check (no input data, no model fitting)
         shell: bash
         run: |

@@ -120,7 +120,7 @@ predict_cascade<-function(train_state,test_state,y01,global_prob=NULL,n_global=2
  if(!is.null(global_prob))cost[terminal=="unresolved"]<-6L+n_global
  stop_if(all(is.finite(prob))&&all(prob>0&prob<1),"invalid probability")
  list(p=as.numeric(prob),route=stage,checks=cost,
-      fallback=as.integer(terminal=="unresolved"&&!is.null(global_prob)),
+      fallback=if(is.null(global_prob))rep(0L,length(a)) else as.integer(terminal=="unresolved"),
       leaf_count=fit$count,train_unresolved=sum(vote3(train_state,1:3)==0L&
                                             vote3(train_state,4:6)==0L))
 }

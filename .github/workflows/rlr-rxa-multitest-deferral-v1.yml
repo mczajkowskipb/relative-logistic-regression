@@ -4,6 +4,8 @@ on:
     branches: [analysis/rlr-rxa-multitest-deferral-v1]
     paths:
       - '.github/workflows/rlr-rxa-multitest-deferral-v1.yml'
+      - 'R/experimental/rlr_rxa_multitest_deferral_v1.R'
+      - 'scripts/audit_rlr_rxa_multitest_deferral_v1.py'
   workflow_dispatch:
 permissions:
   contents: read

@@ -62,11 +62,8 @@ def main():
     manifest_paths = {name for _, name, _ in entries}
     for dataset in PAPER_DATASETS:
         primary = f"data/CompCancer/{dataset}.arff"
-        shard = ("CompCancer_truth_2x2" if dataset in ("west-2001", "yeoh-2002-v1")
-                 else "CompCancer_truth_9x10")
-        secondary = f"data/{shard}/{dataset}.arff"
-        if primary not in manifest_paths or secondary not in manifest_paths:
-            ap.error(f"Canonical original ARFF/shard missing from manifest: {dataset}")
+        if primary not in manifest_paths:
+            ap.error(f"Canonical original CompCancer ARFF missing from manifest: {dataset}")
 
     matched, missing, mismatched = 0, [], []
     for expected, name, path in entries:
@@ -85,8 +82,34 @@ def main():
     if missing or mismatched:
         print(f"SHA256_MANIFEST_STATUS=FAIL missing={len(missing)} mismatch={len(mismatched)}")
         return 2
-    print(f"ORIGINAL_COMPCANCER_ARFF_SOURCE_AND_SHARD=PASS 11/11")
-    print(f"SHA256_MANIFEST_STATUS=PASS")
+
+    # The 45-entry manifest lists original CompCancer primary ARFFs, not
+    # separate truth_9x10 / truth_2x2 shard paths. Rehash those copies against
+    # the EXACT SAME frozen original-ARFF digest, without inventing new entries.
+    expected_by_path = {name: h for h, name, _ in entries}
+    shard_ok, shard_missing, shard_mismatch = 0, [], []
+    for dataset in PAPER_DATASETS:
+        shard = ("CompCancer_truth_2x2" if dataset in ("west-2001", "yeoh-2002-v1")
+                 else "CompCancer_truth_9x10")
+        mirrored = root / shard / f"{dataset}.arff"
+        expected = expected_by_path[f"data/CompCancer/{dataset}.arff"]
+        if not mirrored.is_file():
+            shard_missing.append(str(mirrored))
+            print(f"MISSING_SHARD {shard}/{dataset}.arff")
+            continue
+        observed = digest(mirrored)
+        if observed != expected:
+            shard_mismatch.append(str(mirrored))
+            print(f"MISMATCH_SHARD {shard}/{dataset}.arff expected={expected} actual={observed}")
+            continue
+        shard_ok += 1
+        print(f"OK_SHARD {shard}/{dataset}.arff")
+    print(f"ORIGINAL_COMPCANCER_SOURCE_AND_SHARD_MATCHED={shard_ok}/11")
+    if shard_missing or shard_mismatch:
+        print(f"ORIGINAL_COMPCANCER_ARFF_SOURCE_AND_SHARD=FAIL missing={len(shard_missing)} mismatch={len(shard_mismatch)}")
+        return 2
+    print("ORIGINAL_COMPCANCER_ARFF_SOURCE_AND_SHARD=PASS 11/11")
+    print("SHA256_MANIFEST_STATUS=PASS")
     return 0
 
 

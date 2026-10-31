@@ -1,0 +1,98 @@
+name: RLR RXA MultiTest deferred-uncertain cascade V1
+on:
+  push:
+    branches: [analysis/rlr-rxa-multitest-deferral-v1]
+    paths:
+      - '.github/workflows/rlr-rxa-multitest-deferral-v1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cohort:
+    name: RXA deferral ${{ matrix.dataset }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 100
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        dataset: [alizadeh-2000-v1, armstrong-2002-v1, bittner-2000, chen-2002, golub-1999-v1, gordon-2002, pomeroy-2002-v1, shipp-2002-v1, singh-2002, west-2001, yeoh-2002-v1]
+    env:
+      RLR_DATASET_ID: ${{ matrix.dataset }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install actual frozen RLR switchBox and glmnet
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends r-base-core r-base-dev r-cran-foreign r-cran-glmnet r-cran-proc r-cran-jsonlite r-cran-gplots
+          NAME=switchBox_1.38.0.tar.gz
+          for MIRROR in https://ftp.gwdg.de/pub/misc/bioconductor/packages/3.18/bioc/src/contrib https://bioconductor.uib.no/packages/3.18/bioc/src/contrib
+          do
+            if curl -fsSL --connect-timeout 10 --max-time 35 "$MIRROR/$NAME" -o "/tmp/$NAME"; then break; fi
+          done
+          test -s "/tmp/$NAME"
+          sudo R CMD INSTALL "/tmp/$NAME"
+      - name: Source syntax, study protocol, and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s docs/RLR_RXA_MULTITEST_DEFER_V1_FROZEN_PROTOCOL.md
+          Rscript --vanilla -e 'parse("R/experimental/rlr_rxa_multitest_deferral_v1.R");cat("RXA_V1_R_SOURCE_PARSE=PASS\n")' >/dev/null
+          python3 -m py_compile scripts/audit_rlr_rxa_multitest_deferral_v1.py
+          mkdir -p "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID" "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID"
+          git rev-parse HEAD > "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/SOURCE_SHA.txt"
+          git hash-object R/new/07_world_protocol_utils.R > "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/ORIGINAL_RLR_CORE_SHA.txt"
+      - name: Retrieve public Schliep reconstructed source (NOT original paper SHA verified)
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 -u scripts/rlr_full11_fetch_one_v1.py --dataset "$RLR_DATASET_ID" 2>&1 |
+            tee "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/source.log"
+          grep -qx 'RLR_11_ONE_PROCESSED_ARFF_SHA_PARITY=NOT_VERIFIED' "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/source.log"
+          cp "results/rlr_full11_same_pairs_v1/$RLR_DATASET_ID/input_source_manifest.json" "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/source_manifest.json"
+      - name: All five matched external folds, six fixed arms
+        shell: bash
+        run: |
+          set -euo pipefail
+          Rscript --vanilla R/experimental/rlr_rxa_multitest_deferral_v1.R 2>&1 |
+            tee "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RXA_MTDEF_V1_5FOLDS_6ARMS=PASS' "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/fit.log"
+          grep -qx 'RXA_MTDEF_V1_PATIENTS_ONCE_PER_ARM=PASS' "results/rlr_rxa_multitest_deferral_v1/$RLR_DATASET_ID/fit.log"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-rxa-mtdef-v1-${{ matrix.dataset }}-${{ github.run_id }}
+          path: results/rlr_rxa_multitest_deferral_v1/
+          retention-days: 30
+          if-no-files-found: warn
+  audit:
+    name: Independent replay all 330 method-fold results, 11 cohort sign-flips, routes
+    needs: cohort
+    if: ${{ success() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: rlr-rxa-mtdef-v1-*
+          path: downloaded
+      - name: Independently verify every patient, routing and RLR rescue equality
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p results/rlr-rxa-mtdef-v1-audit
+          python3 scripts/audit_rlr_rxa_multitest_deferral_v1.py \
+            --input downloaded --out results/rlr-rxa-mtdef-v1-audit |
+            tee results/rlr-rxa-mtdef-v1-audit/audit.log
+          grep -qx 'RXA_MTDEF_V1_INDEPENDENT_330_METHOD_FOLD_METRIC_REPLAY=PASS' results/rlr-rxa-mtdef-v1-audit/audit.log
+          grep -qx 'RXA_MTDEF_V1_SAME_PATIENT_ROUTING_AND_RLR_BACKSTOP=PASS' results/rlr-rxa-mtdef-v1-audit/audit.log
+          grep -qx 'RXA_MTDEF_V1_11_COHORT_SIGNFLIP_BH4=PASS' results/rlr-rxa-mtdef-v1-audit/audit.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rlr-rxa-mtdef-v1-all11-audit-${{ github.run_id }}
+          path: results/rlr-rxa-mtdef-v1-audit/
+          retention-days: 30

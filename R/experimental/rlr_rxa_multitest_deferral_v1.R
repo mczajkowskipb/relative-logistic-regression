@@ -112,7 +112,6 @@ predict_cascade<-function(train_state,test_state,y01,global_prob=NULL,n_global=2
                  ifelse(b!=0L,paste0("n2_",b),"unresolved"))
  prob<-rep(fit$prior,length(a));known<-terminal!="unresolved"
  prob[known]<-fit$prob[terminal[known]]
- using<-terminal=="unresolved"&&!is.null(global_prob)
  if(!is.null(global_prob)) {
   stop_if(length(global_prob)==length(a),"backstop length")
   prob[terminal=="unresolved"]<-global_prob[terminal=="unresolved"]

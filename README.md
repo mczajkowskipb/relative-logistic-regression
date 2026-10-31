@@ -27,8 +27,7 @@ docs/                   protocol, provenance and data documentation
 environment/            R/system/package-version capture
 checksums/              original-source, publication-source, data and MSigDB hashes
 reference_outputs/      selected corrected PTB ORA outputs and GMT inputs
-manuscript_lock/        current v4 TeX lock plus corrected ORA PDFs
-scripts/                 reproduction, verification and smoke helpers
+scripts/                 SHA256 preflight, reproduction, independent score audit and smoke helpers
 ```
 
 ## Primary reproduction
@@ -41,6 +40,28 @@ bash scripts/reproduce_primary.sh
 ```
 
 The CompCancer state is intentionally assembled from two execution shards: nine datasets at 10x5 and West/Yeoh at 2x5. The collector scans the merged output tree to produce final 11-dataset summaries.
+
+## Original-ARFF integrity preflight (Supplement S13)
+
+The public repository intentionally does **not** contain old submission manuscript PDFs or the third-party processed gene-expression matrices. The current manuscript and supplement are supplied to the journal separately. Archived code and data provenance remain under version control.
+
+To check exact byte identity against all 45 entries in the frozen source manifest (including the 11 CompCancer primary ARFF and their 9×10 / 2×2 shards):
+
+```bash
+python3 scripts/verify_original_arff_preflight.py --data-root /path/to/processed/RLR/data
+```
+
+This read-only preflight fails when a file is missing or has a different SHA256. Exact ARFF byte identity also establishes that the original feature and class schema is unchanged.
+
+## CompCancer ternary-vs-binary ablation (Supplement S7.1)
+
+The **55 outer-fold (11 datasets × 5 folds, three models)** fixed-pair controlled ablation is reproducible with:
+
+```bash
+bash scripts/reproduce_compcancer_ternary_binary_ablation.sh /path/to/processed/RLR/data
+```
+
+This separate benchmark runs the original RLR-20 ternary margin representation against binary ENET and MCP **methodological controls**, not against the full published clinical PurIST or DeCAF classifiers. It requires R packages `foreign`, `switchBox`, `glmnet`, `ncvreg`, `pROC`, `jsonlite`; source ARFF files are checksum-gated and not redistributed. Original model code and 470-fold primary results are unchanged. The runner writes held-out per-sample predictions and independently replays logloss, Brier, AUC, F1, ECE and exact 11-dataset sign-flip/BH inference. See `docs/COMPCANCER_TERNARY_BINARY_ABLATION_REPRO.md`.
 
 ## Corrected PTB ORA
 

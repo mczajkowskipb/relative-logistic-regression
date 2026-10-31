@@ -45,7 +45,7 @@ The CompCancer state is intentionally assembled from two execution shards: nine 
 
 The public repository intentionally does **not** contain old submission manuscript PDFs or the third-party processed gene-expression matrices. The current manuscript and supplement are supplied to the journal separately. Archived code and data provenance remain under version control.
 
-To check exact byte identity against all 45 entries in the frozen source manifest (including the 11 CompCancer primary ARFF and their 9×10 / 2×2 shards):
+To check exact byte identity against all **45 entries in the frozen source manifest**, and additionally verify the **11 CompCancer 9×10 / 2×2 shard copies** against the SHA256 values of the corresponding original ARFFs:
 
 ```bash
 python3 scripts/verify_original_arff_preflight.py --data-root /path/to/processed/RLR/data

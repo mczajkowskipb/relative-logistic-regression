@@ -4,7 +4,7 @@ Publication reproducibility release for:
 
 **Relative Logistic Regression: A Probabilistic Refinement of Hard-Voting Pair-Based Omics Classification**
 
-Marcin Czajkowski, Anna Czajkowska, Krzysztof Jurczuk, Marek Kretowski.
+**Manuscript author:** Marcin Czajkowski (**sole author**). The revised main manuscript and Supplementary Material are prepared for submission to *Computer Methods and Programs in Biomedicine*; see [manuscript status](docs/MANUSCRIPT_STATUS.md). Earlier multi-author publications cited in the article remain attributed to their actual authors.
 
 ## What is frozen
 
@@ -43,7 +43,7 @@ The CompCancer state is intentionally assembled from two execution shards: nine 
 
 ## Original-ARFF integrity preflight (Supplement S13)
 
-The public repository intentionally does **not** contain old submission manuscript PDFs or the third-party processed gene-expression matrices. The current manuscript and supplement are supplied to the journal separately. Archived code and data provenance remain under version control.
+The public repository intentionally does **not** contain old submission manuscript PDFs or the third-party processed gene-expression matrices. The current **sole-author** manuscript and supplement are supplied to the journal separately. Archived code and data provenance remain under version control.
 
 To check exact byte identity against all **45 entries in the frozen source manifest**, and additionally verify the **11 CompCancer 9×10 / 2×2 shard copies** against the SHA256 values of the corresponding original ARFFs:
 

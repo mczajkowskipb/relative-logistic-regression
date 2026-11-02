@@ -53,6 +53,6 @@ These exploratory q-values relate only to this **separate eight-test** family, n
 ## Provenance and scientific boundary
 
 - Main manuscript results and original RLR source are unchanged by this release update.
-- Original processed data SHA256 verification was carried out **locally** by the authors; Github does not expose those matrices.
+- Original processed data SHA256 verification was carried out **locally** by the manuscript author; Github does not expose those matrices.
 - Existing historical 470-fold CI development runs used public reconstructed Schliep source data, not bytes independently checked against the author's original local processed files at the time. Do not conflate those activities.
 - The old RLR3 manuscript and stale PDF hash were intentionally removed from the current repository tree to avoid presenting an obsolete document as the journal submission. Older snapshots remain recoverable from Git history.

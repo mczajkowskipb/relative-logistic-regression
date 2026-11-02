@@ -1,15 +1,9 @@
 cff-version: 1.2.0
-message: "If you use this software, please cite the associated manuscript."
+message: "If you use this software, please cite the single-author RLR manuscript by Marcin Czajkowski (prepared for submission to Computer Methods and Programs in Biomedicine)."
 title: "Relative Logistic Regression: A Probabilistic Refinement of Hard-Voting Pair-Based Omics Classification"
 type: software
 authors:
   - family-names: Czajkowski
     given-names: Marcin
-  - family-names: Czajkowska
-    given-names: Anna
-  - family-names: Jurczuk
-    given-names: Krzysztof
-  - family-names: Kretowski
-    given-names: Marek
 repository-code: "https://github.com/mczajkowskipb/relative-logistic-regression"
 date-released: 2026-09-10

@@ -10,8 +10,9 @@
 - [x] MIT License selected and included.
 - [x] legacy8 checksum/provenance limitation accepted and documented; no further source search required.
 - [x] Final clean repository URL locked as `mczajkowskipb/relative-logistic-regression`.
-- [x] Final main manuscript and Supplement compiled with complete figure assets.
-- [x] Final PDFs visually inspected.
+- [x] Historical submission-draft main manuscript and Supplement compiled with complete figure assets.
+- [x] Historical compiled manuscript PDFs visually inspected (latest sole-author PDFs are distributed through the editorial system, not this repository).
+- [x] Manuscript author metadata synchronized with the current sole-author submission: `CITATION.cff`, `README.md`, `docs/MANUSCRIPT_STATUS.md` (2026-11-02).
 - [x] Quick release validation passes.
 - [x] Clean public GitHub repository created and publication release pushed.
 - [x] Fresh-clone quick verification passed (`python3 scripts/check_release.py --quick`; `scripts/smoke_test.sh` is the equivalent wrapper).

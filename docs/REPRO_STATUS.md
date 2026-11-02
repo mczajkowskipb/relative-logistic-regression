@@ -24,7 +24,7 @@ R 4.6.0 on Ubuntu 22.04.4 LTS. Package versions are listed in `environment/packa
 
 The historical legacy8 upstream provenance cannot be reconstructed more precisely from the archived materials. The exact processed inputs used for the locked state are therefore identified by filename and SHA256 rather than by a newly asserted upstream source. This limitation is explicit and accepted for the historical/descriptive benchmark.
 
-The public repository does not mirror every split-level frozen output. Those files remain in the authors' private frozen archive. Publication-facing provenance, canonical configurations, checksums and the complete corrected PTB ORA are included publicly.
+The public repository does not mirror every split-level frozen output. Those files remain in the private frozen working archive. Publication-facing provenance, canonical configurations, checksums and the complete corrected PTB ORA are included publicly.
 
 ## Final external verification
 
@@ -32,7 +32,7 @@ Fresh-clone quick verification of the public repository passed on 2026-09-10 (`p
 
 ## Original ARFF verification (owner-performed, 2026-10-30)
 
-The authors ran SHA256 against the frozen `checksums/DATA_SHA256_EXPECTED.txt` manifest on the original local processed data directory: **45/45 matching files**. The full eleven original CompCancer ARFFs and their 9x10/2x2 execution-shard counterparts also passed a source/shard preflight (**11/11**). The exact byte identity preserves original sample, probe and class-factor ordering; it does **not** license redistribution of the ARFF matrices.
+The manuscript author ran SHA256 against the frozen `checksums/DATA_SHA256_EXPECTED.txt` manifest on the original local processed data directory: **45/45 matching files**. The full eleven original CompCancer ARFFs and their 9x10/2x2 execution-shard counterparts also passed a source/shard preflight (**11/11**). The exact byte identity preserves original sample, probe and class-factor ordering; it does **not** license redistribution of the ARFF matrices.
 
 The repository now includes the public, read-only `scripts/verify_original_arff_preflight.py` to independently redo the checksum verification on any authorized local copy. This is a provenance confirmation for the original **processed input files**. Do not retroactively label historical public-Schliep-reconstructed exploratory GitHub Actions fits as having run against those exact original local ARFFs; the original-paper CompCancer algorithm and 470-fold numerical lock have not been changed.
 
@@ -43,3 +43,7 @@ The 11 original ARFF datasets (one five-fold outer repeat = 55 held-out folds) w
 ## Manuscript handling
 
 The old `manuscript_lock/RLR3_submission_final.*` PDFs/TeX were an **obsolete manuscript snapshot** and have been removed from the current public branch together with their stale PDF hash list. Current submission PDFs and source are exchanged via the journal's editorial system, not published in this source-code release. Historical repository commits still preserve provenance of the obsolete snapshot.
+
+## Current manuscript authorship (2026-11-02)
+
+The revised submission manuscript and Supplementary Material identify **Marcin Czajkowski as the sole author**. This author-metadata update is recorded in `CITATION.cff`, `README.md` and `docs/MANUSCRIPT_STATUS.md`. It changes **no** RLR implementation, cohort split, dataset checksum, benchmark outcome, statistical inference, or provenance claim. Prior cited multi-author publications and the historical Git record remain unchanged. The current journal PDFs are supplied separately and are not duplicated in the public source repository.
